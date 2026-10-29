@@ -1,0 +1,2 @@
+@model KarakusAluminyum.Web.Models.ContactMessage
+@{ViewData["Title"]="Mesaj detayı";}<h1>Mesaj detayı</h1><div class="admin-panel"><p><strong>Gönderen:</strong> @Model.Name</p><p><strong>İletişim:</strong> @Model.ContactInfo</p><p><strong>Proje konumu:</strong> @Model.ProjectLocation</p><p><strong>Hizmet:</strong> @Model.Service</p><p><strong>Tarih:</strong> @Model.CreatedUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</p><hr/><p style="white-space:pre-wrap">@Model.Message</p><a class="admin-btn" href="/yonetim/mesajlar">Geri</a></div>

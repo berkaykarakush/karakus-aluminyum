@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Disallow: /yonetim/
+Sitemap: https://www.karakusaluminyum.com/sitemap.xml

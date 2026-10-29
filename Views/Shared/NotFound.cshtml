@@ -1,0 +1,5 @@
+@{
+    ViewData["Seo"] = new SeoViewModel { Title = "Sayfa Bulunamadı | Karakuş Alüminyum", Description = "Aradığınız sayfa bulunamadı.", CanonicalPath = "/hata/404", Robots = "noindex,follow" };
+    Context.Response.StatusCode = 404;
+}
+<section class="page-hero"><div class="container"><span class="eyebrow">404</span><h1>Bu sayfayı bulamadık.</h1><p class="page-intro">Adres değişmiş veya sayfa kaldırılmış olabilir.</p><a class="button button--dark" href="/">Ana sayfaya dön</a></div></section>

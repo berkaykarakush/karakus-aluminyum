@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-karakus_aluminyum}
+      POSTGRES_USER: ${POSTGRES_USER:-karakus_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD .env dosyasında tanımlanmalı}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_HTTP_PORTS: 8080
+      Database__SchemaMode: ${DATABASE_SCHEMA_MODE:-ensurecreated}
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${POSTGRES_DB:-karakus_aluminyum};Username=${POSTGRES_USER:-karakus_app};Password=${POSTGRES_PASSWORD}
+      DataProtection__KeysPath: /var/dpkeys
+      KARAKUS_ADMIN_EMAIL: ${KARAKUS_ADMIN_EMAIL:?KARAKUS_ADMIN_EMAIL .env dosyasında tanımlanmalı}
+      KARAKUS_ADMIN_PASSWORD: ${KARAKUS_ADMIN_PASSWORD:?KARAKUS_ADMIN_PASSWORD .env dosyasında tanımlanmalı}
+      Notifications__Smtp__Host: ${SMTP_HOST:-smtp.gmail.com}
+      Notifications__Smtp__Port: ${SMTP_PORT:-587}
+      Notifications__Smtp__Username: ${SMTP_USERNAME:-}
+      Notifications__Smtp__Password: ${SMTP_PASSWORD:-}
+      Notifications__Smtp__From: ${SMTP_FROM:-}
+      Notifications__Smtp__To: ${NOTIFICATION_EMAIL_TO:-}
+      Notifications__WhatsApp__AccessToken: ${WHATSAPP_ACCESS_TOKEN:-}
+      Notifications__WhatsApp__PhoneNumberId: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      Notifications__WhatsApp__To: ${WHATSAPP_TO:-}
+      Notifications__WhatsApp__GraphApiVersion: ${WHATSAPP_GRAPH_API_VERSION:-v22.0}
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    volumes:
+      - dataprotection_keys:/var/dpkeys
+
+volumes:
+  postgres_data:
+  dataprotection_keys:

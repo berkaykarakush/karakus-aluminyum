@@ -1,0 +1,24 @@
+@model ProjectItem
+<section class="page-hero">
+    <div class="container">
+        <nav class="breadcrumbs" aria-label="İçerik yolu">
+            <a href="/">Ana Sayfa</a>
+            <span>/</span>
+            <a href="/projeler">Projeler</a>
+            <span>/</span>
+            <span>@Model.Title</span>
+        </nav>
+        <span class="eyebrow">@Model.Type · @Model.Location</span>
+        <h1>@Model.Title</h1>
+        <p class="page-intro">@Model.Summary</p>
+    </div>
+</section>
+
+<section class="section">
+    <div class="container content-prose">
+        <img class="detail-image" src="@Model.Image" alt="@Model.Title - @Model.Type uygulaması" width="1200" height="850" />
+        <h2>Proje kapsamı</h2>
+        <p style="white-space:pre-wrap">@(ViewBag.Content as string ?? "Bu proje için henüz detay içeriği girilmedi.")</p>
+        <a class="button button--dark" href="/iletisim">Benzer projem için iletişime geçin ↗</a>
+    </div>
+</section>

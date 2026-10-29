@@ -1,0 +1,80 @@
+@model ServicePage
+<section class="page-hero">
+    <div class="container">
+        <nav class="breadcrumbs" aria-label="İçerik yolu">
+            <a href="/">Ana Sayfa</a>
+            <span>/</span>
+            <a href="/urunler">Ürün ve Hizmetler</a>
+            <span>/</span>
+            <span>@Model.Name</span>
+        </nav>
+        <span class="eyebrow">Ürün ve Hizmetler</span>
+        <h1>@Model.Name</h1>
+        <p class="page-intro">@Model.ShortDescription</p>
+    </div>
+</section>
+
+<section class="section">
+    <div class="container split">
+        <div class="split__visual">
+            <img src="@Model.Image" alt="@Model.Name uygulama görseli" width="900" height="800" /></div>
+            <div class="split__copy">
+            <h2>Projeye uygun çözümü birlikte değerlendirelim.</h2>
+            <p>@Model.Intro</p>
+            <ul class="check-list">
+                @foreach (var benefit in Model.Benefits) 
+                { 
+                    <li>@benefit</li> 
+                }
+            </ul>
+            <a class="button button--dark" href="/iletisim?service=@Uri.EscapeDataString(Model.Name)">Bu hizmet için teklif isteyin ↗</a>
+        </div>
+    </div>
+</section>
+
+<section class="section section--soft">
+    <div class="container">
+        <div class="section-heading">
+            <div>
+                <span class="eyebrow">Sık Sorulan Sorular</span>
+                <h2>@Model.Name hakkında merak edilenler.</h2>
+            </div>
+        </div>
+        <div class="faq-list">
+            @foreach (var faq in Model.Faqs) 
+            { 
+                var parts = faq.Split('|', 2); 
+                <article class="faq-item">
+                    <h3>@parts[0]</h3>
+                    <p>@(parts.Length > 1 ? parts[1] : "")</p>
+                </article> 
+            }
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="container">
+        <div class="cta-band">
+            <div>
+                <h2>Projeniz için detayları konuşalım.</h2>
+                <p>Ölçü, çizim ve ihtiyaçlarınızı paylaşarak ilk değerlendirmeyi başlatın.</p>
+            </div>
+            <a class="button button--silver" href="/iletisim?service=@Uri.EscapeDataString(Model.Name)">Teklif isteyin ↗</a>
+        </div>
+    </div>
+</section>
+
+@section Head {
+    <script type="application/ld+json">
+        @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, object?>
+        {
+            ["@context"] = "https://schema.org",
+            ["@type"] = "Service",
+            ["name"] = Model.Name,
+            ["description"] = Model.SeoDescription,
+            ["provider"] = new Dictionary<string, object?> { ["@type"] = "Organization", ["name"] = "Karakuş Alüminyum" },
+            ["areaServed"] = "İzmir, Türkiye"
+        }))
+    </script>
+}

@@ -1,0 +1,20 @@
+@model KarakusAluminyum.Web.Models.Crm.Quote
+@using KarakusAluminyum.Web.Models.Crm
+@{ ViewData["Title"] = "Teklif detay"; var statusText = QuoteLabel(Model.Status); }
+<div class="admin-actions"><h1>Teklif @Model.QuoteNumber</h1><a class="admin-btn" href="/yonetim/crm/teklifler">Teklif listesi</a><button class="admin-btn" type="button" onclick="window.print()">Yazdır / PDF kaydet</button></div>
+<div class="admin-panel"><div class="admin-grid"><div><span class="admin-muted">Müşteri</span><h2>@Model.Customer?.Name</h2><p>@Model.Customer?.ContactPerson<br/>@Model.Customer?.Phone · @Model.Customer?.Email</p></div><div><span class="admin-muted">Teklif başlığı</span><h2>@Model.Title</h2><p>Oluşturma: @Model.CreatedUtc.ToLocalTime().ToString("dd.MM.yyyy")<br/>Geçerlilik: @(Model.ValidUntilUtc?.ToLocalTime().ToString("dd.MM.yyyy") ?? "Belirtilmedi")<br/>Durum: @statusText</p></div></div>
+<table class="admin-table"><thead><tr><th>Açıklama</th><th>Miktar</th><th>Birim</th><th>Birim fiyatı</th><th>Tutar</th></tr></thead><tbody>@foreach(var x in Model.Items){<tr><td>@x.Description</td><td>@x.Quantity.ToString("N3")</td><td>@x.Unit</td><td>@x.UnitPrice.ToString("N2") ₺</td><td>@x.LineTotal.ToString("N2") ₺</td></tr>}</tbody></table>
+<div style="max-width:360px;margin:20px 0 0 auto"><p>Ara toplam: <strong>@Model.Subtotal.ToString("N2") ₺</strong></p><p>İskonto (@Model.DiscountRate.ToString("N2")%): <strong>-@Model.DiscountAmount.ToString("N2") ₺</strong></p><p>KDV (@Model.TaxRate.ToString("N2")%): <strong>@Model.TaxAmount.ToString("N2") ₺</strong></p><h2>Genel toplam: @Model.GrandTotal.ToString("N2") ₺</h2></div>
+@if(!string.IsNullOrWhiteSpace(Model.Notes)){<hr/><h3>Notlar ve koşullar</h3><p style="white-space:pre-wrap">@Model.Notes</p>}
+<hr/><form method="post" action="/yonetim/crm/teklifler/durum/@Model.Id" class="admin-form">@Html.AntiForgeryToken()<label>Teklif durumunu değiştir</label><div class="admin-actions"><select name="status">@foreach(var s in AllowedStatuses(Model.Status)){<option value="@((int)s)" selected="@(Model.Status==s)">@QuoteLabel(s)</option>}</select><button class="admin-btn">Durumu kaydet</button></div></form></div>
+<style>@@media print{body.admin{background:white}.admin-nav,header,.admin-actions button,.admin-actions a,form{display:none!important}.admin-shell{max-width:none;padding:0}.admin-panel{border:0}}</style>
+
+@functions {
+    IEnumerable<QuoteStatus> AllowedStatuses(QuoteStatus current) => current switch
+    {
+        QuoteStatus.Draft => new[] { QuoteStatus.Draft, QuoteStatus.Sent },
+        QuoteStatus.Sent => new[] { QuoteStatus.Sent, QuoteStatus.Accepted, QuoteStatus.Rejected, QuoteStatus.Expired },
+        _ => new[] { current }
+    };
+    string QuoteLabel(QuoteStatus s) => s switch { QuoteStatus.Draft => "Taslak", QuoteStatus.Sent => "Gönderildi", QuoteStatus.Accepted => "Kabul edildi", QuoteStatus.Rejected => "Reddedildi", QuoteStatus.Expired => "Süresi doldu", _ => "Siparişe dönüştürüldü" };
+}

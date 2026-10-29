@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+.git/
+.gitignore
+.env
+.env.*
+!.env.example
+.keys/
+*.user
+*.suo

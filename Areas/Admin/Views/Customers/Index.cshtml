@@ -1,0 +1,10 @@
+@model List<KarakusAluminyum.Web.Models.Crm.Customer>
+@using KarakusAluminyum.Web.Models.Crm
+@{ ViewData["Title"] = "CRM - Müşteriler"; }
+<div class="admin-actions"><h1>CRM · Müşteriler</h1><a class="admin-btn" href="/yonetim/crm/musteriler/ekle">+ Yeni müşteri</a><a class="admin-btn" href="/yonetim/crm/teklifler">Tekliflere git</a></div>
+<div class="admin-panel"><form method="get" class="admin-form"><div class="admin-grid"><div><label>Arama</label><input name="q" value="@ViewBag.Query" placeholder="Müşteri, yetkili, telefon, e-posta"/></div><div><label>Durum</label><select name="status"><option value="">Tüm durumlar</option>@foreach(var s in Enum.GetValues<CustomerStatus>()){<option value="@((int)s)" selected="@(ViewBag.Status is CustomerStatus selected && selected == s)">@CustomerLabel(s)</option>}</select></div><div style="align-self:end"><button class="admin-btn">Filtrele</button></div></div></form></div>
+<div class="admin-panel"><table class="admin-table"><thead><tr><th>Müşteri</th><th>Yetkili</th><th>Telefon / E-posta</th><th>Durum</th><th>Güncelleme</th><th>İşlem</th></tr></thead><tbody>
+@foreach(var x in Model){<tr><td><strong>@x.Name</strong><br/><small>@(x.Kind == CustomerKind.Company ? "Firma" : "Bireysel") · @x.City</small></td><td>@x.ContactPerson</td><td>@x.Phone<br/>@x.Email</td><td>@CustomerLabel(x.Status)</td><td>@x.UpdatedUtc.ToLocalTime().ToString("dd.MM.yyyy")</td><td><div class="admin-actions"><a class="admin-btn" href="/yonetim/crm/musteriler/duzenle/@x.Id">Düzenle</a><form method="post" action="/yonetim/crm/musteriler/sil/@x.Id" onsubmit="return confirm('Müşteri silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form></div></td></tr>}
+@if(Model.Count == 0){<tr><td colspan="6">Kayıt bulunamadı.</td></tr>}
+</tbody></table></div>
+@functions { string CustomerLabel(CustomerStatus s) => s switch { CustomerStatus.Lead => "Aday", CustomerStatus.Active => "Aktif", _ => "Pasif" }; }
