@@ -1,0 +1,25 @@
+@model IReadOnlyList<KarakusAluminyum.Web.Models.GalleryImage>
+@{ ViewData["Title"] = "Galeri"; }
+<h1 class="h3 mb-3">Galeri</h1>
+<a class="btn btn-primary mb-3" asp-action="Create">Yeni Görsel Yükle</a>
+<table class="table table align-middle">
+  <thead><tr><th></th><th>Başlık</th><th>Bağlı olduğu</th><th>Sıra</th><th>Yayın</th><th></th></tr></thead>
+  <tbody>
+  @foreach (var g in Model)
+  {
+    <tr>
+      <td><img src="@g.ImagePath" style="width:80px;height:60px;object-fit:cover;" class="rounded" /></td>
+      <td>@g.Title</td>
+      <td>@(g.ServiceId is not null ? "Hizmet #" + g.ServiceId : g.ProjectId is not null ? "Proje #" + g.ProjectId : "Genel")</td>
+      <td>@g.SortOrder</td>
+      <td>@(g.IsPublished ? "Evet" : "Hayır")</td>
+      <td>
+        <form asp-action="Delete" method="post" onsubmit="return confirm('Silinsin mi?')">
+          <input type="hidden" name="id" value="@g.Id" />
+          <button class="btn btn-sm btn-outline-danger">Sil</button>
+        </form>
+      </td>
+    </tr>
+  }
+  </tbody>
+</table>

@@ -24,6 +24,9 @@ public class ServicesController : Controller
         var service=ToPage(row);
         ViewData["Seo"] = new SeoViewModel { Title=string.IsNullOrWhiteSpace(service.SeoTitle)?service.Name+" | Karakuş Alüminyum":service.SeoTitle, Description=service.SeoDescription, CanonicalPath="/urunler/"+service.Slug, ImagePath=service.Image, Type="article" };
         ViewData["Service"] = service;
+        ViewBag.Gallery = await _db.GalleryImages.AsNoTracking()
+            .Where(g => g.ServiceId == row.Id && g.IsPublished)
+            .OrderBy(g => g.SortOrder).ToListAsync();
         return View(service);
     }
     private static ServicePage ToPage(ServiceContent x) => new(x.Slug,x.Name,x.ShortDescription,x.Intro,x.Image,x.SeoTitle,x.SeoDescription,ParseList(x.BenefitsJson),ParseList(x.FaqsJson));

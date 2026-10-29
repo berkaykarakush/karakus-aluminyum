@@ -1,0 +1,21 @@
+@model IReadOnlyList<KarakusAluminyum.Web.Models.GalleryImage>
+@{
+    var cats = (List<(string Key, string Name)>)ViewBag.Categories;
+    var active = (string)(ViewBag.ActiveKey ?? "");
+}
+<div class="container py-4">
+  <h1 class="h3 mb-2">Galeri</h1>
+  <p class="text-muted mb-4">Uygulamalarımızdan seçtiğimiz kareler.</p>
+
+  <ul class="nav nav-pills flex-wrap gap-2 mb-4">
+    @foreach (var c in cats)
+    {
+      <li class="nav-item">
+        <a class="nav-link @(c.Key == active ? "active" : "")"
+           href="@(c.Key.Length == 0 ? "/galeri" : "/galeri?k=" + c.Key)">@c.Name</a>
+      </li>
+    }
+  </ul>
+
+  <partial name="_Gallery" model="Model" />
+</div>

@@ -225,6 +225,60 @@ public static class SeedData
             }
         }
 
+        // Galeri seed: mevcut wwwroot görselleriyle hizmet/proje galerilerini doldur.
+        if (!await db.GalleryImages.AnyAsync())
+        {
+            var serviceIds = await db.Services.ToDictionaryAsync(s => s.Slug, s => s.Id);
+            var projectIds = await db.Projects.ToDictionaryAsync(p => p.Slug, p => p.Id);
+
+            void AddImages(int? serviceId, int? projectId, params string[] paths)
+            {
+                for (var i = 0; i < paths.Length; i++)
+                    db.GalleryImages.Add(new GalleryImage
+                    {
+                        ServiceId = serviceId, ProjectId = projectId,
+                        ImagePath = paths[i], SortOrder = i, IsPublished = true
+                    });
+            }
+
+            // Hizmet galerileri
+            if (serviceIds.TryGetValue("aluminyum-dograma", out var id))
+                AddImages(id, null, "/images/aluminyum-dograma.png", "/images/kapi-ve-pencere-sistemleri.png", "/images/sarmal-kepenk-ve-panjur-sistemleri.png");
+            if (serviceIds.TryGetValue("pvc-dograma", out id))
+                AddImages(id, null, "/images/pvc-dograma.png", "/images/kapi-ve-pencere-sistemleri.png");
+            if (serviceIds.TryGetValue("yana-kayar-surme-cam-sistemleri", out id))
+                AddImages(id, null, "/images/yana-kayar-surme-cam-sistemleri.png", "/images/sürme-sistemleri.png", "/images/cam-balkon.png");
+            if (serviceIds.TryGetValue("katlanir-cam-sistemleri", out id))
+                AddImages(id, null, "/images/katlanir-cam-sistemleri.png", "/images/cam-balkon.png");
+            if (serviceIds.TryGetValue("otomatik-giyotin-camlama-sistemleri", out id))
+                AddImages(id, null, "/images/otomatik-giyotin-camlama-sistemleri.png", "/images/manuel-giyotin-ruzgar-kirici-sistemleri.png");
+            if (serviceIds.TryGetValue("manuel-giyotin-ruzgar-kirici-sistemleri", out id))
+                AddImages(id, null, "/images/manuel-giyotin-ruzgar-kirici-sistemleri.png");
+            if (serviceIds.TryGetValue("otomatik-tente", out id))
+                AddImages(id, null, "/images/otomatik-tente.png");
+            if (serviceIds.TryGetValue("fotoselli-doner-kapi", out id))
+                AddImages(id, null, "/images/fotoselli-doner-kapi.png", "/images/otomatik-kapi-ve-diger-sistemler.png");
+            if (serviceIds.TryGetValue("sarmal-kepenk-ve-panjur-sistemleri", out id))
+                AddImages(id, null, "/images/sarmal-kepenk-ve-panjur-sistemleri.png");
+            if (serviceIds.TryGetValue("ofis-bolme-sistemleri", out id))
+                AddImages(id, null, "/images/ofis-bolme-sistemleri.png");
+            if (serviceIds.TryGetValue("endustriyel-ve-garaj-kapi-sistemleri", out id))
+                AddImages(id, null, "/images/otomatik-kapi-ve-diger-sistemler.png");
+            if (serviceIds.TryGetValue("rampa-ve-koruk-sistemleri", out id))
+                AddImages(id, null, "/images/otomatik-kapi-ve-diger-sistemler.png");
+            if (serviceIds.TryGetValue("bahce-kapisi-ve-bariyer-sistemleri", out id))
+                AddImages(id, null, "/images/otomatik-kapi-ve-diger-sistemler.png");
+
+            // Proje galerileri
+            if (projectIds.TryGetValue("nisu-insaat-a-evleri", out var pid))
+                AddImages(null, pid, "/images/aluminyum-dograma.png", "/images/yana-kayar-surme-cam-sistemleri.png", "/images/katlanir-cam-sistemleri.png");
+            if (projectIds.TryGetValue("firat-insaat-b-evleri", out pid))
+                AddImages(null, pid, "/images/kapi-ve-pencere-sistemleri.png", "/images/otomatik-giyotin-camlama-sistemleri.png");
+            if (projectIds.TryGetValue("orhan-insaat-rm-evleri", out pid))
+                AddImages(null, pid, "/images/cam-balkon.png", "/images/sarmal-kepenk-ve-panjur-sistemleri.png");
+
+            await db.SaveChangesAsync();
+        }
         await db.SaveChangesAsync();
     }
 }

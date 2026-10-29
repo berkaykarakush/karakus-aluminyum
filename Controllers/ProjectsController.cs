@@ -23,6 +23,9 @@ public class ProjectsController : Controller
         var project=new ProjectItem(x.Slug,x.Title,x.Type,x.Summary,x.Image,x.Location);
         ViewData["Seo"] = new SeoViewModel { Title=project.Title+" | Karakuş Alüminyum", Description=project.Summary, CanonicalPath="/projeler/"+project.Slug, ImagePath=project.Image, Type="article" };
         ViewBag.Content=x.Content;
+        ViewBag.Gallery = await _db.GalleryImages.AsNoTracking()
+            .Where(g => g.ProjectId == x.Id && g.IsPublished)
+            .OrderBy(g => g.SortOrder).ToListAsync();
         return View(project);
     }
 }

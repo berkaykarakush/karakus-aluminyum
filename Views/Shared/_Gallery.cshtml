@@ -1,0 +1,35 @@
+@model IReadOnlyList<KarakusAluminyum.Web.Models.GalleryImage>
+@if (Model.Count == 0) { return; }
+<section class="py-4">
+  <h2 class="h4 mb-3">@((string?)ViewData["GalleryTitle"] ?? "Galeri")</h2>
+  <div class="row g-3">
+    @foreach (var img in Model)
+    {
+      <div class="col-6 col-md-4 col-lg-3">
+        <a href="@img.ImagePath" class="gallery-item d-block" title="@img.Title">
+          <img src="@img.ImagePath" alt="@(img.Title ?? "Galeri görseli")" loading="lazy"
+               class="img-fluid rounded shadow-sm"
+               style="aspect-ratio:4/3;object-fit:cover;width:100%;" />
+        </a>
+      </div>
+    }
+  </div>
+</section>
+<div id="gallery-lightbox" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1050;align-items:center;justify-content:center;cursor:zoom-out;">
+  <img id="gallery-lightbox-img" alt="" style="max-width:92vw;max-height:92vh;border-radius:8px;" />
+</div>
+<script>
+  document.querySelectorAll('.gallery-item').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      var lb = document.getElementById('gallery-lightbox');
+      document.getElementById('gallery-lightbox-img').src = a.getAttribute('href');
+      lb.style.display = 'flex';
+    });
+  });
+  var lb = document.getElementById('gallery-lightbox');
+  lb.addEventListener('click', function () { lb.style.display = 'none'; });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') lb.style.display = 'none';
+  });
+</script>

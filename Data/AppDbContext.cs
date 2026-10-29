@@ -17,6 +17,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Quote> Quotes => Set<Quote>();
     public DbSet<QuoteItem> QuoteItems => Set<QuoteItem>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<GalleryImage> GalleryImages => Set<GalleryImage>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -42,5 +43,15 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<AuditLog>().HasIndex(x => new { x.EntityType, x.EntityId });
         builder.Entity<QuoteItem>().HasOne(x => x.Quote).WithMany(x => x.Items)
             .HasForeignKey(x => x.QuoteId).OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<GalleryImage>().Property(x => x.ImagePath).HasMaxLength(500);
+            builder.Entity<GalleryImage>().Property(x => x.Title).HasMaxLength(160);
+            builder.Entity<GalleryImage>().Property(x => x.Caption).HasMaxLength(500);
+            builder.Entity<GalleryImage>().HasIndex(x => new { x.ServiceId, x.SortOrder });
+            builder.Entity<GalleryImage>().HasIndex(x => new { x.ProjectId, x.SortOrder });
+            builder.Entity<GalleryImage>().HasOne(x => x.Service).WithMany()
+                .HasForeignKey(x => x.ServiceId).OnDelete(DeleteBehavior.Cascade);
+            builder.Entity<GalleryImage>().HasOne(x => x.Project).WithMany()
+                .HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Cascade);
     }
 }
