@@ -33,21 +33,7 @@
   const nodeAt = (key) => (key === "" ? [] : key.split(".").map(Number)).reduce((node, i) => node.children[i], root);
   const firstLeaf = (node, key = "") => (node.split ? firstLeaf(node.children[0], key === "" ? "0" : `${key}.0`) : key);
 
-  // Dış ölçü değişince bölmeler orantılı olarak yeni ölçüye oturur.
-  function fit(node, w, h) {
-    if (!node.split) return;
-    const axis = node.split === "v" ? w : h;
-    const sum = node.sizes.reduce((a, b) => a + b, 0) || 1;
-    let used = 0;
-    node.sizes = node.sizes.map((size, i) => {
-      if (i === node.sizes.length - 1) return Math.round((axis - used) * 100) / 100;
-      const scaled = Math.round(size * axis / sum);
-      used += scaled;
-      return scaled;
-    });
-    node.children.forEach((child, i) => fit(child, node.split === "v" ? node.sizes[i] : w, node.split === "v" ? h : node.sizes[i]));
-  }
-
+  const fit = WindowDrawing.fit, TEMPLATES = WindowDrawing.templates;
   const fitAll = () => fit(root, num("WidthMm"), num("HeightMm"));
 
   function regionOf(key) {
@@ -86,18 +72,6 @@
     selected = parentKey;
     refresh();
   }
-
-  const leaf = (opening) => ({ id: newId(), opening: opening || "fixed", fill: "glass" });
-  const row = (direction, children, sliding, sizes) => ({ id: newId(), split: direction, sliding: !!sliding, sizes: sizes || children.map(() => 1), children });
-  const TEMPLATES = {
-    fixed: () => leaf(),
-    single: () => leaf("tiltRight"),
-    double: () => row("v", [leaf("tiltLeft"), leaf("tiltRight")]),
-    triple: () => row("v", [leaf("tiltLeft"), leaf(), leaf("tiltRight")]),
-    sliding: () => row("v", [leaf("slideRight"), leaf("slideLeft")], true),
-    transom: () => row("h", [leaf("tilt"), row("v", [leaf(), leaf("tiltRight")])], false, [1, 3]),
-    door: () => row("h", [leaf(), leaf("doorLeft")], false, [1, 4])
-  };
 
   function applyTemplate(name) {
     snapshot();
@@ -154,6 +128,7 @@
     document.getElementById("wd-param-label").textContent = shape === "arch" ? "Kemer yüksekliği" : "Alçak kenar yüksekliği";
     draw();
     renderSelection();
+    document.dispatchEvent(new CustomEvent("drawing:change"));
   }
 
   // Tuval: bölme seçimi ve kayıt sürükleme
@@ -204,7 +179,7 @@
     button.addEventListener("click", () => applyTemplate(button.dataset.template));
   });
   document.querySelectorAll("[data-opening]").forEach((button) => {
-    preview(button, leaf(button.dataset.opening), 900, 1200);
+    preview(button, { id: newId(), opening: button.dataset.opening, fill: "glass" }, 900, 1200);
     button.addEventListener("click", () => {
       const node = nodeAt(selected);
       if (node.split) return;

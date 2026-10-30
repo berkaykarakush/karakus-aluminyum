@@ -17,7 +17,7 @@ public static class WindowLayout
     public static string Serialize(LayoutNode node) => JsonSerializer.Serialize(node, Options);
 }
 
-// Çizimler yalnızca ölçülü şekildir: imalat düşümü, kesim veya maliyet hesabı yapılmaz.
+// Çizim verisinin kendisi yalnızca ölçülü şekildir. İmalat hesabı isteğe bağlıdır (DrawingCalculation).
 // Burada yalnızca çizilebilirlik denetlenir. Bölme ölçüleri toplamı, üst bölümün ölçüsüne eşittir.
 public static class WindowDrawings
 {
@@ -33,6 +33,13 @@ public static class WindowDrawings
         if (string.IsNullOrWhiteSpace(json)) return null;
         try { return JsonSerializer.Deserialize<ProductParams>(json, Json); }
         catch (JsonException) { return null; }
+    }
+
+    public static ProductSettings ParseSettings(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return new ProductSettings();
+        try { return JsonSerializer.Deserialize<ProductSettings>(json, Json) ?? new ProductSettings(); }
+        catch (JsonException) { return new ProductSettings(); }
     }
 
     public static string Serialize<T>(T value) => JsonSerializer.Serialize(value, Json);
@@ -112,10 +119,16 @@ public static class WindowDrawings
     }
 
     // Tarayıcıdaki çizimin ihtiyaç duyduğu veri.
-    public static object Drawing(WindowDesign row) => new
+    // Korkuluk dikme aralığı boşsa, sisteme bağlı çizimde sistemin değeri kullanılır.
+    public static object Drawing(WindowDesign row)
     {
-        category = row.Category, widthMm = row.WidthMm, heightMm = row.HeightMm, shape = row.Shape, shapeParamMm = row.ShapeParamMm, colorHex = row.ColorHex,
-        root = ProductCategories.IsWindow(row.Category) ? WindowLayout.Parse(row.LayoutJson) : null,
-        @params = ProductCategories.IsWindow(row.Category) ? null : ParseParams(row.ParamsJson)
-    };
+        var options = ProductCategories.IsWindow(row.Category) ? null : ParseParams(row.ParamsJson);
+        if (options is { PostSpacingMm: 0 } && row.ProfileSystem is not null) options.PostSpacingMm = ParseSettings(row.ProfileSystem.SettingsJson).PostSpacingMm;
+        return new
+        {
+            category = row.Category, widthMm = row.WidthMm, heightMm = row.HeightMm, shape = row.Shape, shapeParamMm = row.ShapeParamMm, colorHex = row.ColorHex,
+            root = ProductCategories.IsWindow(row.Category) ? WindowLayout.Parse(row.LayoutJson) : null,
+            @params = options
+        };
+    }
 }

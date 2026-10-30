@@ -1,4 +1,5 @@
 @model KarakusAluminyum.Web.Models.Drawing.GlassType
+@inject KarakusAluminyum.Web.Services.SiteSettingsProvider SiteSettings
 @{
     var editing = Model.Id != 0;
     ViewData["Title"] = editing ? "Cam tipini düzenle" : "Yeni cam tipi";
@@ -11,6 +12,14 @@
     <div asp-validation-summary="All"></div>
     <label asp-for="Name">Cam adı</label><input asp-for="Name" required />
     <label asp-for="PricePerM2">m² fiyatı (₺)</label><input asp-for="PricePerM2" type="number" step="0.01" />
+    @if ((await SiteSettings.GetAsync()).ProductionDetails)
+    {
+    <div class="admin-grid">
+      <div><label asp-for="SheetWidthMm">Plaka genişliği</label><input asp-for="SheetWidthMm" type="number" step="1" /></div>
+      <div><label asp-for="SheetHeightMm">Plaka yüksekliği</label><input asp-for="SheetHeightMm" type="number" step="1" /></div>
+      <div><label asp-for="CutGapMm">Kesim boşluğu</label><input asp-for="CutGapMm" type="number" step="0.1" /></div>
+    </div>
+    }
     <p><label><input asp-for="IsActive" type="checkbox" style="width:auto" /> Aktif</label></p>
     <div class="admin-actions"><button class="admin-btn" type="submit">Kaydet</button><a href="/yonetim/camlar/tipler">İptal</a></div>
   </form>

@@ -249,5 +249,35 @@ window.WindowDrawing = (() => {
     renderWindow(svg, input.shapeParamMm > 0 ? input : { ...input, shape: "rect" }, opts);
   }
 
-  return { render };
+  // Hazır tipler. Editör ve toplu ekleme aynı tanımları kullanır.
+  let idCounter = 0;
+  const newId = () => `t${Date.now().toString(36)}${++idCounter}`;
+  const leaf = (opening) => ({ id: newId(), opening: opening || "fixed", fill: "glass" });
+  const row = (direction, children, sliding, sizes) => ({ id: newId(), split: direction, sliding: !!sliding, sizes: sizes || children.map(() => 1), children });
+  const templates = {
+    fixed: () => leaf(),
+    single: () => leaf("tiltRight"),
+    double: () => row("v", [leaf("tiltLeft"), leaf("tiltRight")]),
+    triple: () => row("v", [leaf("tiltLeft"), leaf(), leaf("tiltRight")]),
+    sliding: () => row("v", [leaf("slideRight"), leaf("slideLeft")], true),
+    transom: () => row("h", [leaf("tilt"), row("v", [leaf(), leaf("tiltRight")])], false, [1, 3]),
+    door: () => row("h", [leaf(), leaf("doorLeft")], false, [1, 4])
+  };
+
+  // Bölmeler orantılı olarak verilen dış ölçüye oturur; toplam her zaman dış ölçüye eşittir.
+  function fit(node, w, h) {
+    if (!node.split) return;
+    const axis = node.split === "v" ? w : h;
+    const sum = node.sizes.reduce((a, b) => a + b, 0) || 1;
+    let used = 0;
+    node.sizes = node.sizes.map((size, i) => {
+      if (i === node.sizes.length - 1) return Math.round((axis - used) * 100) / 100;
+      const scaled = Math.round(size * axis / sum);
+      used += scaled;
+      return scaled;
+    });
+    node.children.forEach((child, i) => fit(child, node.split === "v" ? node.sizes[i] : w, node.split === "v" ? h : node.sizes[i]));
+  }
+
+  return { render, templates, fit };
 })();

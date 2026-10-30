@@ -53,6 +53,7 @@ public class DashboardController : Controller
             new("Sözleşme imza yetkilisi", "/yonetim/sablonlar/contract", !string.IsNullOrWhiteSpace(contractTemplate.Signatory)),
             new("Cam tipi fiyatları", "/yonetim/camlar/tipler", await _db.GlassTypes.AnyAsync(x => x.IsActive && x.PricePerM2 > 0))
         };
+        if (settings.ProductionDetails) setup.Add(new("Doğrama sistemi fiyatları", "/yonetim/cizim/sistemler", await _db.ProfileSystems.AnyAsync(x => x.IsActive && x.FramePricePerM > 0)));
 
         var messages = await _db.ContactMessages.AsNoTracking().OrderByDescending(x => x.CreatedUtc).Take(5).ToListAsync();
         var quotes = await _db.Quotes.AsNoTracking().Include(x => x.Customer).OrderByDescending(x => x.CreatedUtc).Take(5).ToListAsync();

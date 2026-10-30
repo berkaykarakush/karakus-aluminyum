@@ -1,0 +1,13 @@
+@model List<(KarakusAluminyum.Web.Models.Drawing.ProfileSystem System, List<KarakusAluminyum.Web.Models.Drawing.WindowDesign> Designs, List<KarakusAluminyum.Web.Services.Drawing.BarPlan> Plans)>
+@{ ViewData["Title"] = "Toplu optimizasyon"; }
+<link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
+<div class="admin-actions wd-noprint"><h1>Toplu kesim optimizasyonu</h1><a class="admin-btn" href="/yonetim/cizim">Çizim listesi</a><button class="admin-btn" type="button" onclick="window.print()">Yazdır / PDF kaydet</button></div>
+@foreach (var group in Model)
+{
+    <div class="admin-panel">
+      <h2>@group.System.Name</h2>
+      <p class="admin-muted">@string.Join(", ", group.Designs.Select(d => $"{d.Name} ({d.Quantity} adet)"))</p>
+      @if (group.Plans.Count == 0) { <p class="wd-errors">Bu sistemde hatasız çizim yok.</p> }
+      <partial name="_BarPlans" model="group.Plans" />
+    </div>
+}

@@ -17,6 +17,10 @@
       {
         <p class="admin-muted">Kimlikleri girdiğinizde kodlar siteye otomatik eklenir. Yalnızca çerez bildiriminde onay veren ziyaretçilerde yüklenir; yönetici girişi yapmış kullanıcılar sayılmaz.</p>
       }
+      @if (group == SiteSettingCatalog.DrawingGroup)
+      {
+        <p class="admin-muted">Açıkken kesim listesi, profil sistemleri, boy optimizasyonu, maliyet hesabı, imalat föyü ve cam plaka yerleşimi görünür. Kapalıyken çizimler yalnızca ölçülü şekildir. Kapatmak veri silmez.</p>
+      }
       @foreach (var definition in SiteSettingCatalog.All.Where(d => d.Group == group && values.ContainsKey(d.Key)))
       {
         var id = "setting-" + definition.Key;

@@ -1,7 +1,9 @@
 @model KarakusAluminyum.Web.Models.Drawing.GlassList
 @using KarakusAluminyum.Web.Areas.Admin.Controllers
 @using KarakusAluminyum.Web.Models.Drawing
+@using KarakusAluminyum.Web.Services.Drawing
 @{
+    var plans = ViewBag.Plans as List<(GlassType Type, GlassPlatePlan Plan)>;
     ViewData["Title"] = "Cam listesi";
     var quotes = (SelectList)ViewBag.Quotes;
     string N(decimal v) => v.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
@@ -50,6 +52,32 @@
       }
     </div>
   </div>
+  @if (plans is not null)
+  {
+  <div class="admin-panel">
+    <h2>Plaka yerleşimi</h2>
+    <p class="admin-muted">Kesim için tahmini yerleşimdir; camcının optimizasyonu daha iyi sonuç verebilir. Şablonlu camlar dikdörtgen olarak hesaplanır.</p>
+    @foreach (var (type, plan) in plans)
+    {
+      <h3>@type.Name: @plan.Plates.Count plaka (@Units.Size(plan.SheetWidthMm, plan.SheetHeightMm) @Units.Code), verim %@plan.UtilisationPercent</h3>
+      @if (plan.TooLarge.Count > 0) { <ul class="wd-errors">@foreach (var item in plan.TooLarge) { <li>Plakaya sığmıyor: @item</li> }</ul> }
+      @for (var p = 0; p < plan.Plates.Count; p++)
+      {
+        <div class="admin-muted">Plaka @(p + 1)</div>
+        <svg class="gl-plate" viewBox="0 0 @N(plan.SheetWidthMm) @N(plan.SheetHeightMm)" role="img" aria-label="Plaka @(p + 1) yerleşimi">
+          @foreach (var piece in plan.Plates[p].Pieces)
+          {
+            var font = Math.Min(Math.Min(piece.WidthMm, piece.HeightMm) / 4, plan.SheetWidthMm / 40);
+            <g>
+              <rect x="@N(piece.X)" y="@N(piece.Y)" width="@N(piece.WidthMm)" height="@N(piece.HeightMm)" fill="#cfe4f0" stroke="#26313a" stroke-width="@N(plan.SheetWidthMm / 600)" />
+              <text x="@N(piece.X + piece.WidthMm / 2)" y="@N(piece.Y + piece.HeightMm / 2)" font-size="@N(font)" text-anchor="middle" dominant-baseline="middle" fill="#1b252d">@Units.Format(piece.WidthMm)×@Units.Format(piece.HeightMm)</text>
+            </g>
+          }
+        </svg>
+      }
+    }
+  </div>
+  }
   <div class="admin-panel wd-noprint">
     <h2>Teklife ekle</h2>
     @if (quotes.Any())

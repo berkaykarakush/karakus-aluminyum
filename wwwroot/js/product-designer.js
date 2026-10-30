@@ -14,6 +14,7 @@
   function refresh() {
     field("ParamsJson").value = JSON.stringify(params());
     WindowDrawing.render(svg, { category: field("Category").value, widthMm: num("WidthMm"), heightMm: num("HeightMm"), colorHex: field("ColorHex").value, params: params() });
+    document.dispatchEvent(new CustomEvent("drawing:change"));
   }
 
   // Kayıtlı seçimleri forma yükle

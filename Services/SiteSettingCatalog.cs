@@ -15,8 +15,9 @@ public static class SiteSettingCatalog
     public const string HomeGroup = "Ana sayfa metinleri";
     public const string AboutGroup = "Kurumsal sayfa metinleri";
     public const string FooterGroup = "Alt bilgi";
+    public const string DrawingGroup = "Çizim ve üretim";
 
-    public static readonly string[] Groups = { ContactGroup, SeoGroup, AnalyticsGroup, HomeGroup, AboutGroup, FooterGroup };
+    public static readonly string[] Groups = { ContactGroup, SeoGroup, AnalyticsGroup, HomeGroup, AboutGroup, FooterGroup, DrawingGroup };
 
     private const string UrlPattern = "^https?://[^\\s\"'<>]+$";
     private const string UrlError = "http:// veya https:// ile başlayan geçerli bir adres yazın.";
@@ -45,6 +46,8 @@ public static class SiteSettingCatalog
         new("MetaDomainVerification", AnalyticsGroup, "Meta alan adı doğrulama kodu", "", Help: "Yalnızca content değeri.", Pattern: "^[A-Za-z0-9_\\-]{10,120}$", PatternError: "Yalnızca kodun kendisini yazın."),
         new("FirstPartyAnalyticsEnabled", AnalyticsGroup, "Panel raporları için site ziyaretlerini kaydet", "true", SettingKind.Toggle, "Yalnızca çerez onayı veren ziyaretçiler için, IP adresi olmadan kaydedilir."),
         new("ConsentText", AnalyticsGroup, "Çerez bildirimi metni", "Sitemizi geliştirmek ve reklamlarımızı ölçmek için analiz çerezleri kullanıyoruz. Google ve Meta hizmetleri nedeniyle veriler yurt dışına aktarılabilir. Onay vermezseniz bu çerezler yüklenmez.", SettingKind.LongText),
+
+        new("ProductionDetailsEnabled", DrawingGroup, "Üretim detaylarını göster", "false", SettingKind.Toggle),
 
         new("HeroEyebrow", HomeGroup, "Üst başlık", "Mimari Alüminyum Sistemleri"),
         new("HeroTitle", HomeGroup, "Büyük başlık", "Mimariye değer katan"),

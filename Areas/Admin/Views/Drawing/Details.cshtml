@@ -2,7 +2,10 @@
 @using System.Text.Json
 @using KarakusAluminyum.Web.Models.Drawing
 @using KarakusAluminyum.Web.Services.Drawing
+@inject KarakusAluminyum.Web.Services.SiteSettingsProvider SiteSettings
 @{
+    var production = (await SiteSettings.GetAsync()).ProductionDetails;
+    var suggested = ViewBag.SuggestedPrice as decimal?;
     ViewData["Title"] = Model.Name;
     var quotes = (SelectList)ViewBag.Quotes;
 }
@@ -11,6 +14,7 @@
   <h1>@Model.Name</h1>
   <a class="admin-btn admin-btn--secondary" href="/yonetim/cizim?tur=@Model.Category">Çizim listesi</a>
   <a class="admin-btn admin-btn--secondary" href="/yonetim/cizim/duzenle/@Model.Id">Düzenle</a>
+  @if (production && Model.ProfileSystemId is not null) { <a class="admin-btn admin-btn--secondary" href="/yonetim/cizim/imalat/@Model.Id">İmalat föyü</a> }
   <button class="admin-btn admin-btn--secondary" type="button" onclick="window.print()">Yazdır / PDF kaydet</button>
 </div>
 <div class="wd-sheet">
@@ -27,7 +31,7 @@
       <form class="admin-actions" method="post" action="/yonetim/cizim/teklife-ekle/@Model.Id">
         @Html.AntiForgeryToken()
         <select name="quoteId" aria-label="Taslak teklif" asp-items="quotes"></select>
-        <input type="number" name="unitPrice" min="0" step="0.01" placeholder="Birim fiyat (₺)" aria-label="Birim fiyat" required style="padding:9px 11px;border:1px solid #cfd5d9;border-radius:8px" />
+        <input type="number" name="unitPrice" min="0" step="0.01" value="@suggested?.ToString(System.Globalization.CultureInfo.InvariantCulture)" placeholder="Birim fiyat (₺)" aria-label="Birim fiyat" required style="padding:9px 11px;border:1px solid #cfd5d9;border-radius:8px" />
         <button class="admin-btn">Ekle</button>
       </form>
     }

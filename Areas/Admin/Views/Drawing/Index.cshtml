@@ -1,23 +1,27 @@
 @model List<KarakusAluminyum.Web.Models.Drawing.WindowDesign>
 @using KarakusAluminyum.Web.Models.Drawing
+@inject KarakusAluminyum.Web.Services.SiteSettingsProvider SiteSettings
 @{
+    var production = (await SiteSettings.GetAsync()).ProductionDetails;
     ViewData["Title"] = "Çizimler";
     var current = ViewBag.Category as string;
     var newUrl = ProductCategories.All.Contains(current) ? $"/yonetim/cizim/ekle?tur={current}" : "/yonetim/cizim/ekle";
 }
 <link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
-<div class="admin-actions"><h1>Çizimler</h1><a class="admin-btn" href="@newUrl">+ Yeni çizim</a><a class="admin-btn" href="/yonetim/camlar">Cam listeleri</a></div>
+<div class="admin-actions"><h1>Çizimler</h1><a class="admin-btn" href="@newUrl">+ Yeni çizim</a><a class="admin-btn" href="/yonetim/cizim/toplu-ekle@(ProductCategories.All.Contains(current) ? $"?tur={current}" : "")">+ Toplu ekle</a>@if (production) { <a class="admin-btn" href="/yonetim/cizim/sistemler">Sistemler</a> }<a class="admin-btn" href="/yonetim/camlar">Cam listeleri</a></div>
 <nav class="wd-tabs" aria-label="Ürün türü">
   <a class="@(ProductCategories.All.Contains(current) ? "" : "is-active")" href="/yonetim/cizim">Tümü</a>
   @foreach (var category in ProductCategories.All) { <a class="@(current == category ? "is-active" : "")" href="/yonetim/cizim?tur=@category">@ProductCategories.Label(category)</a> }
 </nav>
 <div class="admin-panel">
+  @if (production) { <form id="wd-optimize" method="get" action="/yonetim/cizim/optimizasyon"></form> }
   <table class="admin-table">
-    <thead><tr><th>Ad</th><th>Tür</th><th>Müşteri</th><th>Ölçü (@Units.Code)</th><th>Adet</th><th>Güncelleme</th><th>İşlem</th></tr></thead>
+    <thead><tr>@if (production) { <th></th> }<th>Ad</th><th>Tür</th><th>Müşteri</th><th>Ölçü (@Units.Code)</th><th>Adet</th><th>Güncelleme</th><th>İşlem</th></tr></thead>
     <tbody>
     @foreach (var x in Model)
     {
       <tr>
+        @if (production) { <td>@if (x.ProfileSystemId is not null) { <input type="checkbox" name="ids" value="@x.Id" form="wd-optimize" aria-label="@x.Name optimizasyona ekle" /> }</td> }
         <td><a href="/yonetim/cizim/duzenle/@x.Id">@x.Name</a></td>
         <td>@ProductCategories.Label(x.Category)</td>
         <td>@x.Customer?.Name</td>
@@ -27,6 +31,7 @@
         <td>
           <div class="admin-actions">
             <a class="admin-btn" href="/yonetim/cizim/detay/@x.Id">Görüntüle</a>
+            @if (production && x.ProfileSystemId is not null) { <a class="admin-btn" href="/yonetim/cizim/imalat/@x.Id">İmalat föyü</a> }
             <form method="post" action="/yonetim/cizim/kopyala/@x.Id">@Html.AntiForgeryToken()<button class="admin-btn">Kopyala</button></form>
             <form method="post" action="/yonetim/cizim/sil/@x.Id" onsubmit="return confirm('Bu çizim silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form>
           </div>
@@ -36,4 +41,5 @@
     </tbody>
   </table>
   @if (Model.Count == 0) { <p class="admin-muted">Bu bölümde henüz çizim yok.</p> }
+  else if (production) { <button class="admin-btn" form="wd-optimize">Seçilenleri birlikte optimize et</button> }
 </div>

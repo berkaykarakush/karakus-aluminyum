@@ -1,6 +1,8 @@
 @model KarakusAluminyum.Web.Models.Drawing.DesignInputVm
 @using KarakusAluminyum.Web.Models.Drawing
+@inject KarakusAluminyum.Web.Services.SiteSettingsProvider SiteSettings
 @{
+    var production = (await SiteSettings.GetAsync()).ProductionDetails;
     var editing = Model.Id != 0;
     var label = ProductCategories.Label(Model.Category);
     ViewData["Title"] = (editing ? "Düzenle: " : "Yeni: ") + label;
@@ -24,6 +26,14 @@
           <div><label asp-for="HeightMm">Yükseklik</label><input asp-for="HeightMm" type="number" min="200" /></div>
         </div>
         <label asp-for="Quantity">Adet</label><input asp-for="Quantity" type="number" min="1" />
+        @if (production)
+        {
+          <label asp-for="ProfileSystemId">Profil sistemi</label>
+          <select asp-for="ProfileSystemId">
+            <option value="">Seçilmedi</option>
+            @foreach (var s in ((List<ProfileSystem>)ViewBag.Systems).Where(s => s.IsActive || s.Id == Model.ProfileSystemId)) { <option value="@s.Id">@s.Name</option> }
+          </select>
+        }
       </div>
       <div class="wd-panel">
         <p class="wd-step"><b>2</b> Seçenekler</p>
@@ -36,7 +46,7 @@
         {
           <label for="pd-infill">Dolgu</label>
           <select id="pd-infill" data-param="infill"><option value="glass">Camlı</option><option value="bars">Emniyet çubuklu</option></select>
-          <label for="pd-spacing">Dikme aralığı (boşsa 120 cm)</label>
+          <label for="pd-spacing">Dikme aralığı (boşsa @(production ? "sistem değeri" : "120 cm"))</label>
           <input id="pd-spacing" type="number" min="0" data-param="postSpacingMm" data-mm="postSpacing" />
         }
         else
@@ -61,9 +71,16 @@
       <div class="wd-canvas-panel">
                 <svg id="pd-canvas" style="display:block;width:100%;height:min(66vh,640px);background:linear-gradient(#f7f9fc,#eef2f7);border-radius:8px" role="img" aria-label="@label çizimi"></svg>
         <div class="wd-summary-bar"><span></span><button class="admin-btn" type="submit">Kaydet</button></div>
+        @if (production)
+        {
+          <div id="wd-alerts"></div>
+          <p id="wd-summary" class="admin-muted" style="margin:8px 2px 0"></p>
+          <div id="wd-result"></div>
+        }
       </div>
     </div>
   </div>
 </form>
 <script src="~/js/window-drawing.js" asp-append-version="true"></script>
 <script src="~/js/product-designer.js" asp-append-version="true"></script>
+@if (production) { <script src="~/js/drawing-production.js" asp-append-version="true"></script> }

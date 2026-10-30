@@ -21,6 +21,8 @@ public sealed class SiteSettings
     public string GoogleSiteVerification { get; set; } = "";
     public string MetaDomainVerification { get; set; } = "";
     public string FirstPartyAnalyticsEnabled { get; set; } = "true";
+    public string ProductionDetailsEnabled { get; set; } = "false";
+    public bool ProductionDetails => ProductionDetailsEnabled == "true";
     public string ConsentText { get; set; } = "";
     public string HeroEyebrow { get; set; } = "";
     public string HeroTitle { get; set; } = "";

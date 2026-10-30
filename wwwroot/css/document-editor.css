@@ -36,3 +36,6 @@
 .doc-help{margin:6px 0 0;font-size:12px;color:var(--muted)}
 .doc-help code{padding:1px 4px;background:#eef3fc;border-radius:4px}
 @media(max-width:800px){.doc-payment{grid-template-columns:minmax(0,1fr)}.doc-items,.doc-items tbody,.doc-items tr,.doc-items td{display:block;width:auto!important}.doc-items thead{display:none}}
+.doc-editor>*{min-width:0}
+.doc-card{min-width:0}
+.doc-editor{grid-template-columns:minmax(0,1fr)}

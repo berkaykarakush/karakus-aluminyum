@@ -1,11 +1,13 @@
 @model List<KarakusAluminyum.Web.Models.Drawing.GlassType>
-@{ ViewData["Title"] = "Cam tipleri"; }
+@inject KarakusAluminyum.Web.Services.SiteSettingsProvider SiteSettings
+@{
+    var production = (await SiteSettings.GetAsync()).ProductionDetails; ViewData["Title"] = "Cam tipleri"; }
 <div class="admin-actions"><h1>Cam tipleri</h1><a class="admin-btn" href="/yonetim/camlar">Cam listeleri</a><a class="admin-btn" href="/yonetim/camlar/tipler/ekle">+ Yeni cam tipi</a></div>
 <div class="admin-panel">
-  <table class="admin-table"><thead><tr><th>Ad</th><th>m² fiyatı</th><th>Durum</th><th>İşlem</th></tr></thead><tbody>
+  <table class="admin-table"><thead><tr><th>Ad</th><th>m² fiyatı</th>@if (production) { <th>Plaka (@Units.Code)</th> }<th>Durum</th><th>İşlem</th></tr></thead><tbody>
   @foreach (var x in Model)
   {
-    <tr><td>@x.Name</td><td>@x.PricePerM2.ToString("N2", KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture) ₺</td><td>@(x.IsActive ? "Aktif" : "Pasif")</td>
+    <tr><td>@x.Name</td><td>@x.PricePerM2.ToString("N2", KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture) ₺</td>@if (production) { <td>@Units.Size(x.SheetWidthMm, x.SheetHeightMm)</td> }<td>@(x.IsActive ? "Aktif" : "Pasif")</td>
       <td><div class="admin-actions"><a class="admin-btn" href="/yonetim/camlar/tipler/duzenle/@x.Id">Düzenle</a><form method="post" action="/yonetim/camlar/tipler/sil/@x.Id" onsubmit="return confirm('Bu cam tipi silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form></div></td></tr>
   }
   </tbody></table>
