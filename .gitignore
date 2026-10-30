@@ -11,3 +11,6 @@ appsettings.Development.json
 # Müşteri verisi içeren örnek belgeler
 /sozlesme-*.pdf
 /teklif-*.pdf
+
+# Panelden yüklenen görseller
+wwwroot/uploads/
