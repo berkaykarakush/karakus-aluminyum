@@ -82,6 +82,23 @@ public static class SeedData
     public const string ClausesSeededKey = "ClausesSeeded";
     public const string ProductSystemsSeededKey = "ProductSystemsSeeded";
     public const string BrandsSeededKey = "BrandsSeeded";
+    private const string BrandSeedVersion = "2";
+
+    // Listeye marka eklenince BrandSeedVersion artırılır.
+    private static readonly (string Name, string Category)[] Brands =
+    {
+        ("Linea Rossa", ProductCategories.Aluminum), ("Asaş", ProductCategories.Aluminum), ("Çuhadaroğlu", ProductCategories.Aluminum), ("Burak Alüminyum", ProductCategories.Aluminum),
+        ("Sistem Alüminyum", ProductCategories.Aluminum), ("Alutem", ProductCategories.Aluminum), ("Özgür", ProductCategories.Aluminum), ("Reynaers", ProductCategories.Aluminum),
+        ("Schüco", ProductCategories.Aluminum), ("Alumil", ProductCategories.Aluminum),
+        ("Winer", ProductCategories.Pvc), ("Egepen", ProductCategories.Pvc), ("Winsa", ProductCategories.Pvc), ("Fıratpen", ProductCategories.Pvc),
+        ("Pimapen", ProductCategories.Pvc), ("Adopen", ProductCategories.Pvc), ("Kalde", ProductCategories.Pvc), ("Rehau", ProductCategories.Pvc),
+        ("Veka", ProductCategories.Pvc), ("Gealan", ProductCategories.Pvc), ("Penhouse", ProductCategories.Pvc), ("Baywin", ProductCategories.Pvc),
+        ("Aline", ProductCategories.Pvc), ("Kompen", ProductCategories.Pvc),
+        ("Asaş", ProductCategories.Shutter),
+        ("Vitrum", ProductCategories.Railing), ("Apart Grup", ProductCategories.Railing), ("Alutem", ProductCategories.Railing),
+        ("Albert Genau", ProductCategories.GlassBalcony), ("Vitrum", ProductCategories.GlassBalcony), ("Apart Grup", ProductCategories.GlassBalcony), ("Black Cam Balkon", ProductCategories.GlassBalcony)
+    };
+
 
     // Tek seferlik seed'lerin işaretçileri; site ayarları ekranında gösterilmez.
     public static readonly string[] InternalSettingKeys = { GallerySeededKey, HomeFaqsSeededKey, DrawingSeededKey, ClausesSeededKey, ProductSystemsSeededKey, BrandsSeededKey };
@@ -259,14 +276,16 @@ public static class SeedData
         }
 
         // Başlangıç markaları: logolar panelden yüklenir, o zamana kadar marka adı yazılır.
-        if (!await db.SiteSettingRecords.AnyAsync(s => s.Key == BrandsSeededKey))
+        // Yalnızca sürüm değişince eksikler eklenir; panelden silinen marka her açılışta geri gelmez.
+        var brandMarker = await db.SiteSettingRecords.FirstOrDefaultAsync(s => s.Key == BrandsSeededKey);
+        if (brandMarker?.Value != BrandSeedVersion)
         {
-            db.SiteSettingRecords.Add(new SiteSettingRecord { Key = BrandsSeededKey, Value = "true", Description = "Başlangıç markaları eklendi" });
-            db.Brands.AddRange(
-                new Brand { Name = "Linea Rossa", Category = ProductCategories.Aluminum, SortOrder = 1 },
-                new Brand { Name = "Winer", Category = ProductCategories.Pvc, SortOrder = 2 },
-                new Brand { Name = "Egepen", Category = ProductCategories.Pvc, SortOrder = 3 },
-                new Brand { Name = "Winsa", Category = ProductCategories.Pvc, SortOrder = 4 });
+            if (brandMarker is null) db.SiteSettingRecords.Add(brandMarker = new SiteSettingRecord { Key = BrandsSeededKey, Description = "Başlangıç markaları eklendi" });
+            brandMarker.Value = BrandSeedVersion;
+            var existingBrands = (await db.Brands.AsNoTracking().Select(b => new { b.Name, b.Category }).ToListAsync()).Select(b => (b.Name, b.Category)).ToHashSet();
+            for (var i = 0; i < Brands.Length; i++)
+                if (!existingBrands.Contains(Brands[i]))
+                    db.Brands.Add(new Brand { Name = Brands[i].Name, Category = Brands[i].Category, SortOrder = i + 1 });
         }
 
         // Belge şablonları her zaman vardır; hazır maddeler yalnızca bir kez eklenir.

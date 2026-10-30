@@ -595,10 +595,10 @@ public sealed class DrawingPageTests(PostgresFixture postgres)
         Assert.All(ProductCategories.All, category => Assert.Contains(systems, p => p.Category == category));
         Assert.All(systems, p => Assert.Equal(0m, p.FramePricePerM));
 
-        var brands = await app.WithDbAsync(db => db.Brands.AsNoTracking().ToDictionaryAsync(b => b.Name));
-        Assert.Equal(ProductCategories.Aluminum, brands["Linea Rossa"].Category);
-        foreach (var name in new[] { "Winer", "Egepen", "Winsa" }) Assert.Equal(ProductCategories.Pvc, brands[name].Category);
-        foreach (var name in new[] { "Linea Rossa", "Winer", "Egepen", "Winsa" }) Assert.Null(brands[name].LogoPath);
+        var brands = await app.WithDbAsync(db => db.Brands.AsNoTracking().ToListAsync());
+        Assert.Equal(ProductCategories.Aluminum, Assert.Single(brands, b => b.Name == "Linea Rossa").Category);
+        foreach (var name in new[] { "Winer", "Egepen", "Winsa" }) Assert.Equal(ProductCategories.Pvc, Assert.Single(brands, b => b.Name == name).Category);
+        foreach (var name in new[] { "Linea Rossa", "Winer", "Egepen", "Winsa" }) Assert.Null(Assert.Single(brands, b => b.Name == name).LogoPath);
     }
 
     [Fact]
@@ -1628,6 +1628,49 @@ public sealed class BrandTests(PostgresFixture postgres)
     }
 
     private static string Tag() => "M" + Guid.NewGuid().ToString("N")[..8];
+
+    [Fact]
+    public async Task Seed_CoversEveryCategory_AndAddsMissingBrandsOnceToOldDatabases()
+    {
+        await using (var first = postgres.CreateApp("brand_seed"))
+        {
+            first.NewClient();
+            var brands = await first.WithDbAsync(db => db.Brands.AsNoTracking().ToListAsync());
+            Assert.All(ProductCategories.All, category => Assert.Contains(brands, b => b.Category == category));
+            Assert.Equal(brands.Count, brands.Select(b => (b.Name, b.Category)).Distinct().Count());
+            foreach (var (name, category) in new[] { ("Linea Rossa", "aluminum"), ("Winer", "pvc"), ("Egepen", "pvc"), ("Winsa", "pvc") })
+                Assert.Contains(brands, b => b.Name == name && b.Category == category);
+
+            // Eski kurulum: yalnızca ilk dört marka var, biri düzenlenmiş.
+            await first.WithDbAsync(async db =>
+            {
+                db.Brands.RemoveRange(db.Brands.Where(b => !new[] { "Linea Rossa", "Winer", "Egepen", "Winsa" }.Contains(b.Name)));
+                (await db.Brands.SingleAsync(b => b.Name == "Egepen")).LogoPath = "/uploads/images/egepen.png";
+                (await db.SiteSettingRecords.SingleAsync(r => r.Key == "BrandsSeeded")).Value = "true";
+                return await db.SaveChangesAsync();
+            });
+        }
+
+        int total;
+        await using (var second = postgres.CreateApp("brand_seed"))
+        {
+            second.NewClient();
+            var brands = await second.WithDbAsync(db => db.Brands.AsNoTracking().ToListAsync());
+            total = brands.Count;
+            Assert.Contains(brands, b => b.Name == "Fıratpen");
+            Assert.Equal("/uploads/images/egepen.png", Assert.Single(brands, b => b.Name == "Egepen").LogoPath); // tekrar eklenmez, logo korunur
+
+            await second.WithDbAsync(async db =>
+            {
+                db.Brands.Remove(await db.Brands.SingleAsync(b => b.Name == "Fıratpen"));
+                return await db.SaveChangesAsync();
+            });
+        }
+
+        await using var third = postgres.CreateApp("brand_seed");
+        third.NewClient();
+        Assert.Equal(total - 1, await third.WithDbAsync(db => db.Brands.CountAsync())); // silinen marka geri gelmez
+    }
 
     private static Task<int> NewBrandAsync(AppFactory app, string name, string category = "aluminum", string? logo = null, bool active = true) => app.WithDbAsync(async db =>
     {
