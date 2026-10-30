@@ -239,22 +239,11 @@ public static class SeedData
                 new FaqItem { Question = "İzmir dışında hizmet veriyor musunuz?", Answer = "Hizmet verdiğiniz il ve ilçeleri gerçek operasyon kapsamınıza göre burada belirtin.", SortOrder = 2, IsPublished = false });
         }
 
-        // Çizim modülü başlangıç tanımları: ölçüler yer tutucu örnektir, fiyatlar bilerek boştur.
+        // Cam listeleri için başlangıç cam tipi: fiyat bilerek boştur.
         if (!await db.SiteSettingRecords.AnyAsync(s => s.Key == DrawingSeededKey))
         {
             db.SiteSettingRecords.Add(new SiteSettingRecord { Key = DrawingSeededKey, Value = "true", Description = "Çizim modülü seed'i uygulandı" });
-            db.ProfileSystems.Add(new ProfileSystem { Name = "Örnek Sistem (kendi profil değerlerinizi girin)" });
             db.GlassTypes.Add(new GlassType { Name = "Örnek Isıcam 4+16+4 (fiyat girin)" });
-        }
-
-        // Ürün türü başına başlangıç sistemi: ölçüler yer tutucu örnektir, fiyatlar bilerek boştur.
-        if (!await db.SiteSettingRecords.AnyAsync(s => s.Key == ProductSystemsSeededKey))
-        {
-            db.SiteSettingRecords.Add(new SiteSettingRecord { Key = ProductSystemsSeededKey, Value = "true", Description = "Ürün türü sistemleri eklendi" });
-            await db.SaveChangesAsync(); // üstteki örnek sistem aşağıdaki kontrolde görünsün
-            foreach (var category in ProductCategories.All)
-                if (!await db.ProfileSystems.AnyAsync(p => p.Category == category))
-                    db.ProfileSystems.Add(new ProfileSystem { Name = $"Örnek {ProductCategories.Label(category)} (değerleri girin)", Category = category, Material = ProductCategories.Label(category) });
         }
 
         // Belge şablonları her zaman vardır; hazır maddeler yalnızca bir kez eklenir.

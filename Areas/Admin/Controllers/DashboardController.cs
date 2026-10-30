@@ -51,7 +51,6 @@ public class DashboardController : Controller
             new("Google Analytics bağlantısı", "/yonetim/ayarlar", !string.IsNullOrWhiteSpace(settings.Ga4MeasurementId)),
             new("Meta Pixel bağlantısı", "/yonetim/ayarlar", !string.IsNullOrWhiteSpace(settings.MetaPixelId)),
             new("Sözleşme imza yetkilisi", "/yonetim/sablonlar/contract", !string.IsNullOrWhiteSpace(contractTemplate.Signatory)),
-            new("Doğrama sistemi fiyatları", "/yonetim/cizim/sistemler", await _db.ProfileSystems.AnyAsync(x => x.IsActive && x.FramePricePerM > 0)),
             new("Cam tipi fiyatları", "/yonetim/camlar/tipler", await _db.GlassTypes.AnyAsync(x => x.IsActive && x.PricePerM2 > 0))
         };
 

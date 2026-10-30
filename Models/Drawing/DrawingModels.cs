@@ -4,50 +4,11 @@ using KarakusAluminyum.Web.Models.Crm;
 
 namespace KarakusAluminyum.Web.Models.Drawing;
 
-// Parametrik profil sistemi: tüm kesim düşümleri ve birim fiyatlar burada tanımlanır, koda gömülmez.
-public sealed class ProfileSystem
-{
-    public int Id { get; set; }
-    [Required(ErrorMessage = "Sistem adı yazın."), StringLength(120)] public string Name { get; set; } = "";
-    [Required, StringLength(20)] public string Category { get; set; } = ProductCategories.Aluminum;
-    [StringLength(20)] public string Material { get; set; } = "Alüminyum";
-    public string SettingsJson { get; set; } = "{}"; // panjur, korkuluk ve cam balkon ayarları: ProductSettings
-
-    [Column(TypeName = "numeric(10,2)"), Range(1, 500)] public decimal FrameWidthMm { get; set; } = 70;
-    [Column(TypeName = "numeric(10,2)"), Range(1, 500)] public decimal SashWidthMm { get; set; } = 80;
-    [Column(TypeName = "numeric(10,2)"), Range(1, 500)] public decimal MullionWidthMm { get; set; } = 80;
-    [Column(TypeName = "numeric(10,2)"), Range(0, 100)] public decimal SashOverlapMm { get; set; } = 8;
-    [Column(TypeName = "numeric(10,2)"), Range(0, 100)] public decimal GlassClearanceMm { get; set; } = 5;
-    [Column(TypeName = "numeric(10,2)"), Range(-100, 100)] public decimal MullionFitMm { get; set; }
-    [Column(TypeName = "numeric(10,2)"), Range(0, 50)] public decimal WeldAllowanceMm { get; set; }
-    [Column(TypeName = "numeric(10,2)"), Range(500, 20000)] public decimal BarLengthMm { get; set; } = 6000;
-    [Column(TypeName = "numeric(10,2)"), Range(0, 50)] public decimal KerfMm { get; set; } = 4;
-
-    [Column(TypeName = "numeric(18,2)"), Range(0, 1000000)] public decimal FramePricePerM { get; set; }
-    [Column(TypeName = "numeric(18,2)"), Range(0, 1000000)] public decimal SashPricePerM { get; set; }
-    [Column(TypeName = "numeric(18,2)"), Range(0, 1000000)] public decimal MullionPricePerM { get; set; }
-    [Column(TypeName = "numeric(18,2)"), Range(0, 1000000)] public decimal BeadPricePerM { get; set; }
-    [Column(TypeName = "numeric(18,2)"), Range(0, 1000000)] public decimal PanelPricePerM2 { get; set; }
-    [Column(TypeName = "numeric(18,2)"), Range(0, 1000000)] public decimal HardwareOpenPrice { get; set; }
-    [Column(TypeName = "numeric(18,2)"), Range(0, 1000000)] public decimal HardwareTiltPrice { get; set; }
-    [Column(TypeName = "numeric(18,2)"), Range(0, 1000000)] public decimal HardwareSlidePrice { get; set; }
-    [Column(TypeName = "numeric(18,2)"), Range(0, 1000000)] public decimal HardwareDoorPrice { get; set; }
-
-    [Column(TypeName = "numeric(5,2)"), Range(0, 100)] public decimal WastePercent { get; set; }
-    [Column(TypeName = "numeric(5,2)"), Range(0, 500)] public decimal LaborPercent { get; set; }
-    [Column(TypeName = "numeric(5,2)"), Range(0, 500)] public decimal MarginPercent { get; set; }
-    public bool IsActive { get; set; } = true;
-}
-
 public sealed class GlassType
 {
     public int Id { get; set; }
     [Required(ErrorMessage = "Cam adı yazın."), StringLength(120)] public string Name { get; set; } = "";
     [Column(TypeName = "numeric(18,2)"), Range(0, 1000000)] public decimal PricePerM2 { get; set; }
-    // Plaka yerleşimi için: plaka ölçüsü ve kesim boşluğu
-    [Column(TypeName = "numeric(10,2)"), Range(100, 20000)] public decimal SheetWidthMm { get; set; } = 3210;
-    [Column(TypeName = "numeric(10,2)"), Range(100, 20000)] public decimal SheetHeightMm { get; set; } = 2250;
-    [Column(TypeName = "numeric(10,2)"), Range(0, 50)] public decimal CutGapMm { get; set; } = 2;
     public bool IsActive { get; set; } = true;
 }
 
@@ -58,8 +19,6 @@ public sealed class WindowDesign
     public int? CustomerId { get; set; }
     public Customer? Customer { get; set; }
     [StringLength(20)] public string Category { get; set; } = ProductCategories.Aluminum;
-    public int ProfileSystemId { get; set; }
-    public ProfileSystem? ProfileSystem { get; set; }
     [StringLength(7)] public string ColorHex { get; set; } = "#f4f5f5";
     public int WidthMm { get; set; }
     public int HeightMm { get; set; }
@@ -94,38 +53,12 @@ public static class ProductCategories
     };
 }
 
-// Panjur, korkuluk ve cam balkon sistemi ayarları. Düşümler ve fiyatlar koda gömülmez.
-public sealed class ProductSettings
-{
-    // Panjur
-    [Range(1, 1000)] public decimal BoxHeightMm { get; set; } = 165;
-    [Range(1, 500)] public decimal LamellaHeightMm { get; set; } = 39;
-    [Range(0, 500)] public decimal GuideDeductMm { get; set; } = 25;
-    [Range(0, 1000000)] public decimal LamellaPricePerM2 { get; set; }
-    [Range(0, 1000000)] public decimal GuidePricePerM { get; set; }
-    [Range(0, 1000000)] public decimal BoxPricePerM { get; set; }
-    [Range(0, 1000000)] public decimal MotorPrice { get; set; }
-    [Range(0, 1000000)] public decimal ManualPrice { get; set; }
-    // Korkuluk
-    [Range(1, 500)] public decimal PostWidthMm { get; set; } = 40;
-    [Range(100, 10000)] public decimal PostSpacingMm { get; set; } = 1200;
-    [Range(1, 500)] public decimal RailHeightMm { get; set; } = 40;
-    [Range(20, 1000)] public decimal BarSpacingMm { get; set; } = 110;
-    [Range(0, 1000000)] public decimal PostPricePerM { get; set; }
-    [Range(0, 1000000)] public decimal RailPricePerM { get; set; }
-    [Range(0, 1000000)] public decimal BarPricePerM { get; set; }
-    // Cam balkon
-    [Range(0, 500)] public decimal PanelOverlapMm { get; set; } = 20;
-    [Range(0, 1000000)] public decimal PanelProfilePricePerM { get; set; }
-    [Range(0, 1000000)] public decimal PanelHardwarePrice { get; set; }
-}
-
 // Tek bir panjur, korkuluk veya cam balkon çiziminin seçimleri.
 public sealed class ProductParams
 {
     public string Drive { get; set; } = "motor";    // panjur: motor | manual
     public string Infill { get; set; } = "glass";   // korkuluk: glass | bars
-    public decimal PostSpacingMm { get; set; }      // korkuluk: 0 ise sistem değeri
+    public decimal PostSpacingMm { get; set; }      // korkuluk: 0 ise 120 cm çizilir
     public int PanelCount { get; set; } = 4;        // cam balkon
     public string OpenType { get; set; } = "sliding"; // cam balkon: sliding | folding
 }
@@ -162,7 +95,7 @@ public sealed class LayoutNode
     public string? Id { get; set; }
     public string? Split { get; set; } // "v": dikey kayıtlar (yan yana), "h": yatay kayıtlar (üst üste), null: yaprak
     public bool Sliding { get; set; }  // sürme bölme: aralarında kayıt yoktur
-    public List<decimal>? Sizes { get; set; } // çocukların net ölçüleri (mm)
+    public List<decimal>? Sizes { get; set; } // çocukların ölçüleri (mm); toplamları üst bölümün ölçüsüne eşittir
     public List<LayoutNode>? Children { get; set; }
     public string Opening { get; set; } = WindowOpenings.Fixed;
     public string Fill { get; set; } = "glass"; // "glass" veya "panel"
@@ -174,7 +107,6 @@ public sealed class DesignInputVm
     [Required(ErrorMessage = "Çizim adı yazın."), StringLength(160)] public string Name { get; set; } = "";
     public int? CustomerId { get; set; }
     public string Category { get; set; } = ProductCategories.Aluminum;
-    public int ProfileSystemId { get; set; }
     [RegularExpression("^#[0-9a-fA-F]{6}$")] public string ColorHex { get; set; } = "#f4f5f5";
     public int WidthMm { get; set; } = 1500;
     public int HeightMm { get; set; } = 1400;

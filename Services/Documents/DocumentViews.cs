@@ -95,16 +95,15 @@ public static class DocumentViews
     public static async Task<AttachmentList> LoadAttachmentsAsync(AppDbContext db, IReadOnlyCollection<int> ids)
     {
         if (ids.Count == 0) return new AttachmentList(Array.Empty<AttachmentItem>());
-        var rows = await db.WindowDesigns.AsNoTracking().Include(x => x.ProfileSystem).Where(x => ids.Contains(x.Id)).ToListAsync();
+        var rows = await db.WindowDesigns.AsNoTracking().Where(x => ids.Contains(x.Id)).ToListAsync();
         var ordered = ids.Select(id => rows.FirstOrDefault(r => r.Id == id)).OfType<WindowDesign>().ToList();
         return new AttachmentList(ordered.Select((row, i) =>
         {
-            var s = row.ProfileSystem!;
             return new AttachmentItem(
                 (i + 1).ToString("000"), row,
                 Math.Round(2m * (row.WidthMm + row.HeightMm) / 1000m, 1),
                 Math.Round(row.WidthMm * (decimal)row.HeightMm / 1_000_000m, 1),
-                DrawingCalculation.Drawing(row, s));
+                WindowDrawings.Drawing(row));
         }).ToList());
     }
 }

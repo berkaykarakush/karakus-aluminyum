@@ -1,18 +1,15 @@
 @model KarakusAluminyum.Web.Models.Drawing.DesignInputVm
-@using System.Text.Json
 @using KarakusAluminyum.Web.Models.Drawing
 @{
     var editing = Model.Id != 0;
     var label = ProductCategories.Label(Model.Category);
     ViewData["Title"] = (editing ? "Düzenle: " : "Yeni: ") + label;
     var action = editing ? $"/yonetim/cizim/duzenle/{Model.Id}" : "/yonetim/cizim/ekle";
-    var systems = (List<ProfileSystem>)ViewBag.Systems;
-    var systemsJson = systems.Select(s => new { id = s.Id, frame = s.FrameWidthMm, sash = s.SashWidthMm, mullion = s.MullionWidthMm, overlap = s.SashOverlapMm });
     var templates = new[] { ("fixed", "Sabit"), ("single", "Tek kanat"), ("double", "Çift kanat"), ("triple", "Üçlü"), ("sliding", "Sürme"), ("transom", "Üst vasistas"), ("door", "Kapı") };
     var openings = new[] { ("fixed", "Sabit"), ("left", "Sola menteşe"), ("right", "Sağa menteşe"), ("tilt", "Vasistas"), ("tiltLeft", "Açılır-devrilir sol"), ("tiltRight", "Açılır-devrilir sağ"), ("slideLeft", "Sürme sola"), ("slideRight", "Sürme sağa"), ("doorLeft", "Kapı sol"), ("doorRight", "Kapı sağ") };
 }
 <link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
-<div class="admin-actions wd-noprint"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/cizim?tur=@Model.Category">Çizim listesi</a>@if (editing) { <a class="admin-btn" href="/yonetim/cizim/imalat/@Model.Id">İmalat föyü</a> }</div>
+<div class="admin-actions wd-noprint"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/cizim?tur=@Model.Category">Çizim listesi</a>@if (editing) { <a class="admin-btn" href="/yonetim/cizim/detay/@Model.Id">Çizimi görüntüle</a> }</div>
 <form id="wd-form" method="post" action="@action">
   @Html.AntiForgeryToken()
   <input type="hidden" asp-for="LayoutJson" />
@@ -51,10 +48,6 @@
         <summary>Gelişmiş ayarlar</summary>
         <label asp-for="CustomerId">Müşteri</label>
         <select asp-for="CustomerId" asp-items="(SelectList)ViewBag.Customers"><option value="">-</option></select>
-        <label asp-for="ProfileSystemId">Profil sistemi</label>
-        <select asp-for="ProfileSystemId">
-          @foreach (var s in systems.Where(s => s.IsActive || s.Id == Model.ProfileSystemId)) { <option value="@s.Id">@s.Name</option> }
-        </select>
         <label asp-for="Shape">Şekil</label>
         <select asp-for="Shape"><option value="rect">Dikdörtgen</option><option value="arch">Kemerli</option><option value="slopeL">Eğimli (sol alçak)</option><option value="slopeR">Eğimli (sağ alçak)</option></select>
         <div id="wd-param-row" hidden><label id="wd-param-label" asp-for="ShapeParamMm">Şekil ölçüsü</label><input asp-for="ShapeParamMm" type="number" min="0" /></div>
@@ -73,25 +66,18 @@
     </div>
     <div>
       <div class="wd-canvas-panel">
-        <div id="wd-alerts"></div>
-        <svg id="wd-canvas" role="img" aria-label="Pencere çizimi"></svg>
+                <svg id="wd-canvas" role="img" aria-label="Pencere çizimi"></svg>
         <div class="wd-summary-bar">
-          <span id="wd-summary"></span>
+          <span class="admin-muted">Bölme ölçülerinin toplamı dış ölçüye eşittir.</span>
           <div class="wd-canvas-actions" style="margin:0">
             <button type="button" class="wd-btn" id="wd-undo">Geri al</button>
             <button type="button" class="wd-btn" id="wd-redo">Yinele</button>
             <button class="admin-btn" type="submit">Kaydet</button>
           </div>
         </div>
-        <p id="wd-glass-note"></p>
       </div>
-      <details>
-        <summary>Kesim listesi ve maliyet</summary>
-        <div id="wd-result"></div>
-      </details>
     </div>
   </div>
 </form>
-<script type="application/json" id="wd-systems">@Html.Raw(JsonSerializer.Serialize(systemsJson))</script>
 <script src="~/js/window-drawing.js" asp-append-version="true"></script>
 <script src="~/js/window-designer.js" asp-append-version="true"></script>

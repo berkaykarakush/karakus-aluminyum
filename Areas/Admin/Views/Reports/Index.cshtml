@@ -20,7 +20,7 @@
   <button class="admin-btn admin-btn--secondary">Uygula</button>
 </form>
 
-<nav class="report-sections" aria-label="Rapor bölümleri"><a href="#satis">Satış</a><a href="#uretim">Üretim</a><a href="#iletisim">İletişim</a><a href="#web">Web sitesi</a></nav>
+<nav class="report-sections" aria-label="Rapor bölümleri"><a href="#satis">Satış</a><a href="#uretim">Çizim ve cam</a><a href="#iletisim">İletişim</a><a href="#web">Web sitesi</a></nav>
 
 <section id="satis" class="report-section">
   <div class="report-section__head"><h2>Satış</h2><a class="admin-btn admin-btn--secondary" href="@Csv("satis")">CSV indir</a></div>
@@ -42,10 +42,10 @@
 </section>
 
 <section id="uretim" class="report-section">
-  <div class="report-section__head"><h2>Üretim</h2><a class="admin-btn admin-btn--secondary" href="@Csv("uretim")">CSV indir</a></div>
+  <div class="report-section__head"><h2>Çizim ve cam</h2><a class="admin-btn admin-btn--secondary" href="@Csv("uretim")">CSV indir</a></div>
   <div class="report-kpis">
     <partial name="_Kpi" model='new KpiVm("Çizim", p.DesignCount.ToString(), p.DesignCount, null)' />
-    <partial name="_Kpi" model='new KpiVm("Çizilen ürün adedi", p.UnitCount.ToString(), p.UnitCount, null)' />
+    <partial name="_Kpi" model='new KpiVm("Çizilen adet", p.UnitCount.ToString(), p.UnitCount, null)' />
     <partial name="_Kpi" model='new KpiVm("Cam listesi", p.GlassListCount.ToString(), p.GlassListCount, null)' />
     <partial name="_Kpi" model='new KpiVm("Cam adedi", p.GlassPieces.ToString(), p.GlassPieces, null)' />
     <partial name="_Kpi" model='new KpiVm("Cam alanı", p.GlassAreaM2.ToString("N2", TurkishNumbers.Culture) + " m²", p.GlassAreaM2, null)' />

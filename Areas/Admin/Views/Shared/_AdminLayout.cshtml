@@ -7,7 +7,7 @@
     var groups = new List<(string Key, string Title, List<(string Text, string Url, string Match, int Count)> Links)>
     {
         ("sales", "Satış", new() { ("Teklifler", "/yonetim/crm/teklifler", "/crm/teklifler", 0), ("Sözleşmeler", "/yonetim/sozlesmeler", "/sozlesmeler", 0), ("Müşteriler", "/yonetim/crm/musteriler", "/crm/musteriler", 0), ("İletişim mesajları", "/yonetim/mesajlar", "/mesajlar", unread) }),
-        ("production", "Üretim", new() { ("Doğrama çizimi", "/yonetim/cizim", "/cizim", 0), ("Cam listeleri", "/yonetim/camlar", "/camlar", 0) }),
+        ("production", "Çizim ve cam", new() { ("Çizimler", "/yonetim/cizim", "/cizim", 0), ("Cam listeleri", "/yonetim/camlar", "/camlar", 0) }),
         ("content", "Site içeriği", new() { ("Hizmetler", "/yonetim/hizmetler", "/hizmetler", 0), ("Projeler", "/yonetim/projeler", "/projeler", 0), ("Galeri", "/yonetim/galeri", "/galeri", 0), ("Sık sorulan sorular", "/yonetim/sss", "/sss", 0), ("Blog yazıları", "/yonetim/yazilar", "/yazilar", 0) })
     };
     if (isAdmin) groups.Add(("admin", "Yönetim", new() { ("Site ayarları", "/yonetim/ayarlar", "/ayarlar", 0), ("Belge şablonları", "/yonetim/sablonlar", "/sablonlar", 0), ("Kullanıcılar", "/yonetim/kullanicilar", "/kullanicilar", 0), ("Denetim kaydı", "/yonetim/denetim-kaydi", "/denetim-kaydi", 0) }));

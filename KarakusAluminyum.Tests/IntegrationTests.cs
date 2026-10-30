@@ -197,8 +197,6 @@ public sealed class RoutingAndAuthorizationTests(PostgresFixture postgres)
     [InlineData("/yonetim/sss/ekle")]
     [InlineData("/yonetim/cizim")]
     [InlineData("/yonetim/cizim/ekle")]
-    [InlineData("/yonetim/cizim/sistemler")]
-    [InlineData("/yonetim/cizim/optimizasyon")]
     [InlineData("/yonetim/camlar")]
     [InlineData("/yonetim/camlar/ekle")]
     [InlineData("/yonetim/camlar/tipler")]
@@ -230,7 +228,6 @@ public sealed class RoutingAndAuthorizationTests(PostgresFixture postgres)
     [InlineData("/yonetim/cizim", true)]
     [InlineData("/yonetim/camlar", true)]
     [InlineData("/yonetim/camlar/tipler", true)]
-    [InlineData("/yonetim/cizim/sistemler", true)]
     [InlineData("/yonetim/crm/teklifler", true)]
     [InlineData("/yonetim/sozlesmeler", true)]
     [InlineData("/yonetim/sablonlar", false)]
@@ -806,7 +803,7 @@ public sealed class AdminPanelTests(PostgresFixture postgres)
         var app = postgres.Shared;
         var (admin, _) = await AdminAsync(app);
         var html = WebUtility.HtmlDecode(await admin.GetStringAsync("/yonetim/crm/teklifler"));
-        foreach (var group in new[] { "Satış", "Üretim", "Site içeriği", "Raporlar", "Yönetim" }) Assert.Contains(group, html);
+        foreach (var group in new[] { "Satış", "Çizim ve cam", "Site içeriği", "Raporlar", "Yönetim" }) Assert.Contains(group, html);
         Assert.Contains("data-nav-group=\"sales\" data-active=\"1\"", html);
 
         await using var scope = app.Services.CreateAsyncScope();

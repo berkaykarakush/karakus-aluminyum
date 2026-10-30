@@ -3,7 +3,6 @@ using KarakusAluminyum.Web.Data;
 using KarakusAluminyum.Web.Models.Crm;
 using KarakusAluminyum.Web.Models.Drawing;
 using KarakusAluminyum.Web.Services;
-using KarakusAluminyum.Web.Services.Drawing;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -11,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace KarakusAluminyum.Web.Areas.Admin.Controllers;
 
-// Camlar doğramalardan tamamen ayrıdır: kendi listesi, fiyatı, çizimi ve plaka yerleşimi vardır.
+// Camlar doğramalardan tamamen ayrıdır: kendi ölçü listesi, çizimi ve fiyatı vardır.
 [Area("Admin"), Authorize(Roles = "Admin,Editor"), Route("yonetim/camlar")]
 public sealed class GlassListsController : Controller
 {
@@ -94,13 +93,6 @@ public sealed class GlassListsController : Controller
         row.Items = row.Items.OrderBy(i => i.SortOrder).ToList();
         ViewBag.Quotes = new SelectList(await _db.Quotes.AsNoTracking().Where(x => x.Status == QuoteStatus.Draft)
             .OrderByDescending(x => x.CreatedUtc).Select(x => new { x.Id, Text = x.QuoteNumber + " - " + x.Title }).ToListAsync(), "Id", "Text");
-        // AsNoTracking her satır için ayrı nesne üretir; gruplama nesneye değil kimliğe göre yapılmalıdır.
-        ViewBag.Plans = row.Items.GroupBy(i => i.GlassTypeId).Select(group =>
-        {
-            var type = group.First().GlassType!;
-            var pieces = group.SelectMany(i => Enumerable.Range(0, i.Quantity).Select(_ => (string.IsNullOrWhiteSpace(i.Position) ? "Cam" : i.Position!, i.WidthMm, i.HeightMm)));
-            return (Type: type, Plan: GlassPlateOptimizer.Optimize(pieces, type.SheetWidthMm, type.SheetHeightMm, type.CutGapMm));
-        }).ToList();
         return View(row);
     }
 
@@ -135,42 +127,6 @@ public sealed class GlassListsController : Controller
         await _audit.RecordAsync("add-glass-list", "Quote", quote.Id.ToString(), $"{quote.QuoteNumber}; list={id}; total={quote.GrandTotal}");
         TempData["Notice"] = "Cam listesi teklife eklendi.";
         return Redirect($"/yonetim/crm/teklifler/detay/{quote.Id}");
-    }
-
-    // Doğrama çiziminden yalnızca cam ölçüleri alınır; sonrasında liste bağımsızdır.
-    [HttpPost("cizimden/{designId:int}"), ValidateAntiForgeryToken]
-    public async Task<IActionResult> FromDesign(int designId, int? listId)
-    {
-        var design = await _db.WindowDesigns.AsNoTracking().Include(x => x.ProfileSystem).FirstOrDefaultAsync(x => x.Id == designId);
-        if (design is null) return NotFound();
-        var calculation = DrawingCalculation.Calculate(design, design.ProfileSystem!);
-        var back = $"/yonetim/cizim/imalat/{designId}";
-        if (calculation is not { IsValid: true } || calculation.Glass.Count == 0)
-        {
-            TempData["Notice"] = "Bu çizimde aktarılacak cam ölçüsü yok.";
-            return Redirect(back);
-        }
-        var glassType = await _db.GlassTypes.AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.Name).FirstOrDefaultAsync();
-        if (glassType is null)
-        {
-            TempData["Notice"] = "Önce en az bir aktif cam tipi tanımlayın.";
-            return RedirectToAction(nameof(Types));
-        }
-
-        var list = listId is null ? null : await _db.GlassLists.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == listId);
-        if (list is null)
-        {
-            list = new GlassList { Name = design.Name + " camları", CustomerId = design.CustomerId };
-            _db.GlassLists.Add(list);
-        }
-        var order = list.Items.Count;
-        foreach (var glass in calculation.Glass)
-            list.Items.Add(new GlassListItem { GlassTypeId = glassType.Id, Position = design.Name.Length > 40 ? design.Name[..40] : design.Name, WidthMm = glass.WidthMm, HeightMm = glass.HeightMm, Quantity = glass.Count * design.Quantity, Shaped = glass.Shaped, SortOrder = order++ });
-        list.UpdatedUtc = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        await _audit.RecordAsync("from-design", "GlassList", list.Id.ToString(), $"design={designId}");
-        TempData["Notice"] = "Cam ölçüleri listeye aktarıldı. Cam tipini listeden seçebilirsiniz.";
-        return RedirectToAction(nameof(Details), new { id = list.Id });
     }
 
     [HttpPost("kopyala/{id:int}"), ValidateAntiForgeryToken]

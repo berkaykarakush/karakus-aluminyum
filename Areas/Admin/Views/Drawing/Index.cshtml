@@ -1,25 +1,23 @@
 @model List<KarakusAluminyum.Web.Models.Drawing.WindowDesign>
 @using KarakusAluminyum.Web.Models.Drawing
 @{
-    ViewData["Title"] = "Doğrama çizimi";
+    ViewData["Title"] = "Çizimler";
     var current = ViewBag.Category as string;
     var newUrl = ProductCategories.All.Contains(current) ? $"/yonetim/cizim/ekle?tur={current}" : "/yonetim/cizim/ekle";
 }
 <link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
-<div class="admin-actions"><h1>Doğrama çizimi</h1><a class="admin-btn" href="@newUrl">+ Yeni çizim</a><a class="admin-btn" href="/yonetim/cizim/sistemler">Sistemler</a><a class="admin-btn" href="/yonetim/camlar">Cam listeleri</a></div>
+<div class="admin-actions"><h1>Çizimler</h1><a class="admin-btn" href="@newUrl">+ Yeni çizim</a><a class="admin-btn" href="/yonetim/camlar">Cam listeleri</a></div>
 <nav class="wd-tabs" aria-label="Ürün türü">
   <a class="@(ProductCategories.All.Contains(current) ? "" : "is-active")" href="/yonetim/cizim">Tümü</a>
   @foreach (var category in ProductCategories.All) { <a class="@(current == category ? "is-active" : "")" href="/yonetim/cizim?tur=@category">@ProductCategories.Label(category)</a> }
 </nav>
 <div class="admin-panel">
-  <form id="wd-optimize" method="get" action="/yonetim/cizim/optimizasyon"></form>
   <table class="admin-table">
-    <thead><tr><th></th><th>Ad</th><th>Tür</th><th>Müşteri</th><th>Ölçü (@Units.Code)</th><th>Adet</th><th>Güncelleme</th><th>İşlem</th></tr></thead>
+    <thead><tr><th>Ad</th><th>Tür</th><th>Müşteri</th><th>Ölçü (@Units.Code)</th><th>Adet</th><th>Güncelleme</th><th>İşlem</th></tr></thead>
     <tbody>
     @foreach (var x in Model)
     {
       <tr>
-        <td><input type="checkbox" name="ids" value="@x.Id" form="wd-optimize" aria-label="@x.Name optimizasyona ekle" /></td>
         <td><a href="/yonetim/cizim/duzenle/@x.Id">@x.Name</a></td>
         <td>@ProductCategories.Label(x.Category)</td>
         <td>@x.Customer?.Name</td>
@@ -28,7 +26,7 @@
         <td>@x.UpdatedUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
         <td>
           <div class="admin-actions">
-            <a class="admin-btn" href="/yonetim/cizim/imalat/@x.Id">İmalat föyü</a>
+            <a class="admin-btn" href="/yonetim/cizim/detay/@x.Id">Görüntüle</a>
             <form method="post" action="/yonetim/cizim/kopyala/@x.Id">@Html.AntiForgeryToken()<button class="admin-btn">Kopyala</button></form>
             <form method="post" action="/yonetim/cizim/sil/@x.Id" onsubmit="return confirm('Bu çizim silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form>
           </div>
@@ -37,6 +35,5 @@
     }
     </tbody>
   </table>
-  @if (Model.Count > 0) { <button class="admin-btn" form="wd-optimize">Seçilenleri birlikte optimize et</button> }
-  else { <p class="admin-muted">Bu bölümde henüz çizim yok.</p> }
+  @if (Model.Count == 0) { <p class="admin-muted">Bu bölümde henüz çizim yok.</p> }
 </div>

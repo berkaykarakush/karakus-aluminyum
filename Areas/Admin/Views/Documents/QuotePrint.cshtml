@@ -85,6 +85,6 @@
   <div class="doc-print-foot"><partial name="~/Areas/Admin/Views/Documents/_DocumentFoot.cshtml" model="t" /></div>
   <script src="~/js/units.js" asp-append-version="true"></script>
   <script src="~/js/window-drawing.js" asp-append-version="true"></script>
-  <script>document.querySelectorAll("[data-doc-drawing]").forEach((svg) => WindowDrawing.render(svg, JSON.parse(svg.dataset.docDrawing)));</script>
+  <script>document.querySelectorAll("[data-doc-drawing]").forEach((svg) => WindowDrawing.render(svg, JSON.parse(svg.dataset.docDrawing), { textScale: 2.4 }));</script>
 </body>
 </html>
