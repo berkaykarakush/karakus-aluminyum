@@ -1,0 +1,23 @@
+@model KarakusAluminyum.Web.Models.FaqInputVm
+@{
+    var edit = Model.Id != 0;
+    ViewData["Title"] = edit ? "Soruyu Düzenle" : "Yeni Soru";
+    var action = edit ? $"/yonetim/sss/duzenle/{Model.Id}" : "/yonetim/sss/ekle";
+}
+<h1>@ViewData["Title"]</h1>
+<div class="admin-panel">
+  <form class="admin-form" method="post" action="@action">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="All"></div>
+    <label asp-for="ServiceId">Gösterileceği sayfa</label>
+    <select asp-for="ServiceId" asp-items="(SelectList?)ViewBag.Services"><option value="">Ana sayfa</option></select>
+    <label asp-for="Question">Soru</label>
+    <input asp-for="Question" />
+    <label asp-for="Answer">Cevap</label>
+    <textarea asp-for="Answer" rows="5"></textarea>
+    <label asp-for="SortOrder">Sıra</label>
+    <input asp-for="SortOrder" type="number" />
+    <label><input asp-for="IsPublished" type="checkbox" style="width:auto" /> Yayında</label>
+    <button class="admin-btn" type="submit">Kaydet</button> <a href="/yonetim/sss">İptal</a>
+  </form>
+</div>

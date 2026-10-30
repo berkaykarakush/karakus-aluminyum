@@ -23,6 +23,7 @@ builder.Services.AddDataProtection()
 builder.Services.AddHealthChecks();
 builder.Services.Configure<SiteSettings>(builder.Configuration.GetSection("SiteSettings"));
 builder.Services.AddScoped<SeoService>();
+builder.Services.AddScoped<LengthUnits>();
 builder.Services.AddScoped<SiteSettingsProvider>();
 builder.Services.Configure<NotificationOptions>(builder.Configuration.GetSection(NotificationOptions.SectionName));
 builder.Services.AddHttpClient(nameof(ContactNotificationService), client => client.Timeout = TimeSpan.FromSeconds(15));
@@ -109,3 +110,6 @@ app.MapGet("/health", async (AppDbContext db, CancellationToken cancellationToke
     }
 }).AllowAnonymous();
 app.Run();
+
+// Entegrasyon testlerinde WebApplicationFactory<Program> için gerekli.
+public partial class Program { }

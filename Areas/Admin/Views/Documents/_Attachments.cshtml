@@ -1,0 +1,24 @@
+@model KarakusAluminyum.Web.Services.Documents.AttachmentList
+@using System.Text.Json
+@if (Model.Items.Count > 0)
+{
+  <div class="doc-attachments">
+    @foreach (var item in Model.Items)
+    {
+      <div class="doc-pos">
+        <div>Poz: @item.Position</div>
+        <div>Adt: @item.Design.Quantity</div>
+        <div>@item.Design.Name</div>
+        <div>@item.Design.ProfileSystem?.Name</div>
+        <div>Çevre: @item.PerimeterM.ToString("0.0")m</div>
+        <div>Alan: @item.AreaM2.ToString("0.0")m²</div>
+        <svg data-doc-drawing="@JsonSerializer.Serialize(item.Drawing, new JsonSerializerOptions(JsonSerializerDefaults.Web))" role="img" aria-label="@item.Design.Name çizimi"></svg>
+      </div>
+    }
+  </div>
+  <div class="doc-pos-total">
+    <div>Ünite Adedi: @Model.UnitCount</div>
+    <div>Toplam Çevre: @Model.TotalPerimeterM.ToString("0.0")m</div>
+    <div>Toplam Alan: @Model.TotalAreaM2.ToString("0.0")m²</div>
+  </div>
+}

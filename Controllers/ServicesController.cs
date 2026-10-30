@@ -25,10 +25,13 @@ public class ServicesController : Controller
         ViewData["Seo"] = new SeoViewModel { Title=string.IsNullOrWhiteSpace(service.SeoTitle)?service.Name+" | Karakuş Alüminyum":service.SeoTitle, Description=service.SeoDescription, CanonicalPath="/urunler/"+service.Slug, ImagePath=service.Image, Type="article" };
         ViewData["Service"] = service;
         ViewBag.Gallery = await _db.GalleryImages.AsNoTracking()
-            .Where(g => g.ServiceId == row.Id && g.IsPublished)
+            .Where(g => g.ServiceId == row.Id && g.IsPublished && g.ImagePath != row.Image)
             .OrderBy(g => g.SortOrder).ToListAsync();
+        ViewBag.Faqs = await _db.FaqItems.AsNoTracking()
+            .Where(f => f.ServiceId == row.Id && f.IsPublished)
+            .OrderBy(f => f.SortOrder).ThenBy(f => f.Id).ToListAsync();
         return View(service);
     }
-    private static ServicePage ToPage(ServiceContent x) => new(x.Slug,x.Name,x.ShortDescription,x.Intro,x.Image,x.SeoTitle,x.SeoDescription,ParseList(x.BenefitsJson),ParseList(x.FaqsJson));
+    private static ServicePage ToPage(ServiceContent x) => new(x.Slug,x.Name,x.ShortDescription,x.Intro,x.Image ?? "/images/image-placeholder.svg",x.SeoTitle,x.SeoDescription,ParseList(x.BenefitsJson));
     private static IReadOnlyList<string> ParseList(string json) { try { return JsonSerializer.Deserialize<List<string>>(json) ?? new(); } catch { return new List<string>(); } }
 }

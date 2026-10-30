@@ -1,0 +1,100 @@
+@model KarakusAluminyum.Web.Models.Documents.DocumentTemplate
+@using KarakusAluminyum.Web.Models.Documents
+@{
+    var isContract = Model.Kind == DocumentKinds.Contract;
+    ViewData["Title"] = isContract ? "Sözleşme şablonu" : "Teklif şablonu";
+    var articles = (List<ContractArticle>)ViewBag.Articles;
+    var kinds = new[] { (ContractArticleKinds.Text, "Metin"), (ContractArticleKinds.Subject, "Konu ve iş kalemleri"), (ContractArticleKinds.Price, "Toplam bedel"), (ContractArticleKinds.Payment, "Ödeme planı") };
+}
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/sablonlar">Belge şablonları</a><a class="admin-btn" href="/yonetim/sablonlar/@Model.Kind/onizleme" target="_blank" rel="noopener">Önizleme</a></div>
+<form class="admin-form" method="post" enctype="multipart/form-data" action="/yonetim/sablonlar/@Model.Kind">
+  @Html.AntiForgeryToken()
+  <div asp-validation-summary="All"></div>
+  <div class="admin-panel">
+    <h2>Antet</h2>
+    <label>Logo</label>
+    <div class="admin-image-picker">
+      <img class="admin-image-preview" id="logoPreview" style="object-fit:contain" src="@(string.IsNullOrWhiteSpace(Model.LogoPath) ? "/images/image-placeholder.svg" : Model.LogoPath)" alt="Logo önizleme" />
+      <div>
+        <input type="file" name="logoFile" accept="image/jpeg,image/png,image/webp,image/gif" data-image-preview="logoPreview" />
+        <div class="admin-image-hint">JPG, PNG, WEBP veya GIF · En fazla 8 MB.</div>
+        <p><label><input type="checkbox" name="removeLogo" value="true" style="width:auto" /> Logoyu kaldır</label></p>
+      </div>
+    </div>
+    <div class="admin-grid">
+      <div><label asp-for="Title">Belge başlığı</label><input asp-for="Title" required /></div>
+      <div><label asp-for="Phone">Telefon (alt bilgi)</label><input asp-for="Phone" /></div>
+    </div>
+    <label asp-for="FooterAddress">Adres (alt bilgi)</label><input asp-for="FooterAddress" />
+  </div>
+  <div class="admin-panel">
+    <h2>Firma ve imza</h2>
+    <div class="admin-grid">
+      <div><label asp-for="SellerName">Firma adı</label><input asp-for="SellerName" /></div>
+      <div><label asp-for="Signatory">İmza yetkilisi</label><input asp-for="Signatory" /></div>
+      @if (isContract)
+      {
+        <div><label asp-for="SignatoryTitle">Yetkili sıfatı (ör. Vekil)</label><input asp-for="SignatoryTitle" /></div>
+        <div><label asp-for="SellerTaxInfo">Vergi dairesi ve no</label><input asp-for="SellerTaxInfo" /></div>
+        <div><label asp-for="BuyerLabel">Alıcı etiketi</label><input asp-for="BuyerLabel" /></div>
+        <div><label asp-for="SellerLabel">Satıcı etiketi</label><input asp-for="SellerLabel" /></div>
+      }
+    </div>
+    @if (isContract)
+    {
+      <label asp-for="SellerLegalName">Taraflar maddesindeki satıcı ifadesi (ör. firma, sahibi ve vekili)</label><input asp-for="SellerLegalName" />
+      <label asp-for="SellerAddress">Tebligat adresi</label><input asp-for="SellerAddress" />
+    }
+  </div>
+  <div class="admin-panel">
+    <h2>Sabit metinler</h2>
+    <p class="admin-muted">Yeni belgelere başlangıç olarak gelir. <code>{{alan}}</code> değişken, <code>**metin**</code> kalın.</p>
+    @if (!isContract)
+    {
+      <label asp-for="Intro">Giriş metni</label><textarea asp-for="Intro"></textarea>
+      <label asp-for="Closing">Fiyat öncesi metin</label><textarea asp-for="Closing"></textarea>
+    }
+    else
+    {
+      <label asp-for="Closing">Bedele geçiş metni</label><textarea asp-for="Closing"></textarea>
+    }
+    <label asp-for="DefaultNote">Varsayılan not</label><textarea asp-for="DefaultNote"></textarea>
+    <label asp-for="SignOff">@(isContract ? "Kapanış metni" : "Kapanış ifadesi")</label><textarea asp-for="SignOff"></textarea>
+  </div>
+  @if (isContract)
+  {
+    <div class="admin-panel">
+      <h2>Sözleşme maddeleri</h2>
+      <p class="admin-muted">Numaralar ve madde sayısı otomatik oluşur. Kullanılabilir alanlar: <code>{{alici}}</code> <code>{{alici_adres}}</code> <code>{{satici}}</code> <code>{{satici_adres}}</code> <code>{{konu}}</code> <code>{{tarih}}</code> <code>{{toplam}}</code> <code>{{toplam_yazi}}</code> <code>{{madde_sayisi}}</code> <code>{{sayfa_sayisi}}</code>. Başlığı boş bırakılan madde silinir.</p>
+      <div id="articles">
+        @for (var i = 0; i < articles.Count + 2; i++)
+        {
+          var article = i < articles.Count ? articles[i] : new ContractArticle();
+          <div class="admin-panel" data-article style="margin:10px 0">
+            <div class="admin-grid">
+              <div><label>Başlık</label><input name="articles[@i].Title" value="@article.Title" /></div>
+              <div><label>Tip</label><select name="articles[@i].Kind">
+                @foreach (var (value, text) in kinds) { <option value="@value" selected="@(article.Kind == value)">@text</option> }
+              </select></div>
+            </div>
+            <label>Metin</label><textarea name="articles[@i].Body" rows="3">@article.Body</textarea>
+            <button type="button" class="admin-btn" data-move="-1">Yukarı</button> <button type="button" class="admin-btn" data-move="1">Aşağı</button>
+          </div>
+        }
+      </div>
+    </div>
+    <script>
+      document.getElementById("articles").addEventListener("click", (event) => {
+        const direction = Number(event.target.dataset.move);
+        if (!direction) return;
+        const row = event.target.closest("[data-article]");
+        const target = direction < 0 ? row.previousElementSibling : row.nextElementSibling;
+        if (!target) return;
+        direction < 0 ? target.before(row) : target.after(row);
+        document.querySelectorAll("#articles [data-article]").forEach((item, index) =>
+          item.querySelectorAll("[name]").forEach((field) => { field.name = field.name.replace(/\[\d+\]/, `[${index}]`); }));
+      });
+    </script>
+  }
+  <div class="admin-actions"><button class="admin-btn" type="submit">Kaydet</button></div>
+</form>

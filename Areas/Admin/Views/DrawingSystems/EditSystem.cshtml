@@ -1,0 +1,110 @@
+@model KarakusAluminyum.Web.Models.Drawing.ProfileSystem
+@using KarakusAluminyum.Web.Models.Drawing
+@{
+    var editing = Model.Id != 0;
+    var label = ProductCategories.Label(Model.Category);
+    ViewData["Title"] = (editing ? "Sistemi düzenle: " : "Yeni sistem: ") + label;
+    var action = editing ? $"/yonetim/cizim/sistemler/duzenle/{Model.Id}" : "/yonetim/cizim/sistemler/ekle";
+    var settings = (ProductSettings)ViewBag.Settings;
+    var isWindow = ProductCategories.IsWindow(Model.Category);
+    string F(decimal v) => v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+}
+<h1>@ViewData["Title"]</h1>
+<div class="admin-panel">
+  <form class="admin-form" method="post" action="@action">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Category" />
+    <div asp-validation-summary="All"></div>
+    <label asp-for="Name">Sistem adı</label><input asp-for="Name" required />
+
+    @if (isWindow)
+    {
+      <h2>Profil ölçüleri</h2>
+      <div class="admin-grid">
+        <div><label asp-for="FrameWidthMm">Kasa görünür genişliği</label><input asp-for="FrameWidthMm" type="number" step="0.1" /></div>
+        <div><label asp-for="SashWidthMm">Kanat görünür genişliği</label><input asp-for="SashWidthMm" type="number" step="0.1" /></div>
+        <div><label asp-for="MullionWidthMm">Kayıt görünür genişliği</label><input asp-for="MullionWidthMm" type="number" step="0.1" /></div>
+      </div>
+      <h2>Kesim düşümleri</h2>
+      <div class="admin-grid">
+        <div><label asp-for="SashOverlapMm">Kanat bindirmesi (her kenar)</label><input asp-for="SashOverlapMm" type="number" step="0.1" /></div>
+        <div><label asp-for="GlassClearanceMm">Cam boşluğu (her kenar)</label><input asp-for="GlassClearanceMm" type="number" step="0.1" /></div>
+        <div><label asp-for="MullionFitMm">Kayıt geçme payı (her uç, eksi olabilir)</label><input asp-for="MullionFitMm" type="number" step="0.1" /></div>
+        <div><label asp-for="WeldAllowanceMm">Kaynak / birleşim payı (her uç)</label><input asp-for="WeldAllowanceMm" type="number" step="0.1" /></div>
+      </div>
+      <h2>Birim fiyatlar (₺)</h2>
+      <div class="admin-grid">
+        <div><label asp-for="FramePricePerM">Kasa (metre)</label><input asp-for="FramePricePerM" type="number" step="0.01" /></div>
+        <div><label asp-for="SashPricePerM">Kanat (metre)</label><input asp-for="SashPricePerM" type="number" step="0.01" /></div>
+        <div><label asp-for="MullionPricePerM">Kayıt (metre)</label><input asp-for="MullionPricePerM" type="number" step="0.01" /></div>
+        <div><label asp-for="BeadPricePerM">Çıta (metre)</label><input asp-for="BeadPricePerM" type="number" step="0.01" /></div>
+        <div><label asp-for="PanelPricePerM2">Panel (m²)</label><input asp-for="PanelPricePerM2" type="number" step="0.01" /></div>
+        <div><label asp-for="HardwareOpenPrice">Açılır donanım (takım)</label><input asp-for="HardwareOpenPrice" type="number" step="0.01" /></div>
+        <div><label asp-for="HardwareTiltPrice">Açılır-devrilir / vasistas (takım)</label><input asp-for="HardwareTiltPrice" type="number" step="0.01" /></div>
+        <div><label asp-for="HardwareSlidePrice">Sürme donanım (takım)</label><input asp-for="HardwareSlidePrice" type="number" step="0.01" /></div>
+        <div><label asp-for="HardwareDoorPrice">Kapı donanım (takım)</label><input asp-for="HardwareDoorPrice" type="number" step="0.01" /></div>
+      </div>
+    }
+    else if (Model.Category == ProductCategories.Shutter)
+    {
+      <h2>Ölçüler</h2>
+      <div class="admin-grid">
+        <div><label>Kutu yüksekliği</label><input name="BoxHeightMm" type="number" step="0.1" value="@F(settings.BoxHeightMm)" /></div>
+        <div><label>Lamel yüksekliği</label><input name="LamellaHeightMm" type="number" step="0.1" value="@F(settings.LamellaHeightMm)" /></div>
+        <div><label>Yan dikme düşümü (her yan)</label><input name="GuideDeductMm" type="number" step="0.1" value="@F(settings.GuideDeductMm)" /></div>
+      </div>
+      <h2>Birim fiyatlar (₺)</h2>
+      <div class="admin-grid">
+        <div><label>Lamel (m²)</label><input name="LamellaPricePerM2" type="number" step="0.01" value="@F(settings.LamellaPricePerM2)" /></div>
+        <div><label>Yan dikme (metre)</label><input name="GuidePricePerM" type="number" step="0.01" value="@F(settings.GuidePricePerM)" /></div>
+        <div><label>Kutu (metre)</label><input name="BoxPricePerM" type="number" step="0.01" value="@F(settings.BoxPricePerM)" /></div>
+        <div><label>Motor (adet)</label><input name="MotorPrice" type="number" step="0.01" value="@F(settings.MotorPrice)" /></div>
+        <div><label>Manuel makara (adet)</label><input name="ManualPrice" type="number" step="0.01" value="@F(settings.ManualPrice)" /></div>
+      </div>
+    }
+    else if (Model.Category == ProductCategories.Railing)
+    {
+      <h2>Ölçüler</h2>
+      <div class="admin-grid">
+        <div><label>Dikme genişliği</label><input name="PostWidthMm" type="number" step="0.1" value="@F(settings.PostWidthMm)" /></div>
+        <div><label>Varsayılan dikme aralığı</label><input name="PostSpacingMm" type="number" step="1" value="@F(settings.PostSpacingMm)" /></div>
+        <div><label>Küpeşte / ray yüksekliği</label><input name="RailHeightMm" type="number" step="0.1" value="@F(settings.RailHeightMm)" /></div>
+        <div><label>Çubuk aralığı</label><input name="BarSpacingMm" type="number" step="1" value="@F(settings.BarSpacingMm)" /></div>
+        <div><label asp-for="GlassClearanceMm">Cam boşluğu (her kenar)</label><input asp-for="GlassClearanceMm" type="number" step="0.1" /></div>
+      </div>
+      <h2>Birim fiyatlar (₺)</h2>
+      <div class="admin-grid">
+        <div><label>Dikme (metre)</label><input name="PostPricePerM" type="number" step="0.01" value="@F(settings.PostPricePerM)" /></div>
+        <div><label>Küpeşte / ray (metre)</label><input name="RailPricePerM" type="number" step="0.01" value="@F(settings.RailPricePerM)" /></div>
+        <div><label>Emniyet çubuğu (metre)</label><input name="BarPricePerM" type="number" step="0.01" value="@F(settings.BarPricePerM)" /></div>
+      </div>
+    }
+    else
+    {
+      <h2>Ölçüler</h2>
+      <div class="admin-grid">
+        <div><label>Ray yüksekliği</label><input name="RailHeightMm" type="number" step="0.1" value="@F(settings.RailHeightMm)" /></div>
+        <div><label asp-for="SashWidthMm">Kanat profili genişliği</label><input asp-for="SashWidthMm" type="number" step="0.1" /></div>
+        <div><label>Panel bindirmesi (sürmede)</label><input name="PanelOverlapMm" type="number" step="0.1" value="@F(settings.PanelOverlapMm)" /></div>
+        <div><label asp-for="GlassClearanceMm">Cam boşluğu (her kenar)</label><input asp-for="GlassClearanceMm" type="number" step="0.1" /></div>
+      </div>
+      <h2>Birim fiyatlar (₺)</h2>
+      <div class="admin-grid">
+        <div><label>Ray (metre)</label><input name="RailPricePerM" type="number" step="0.01" value="@F(settings.RailPricePerM)" /></div>
+        <div><label>Kanat profili (metre)</label><input name="PanelProfilePricePerM" type="number" step="0.01" value="@F(settings.PanelProfilePricePerM)" /></div>
+        <div><label>Kanat donanımı (panel başına)</label><input name="PanelHardwarePrice" type="number" step="0.01" value="@F(settings.PanelHardwarePrice)" /></div>
+      </div>
+    }
+
+    <h2>Kesim ve fiyatlandırma</h2>
+    <div class="admin-grid">
+      <div><label asp-for="BarLengthMm">Boy profil uzunluğu</label><input asp-for="BarLengthMm" type="number" step="1" /></div>
+      <div><label asp-for="KerfMm">Testere payı</label><input asp-for="KerfMm" type="number" step="0.1" /></div>
+      <div><label asp-for="WastePercent">Fire (%)</label><input asp-for="WastePercent" type="number" step="0.1" /></div>
+      <div><label asp-for="LaborPercent">İşçilik (%)</label><input asp-for="LaborPercent" type="number" step="0.1" /></div>
+      <div><label asp-for="MarginPercent">Kâr (%)</label><input asp-for="MarginPercent" type="number" step="0.1" /></div>
+    </div>
+    <p><label><input asp-for="IsActive" type="checkbox" style="width:auto" /> Aktif</label></p>
+    <div class="admin-actions"><button class="admin-btn" type="submit">Kaydet</button><a href="/yonetim/cizim/sistemler">İptal</a></div>
+  </form>
+</div>

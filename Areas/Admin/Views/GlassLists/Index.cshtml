@@ -1,0 +1,28 @@
+@model List<KarakusAluminyum.Web.Models.Drawing.GlassList>
+@using KarakusAluminyum.Web.Areas.Admin.Controllers
+@{ ViewData["Title"] = "Cam listeleri"; }
+<div class="admin-actions"><h1>Cam listeleri</h1><a class="admin-btn" href="/yonetim/camlar/ekle">+ Yeni cam listesi</a><a class="admin-btn" href="/yonetim/camlar/tipler">Cam tipleri ve fiyatlar</a></div>
+<div class="admin-panel">
+  <table class="admin-table">
+    <thead><tr><th>Ad</th><th>Müşteri</th><th>Ölçü</th><th>Adet</th><th>m²</th><th>Tutar</th><th>İşlem</th></tr></thead>
+    <tbody>
+    @foreach (var x in Model)
+    {
+      <tr>
+        <td><a href="/yonetim/camlar/detay/@x.Id">@x.Name</a></td>
+        <td>@x.Customer?.Name</td>
+        <td>@x.Items.Count</td>
+        <td>@x.Items.Sum(i => i.Quantity)</td>
+        <td>@x.Items.Sum(GlassListsController.RowArea).ToString("N2", KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture)</td>
+        <td>@GlassListsController.ListTotal(x).ToString("N2", KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture) ₺</td>
+        <td><div class="admin-actions">
+          <a class="admin-btn" href="/yonetim/camlar/duzenle/@x.Id">Düzenle</a>
+          <form method="post" action="/yonetim/camlar/kopyala/@x.Id">@Html.AntiForgeryToken()<button class="admin-btn">Kopyala</button></form>
+          <form method="post" action="/yonetim/camlar/sil/@x.Id" onsubmit="return confirm('Bu liste silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form>
+        </div></td>
+      </tr>
+    }
+    </tbody>
+  </table>
+  @if (Model.Count == 0) { <p class="admin-muted">Henüz cam listesi yok.</p> }
+</div>

@@ -11,6 +11,7 @@ public sealed class ServiceContent
     [StringLength(180)] public string SeoTitle { get; set; } = "";
     [StringLength(320)] public string SeoDescription { get; set; } = "";
     public string BenefitsJson { get; set; } = "[]";
+    // Eski SSS biçimi: başlangıçta FaqItems tablosuna taşınır ve "[]" olarak kalır. Yeni SSS'ler için kullanmayın.
     public string FaqsJson { get; set; } = "[]";
     public bool IsPublished { get; set; } = true;
     public int SortOrder { get; set; }

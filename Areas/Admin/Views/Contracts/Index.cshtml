@@ -1,0 +1,24 @@
+@model List<KarakusAluminyum.Web.Models.Documents.Contract>
+@using KarakusAluminyum.Web.Models.Documents
+@using KarakusAluminyum.Web.Services.Documents
+@{ ViewData["Title"] = "Sözleşmeler"; }
+<div class="admin-actions"><h1>Sözleşmeler</h1><a class="admin-btn" href="/yonetim/sozlesmeler/ekle">+ Yeni sözleşme</a>@if (User.IsInRole("Admin")) { <a class="admin-btn" href="/yonetim/sablonlar/contract">Sözleşme şablonu</a> }</div>
+<div class="admin-panel">
+  <table class="admin-table">
+    <thead><tr><th>No</th><th>Başlık / alıcı</th><th>Tarih</th><th>Durum</th><th>Bedel</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var x in Model)
+    {
+      <tr>
+        <td><strong>@x.ContractNumber</strong></td>
+        <td>@x.Title<br /><small>@x.BuyerName</small></td>
+        <td>@TurkishNumbers.Date(x.DocumentDate)</td>
+        <td>@(x.Status switch { ContractStatus.Signed => "İmzalandı", ContractStatus.Cancelled => "İptal", _ => "Taslak" })</td>
+        <td>@TurkishNumbers.Money(x.TotalAmount)</td>
+        <td><a class="admin-btn" href="/yonetim/sozlesmeler/detay/@x.Id">Aç</a></td>
+      </tr>
+    }
+    </tbody>
+  </table>
+  @if (Model.Count == 0) { <p class="admin-muted">Henüz sözleşme yok. Kabul edilen bir teklifin sayfasından veya "Yeni sözleşme" ile oluşturabilirsiniz.</p> }
+</div>

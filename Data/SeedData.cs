@@ -1,5 +1,7 @@
 using System.Text.Json;
 using KarakusAluminyum.Web.Models;
+using KarakusAluminyum.Web.Models.Drawing;
+using KarakusAluminyum.Web.Services.Documents;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -54,16 +56,33 @@ public static class SeedData
         new("Endüstriyel ve Garaj Kapı Sistemleri", 
             "endustriyel-ve-garaj-kapi-sistemleri", 
             "Endüstriyel alanlar ve garajlar için kapı sistemi çözümleri.",
-            "/images/endustriyel-ve-garaj-kapi-sistemleri.png"),
+            "/images/otomatik-kapi-ve-diger-sistemler.png"),
         new("Rampa ve Körük Sistemleri", 
             "rampa-ve-koruk-sistemleri", 
             "Yükleme alanlarında kullanılmak üzere rampa ve körük sistemi çözümleri.",
-            "/images/rampa-ve-koruk-sistemleri.png"),
+            "/images/otomatik-kapi-ve-diger-sistemler.png"),
         new("Bahçe Kapısı ve Bariyer Sistemleri", 
             "bahce-kapisi-ve-bariyer-sistemleri", 
             "Araç ve yaya girişleri için bahçe kapısı ve bariyer sistemleri.",
-            "/images/bahce-kapisi-ve-bariyer-sistemleri.png"),
+            "/images/otomatik-kapi-ve-diger-sistemler.png"),
     };
+
+    // Önceki seed sürümünün kaydettiği, wwwroot'ta hiç bulunmayan görsel yolları.
+    private static readonly string[] MissingServiceImages =
+    {
+        "/images/endustriyel-ve-garaj-kapi-sistemleri.png",
+        "/images/rampa-ve-koruk-sistemleri.png",
+        "/images/bahce-kapisi-ve-bariyer-sistemleri.png"
+    };
+
+    public const string GallerySeededKey = "GallerySeeded";
+    public const string HomeFaqsSeededKey = "HomeFaqsSeeded";
+    public const string DrawingSeededKey = "DrawingSeeded";
+    public const string ClausesSeededKey = "ClausesSeeded";
+    public const string ProductSystemsSeededKey = "ProductSystemsSeeded";
+
+    // Tek seferlik seed'lerin işaretçileri; site ayarları ekranında gösterilmez.
+    public static readonly string[] InternalSettingKeys = { GallerySeededKey, HomeFaqsSeededKey, DrawingSeededKey, ClausesSeededKey, ProductSystemsSeededKey };
 
     public static async Task InitializeAsync(IServiceProvider services, IConfiguration config)
     {
@@ -135,7 +154,8 @@ public static class SeedData
                 existingServices.Add(service);
             }
             else if (string.IsNullOrWhiteSpace(existing.Image)
-                || existing.Image.Contains("image-placeholder", StringComparison.OrdinalIgnoreCase))
+                || existing.Image.Contains("image-placeholder", StringComparison.OrdinalIgnoreCase)
+                || MissingServiceImages.Contains(existing.Image))
             {
                 // Önceki seed sürümü tüm hizmetlere placeholder atıyordu; bu hatalı yolu düzelt.
                 existing.Image = seed.ImageUrl;
@@ -228,8 +248,69 @@ public static class SeedData
         // Yeni eklenen hizmet/projeler galeri seed'inin sorgularında görünsün diye önce kaydedilir.
         await db.SaveChangesAsync();
 
+        // Hizmetlerdeki eski "soru|cevap" JSON kayıtlarını FaqItems'a taşı. Taşınan satır "[]" olduğu için tekrar çalışmaz;
+        // bozuk JSON olduğu gibi bırakılır, veri kaybolmaz.
+        foreach (var service in await db.Services.Where(s => s.FaqsJson != "[]").ToListAsync())
+        {
+            List<string>? legacyFaqs;
+            try { legacyFaqs = JsonSerializer.Deserialize<List<string>>(service.FaqsJson); }
+            catch (JsonException) { continue; }
+
+            var order = 0;
+            foreach (var entry in (legacyFaqs ?? new()).Where(e => !string.IsNullOrWhiteSpace(e)))
+            {
+                var parts = entry.Split('|', 2);
+                var answer = parts.Length > 1 ? parts[1].Trim() : "";
+                // Cevabı olmayan kayıt yayında boş görünmesin diye taslak olarak taşınır.
+                db.FaqItems.Add(new FaqItem { ServiceId = service.Id, Question = parts[0].Trim(), Answer = answer, SortOrder = order++, IsPublished = answer.Length > 0 });
+            }
+            service.FaqsJson = "[]";
+        }
+
+        // Ana sayfa SSS'leri: yalnızca bir kez eklenir; yöneticinin sildikleri geri gelmez.
+        if (!await db.SiteSettingRecords.AnyAsync(s => s.Key == HomeFaqsSeededKey))
+        {
+            db.SiteSettingRecords.Add(new SiteSettingRecord { Key = HomeFaqsSeededKey, Value = "true", Description = "Ana sayfa SSS seed'i uygulandı" });
+            db.FaqItems.AddRange(
+                new FaqItem { Question = "Alüminyum doğrama nasıl seçilir?", Answer = "Açıklık ölçüsü, kullanım amacı, mimari tasarım, yalıtım beklentisi ve donanım seçenekleri birlikte değerlendirilmelidir.", SortOrder = 0 },
+                new FaqItem { Question = "Projem için nasıl teklif alabilirim?", Answer = "Proje konumu, yaklaşık ölçüler, tercih edilen sistem ve varsa çizimleri iletişim formu üzerinden paylaşabilirsiniz.", SortOrder = 1 },
+                // Cevabı firma tarafından doldurulacak şablon metin; doldurulana kadar yayınlanmaz.
+                new FaqItem { Question = "İzmir dışında hizmet veriyor musunuz?", Answer = "Hizmet verdiğiniz il ve ilçeleri gerçek operasyon kapsamınıza göre burada belirtin.", SortOrder = 2, IsPublished = false });
+        }
+
+        // Çizim modülü başlangıç tanımları: ölçüler yer tutucu örnektir, fiyatlar bilerek boştur.
+        if (!await db.SiteSettingRecords.AnyAsync(s => s.Key == DrawingSeededKey))
+        {
+            db.SiteSettingRecords.Add(new SiteSettingRecord { Key = DrawingSeededKey, Value = "true", Description = "Çizim modülü seed'i uygulandı" });
+            db.ProfileSystems.Add(new ProfileSystem { Name = "Örnek Sistem (kendi profil değerlerinizi girin)" });
+            db.GlassTypes.Add(new GlassType { Name = "Örnek Isıcam 4+16+4 (fiyat girin)" });
+        }
+
+        // Ürün türü başına başlangıç sistemi: ölçüler yer tutucu örnektir, fiyatlar bilerek boştur.
+        if (!await db.SiteSettingRecords.AnyAsync(s => s.Key == ProductSystemsSeededKey))
+        {
+            db.SiteSettingRecords.Add(new SiteSettingRecord { Key = ProductSystemsSeededKey, Value = "true", Description = "Ürün türü sistemleri eklendi" });
+            await db.SaveChangesAsync(); // üstteki örnek sistem aşağıdaki kontrolde görünsün
+            foreach (var category in ProductCategories.All)
+                if (!await db.ProfileSystems.AnyAsync(p => p.Category == category))
+                    db.ProfileSystems.Add(new ProfileSystem { Name = $"Örnek {ProductCategories.Label(category)} (değerleri girin)", Category = category, Material = ProductCategories.Label(category) });
+        }
+
+        // Belge şablonları her zaman vardır; hazır maddeler yalnızca bir kez eklenir.
+        if (!await db.DocumentTemplates.AnyAsync(t => t.Kind == Models.Documents.DocumentKinds.Quote)) db.DocumentTemplates.Add(DocumentSeed.QuoteTemplate());
+        if (!await db.DocumentTemplates.AnyAsync(t => t.Kind == Models.Documents.DocumentKinds.Contract)) db.DocumentTemplates.Add(DocumentSeed.ContractTemplate());
+        if (!await db.SiteSettingRecords.AnyAsync(s => s.Key == ClausesSeededKey))
+        {
+            db.SiteSettingRecords.Add(new SiteSettingRecord { Key = ClausesSeededKey, Value = "true", Description = "Hazır belge maddeleri eklendi" });
+            db.TemplateClauses.AddRange(DocumentSeed.Clauses());
+        }
+
         // Galeri seed: mevcut wwwroot görselleriyle hizmet/proje galerilerini doldur.
-        if (!await db.GalleryImages.AnyAsync())
+        // Yalnızca bir kez çalışır; yöneticinin sildiği görseller yeniden başlatınca geri gelmez.
+        var gallerySeeded = await db.SiteSettingRecords.AnyAsync(s => s.Key == GallerySeededKey);
+        if (!gallerySeeded)
+            db.SiteSettingRecords.Add(new SiteSettingRecord { Key = GallerySeededKey, Value = "true", Description = "Galeri seed'i uygulandı" });
+        if (!gallerySeeded && !await db.GalleryImages.AnyAsync())
         {
             var serviceIds = await db.Services.ToDictionaryAsync(s => s.Slug, s => s.Id);
             var projectIds = await db.Projects.ToDictionaryAsync(p => p.Slug, p => p.Id);

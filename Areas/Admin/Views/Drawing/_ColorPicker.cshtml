@@ -1,0 +1,4 @@
+@{ var colors = new[] { ("Beyaz", "#f4f5f5"), ("Antrasit", "#3a4046"), ("Siyah", "#1d2023"), ("Gümüş eloksal", "#c3c8cc"), ("Vizon", "#8c7f70"), ("Altın meşe", "#a9743f"), ("Ceviz", "#5e3d27") }; }
+<div class="wd-swatches">
+  @foreach (var (name, hex) in colors) { <button type="button" class="wd-swatch" title="@name" aria-label="@name" data-color="@hex" style="background:@hex"></button> }
+</div>

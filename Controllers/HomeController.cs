@@ -1,10 +1,6 @@
 using KarakusAluminyum.Web.Models;
 using KarakusAluminyum.Web.Data;
 using Microsoft.EntityFrameworkCore;
-using KarakusAluminyum.Web.Data;
-using Microsoft.EntityFrameworkCore;
-using KarakusAluminyum.Web.Data;
-using Microsoft.EntityFrameworkCore;
 using KarakusAluminyum.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -26,6 +22,10 @@ public class HomeController : Controller
             ImagePath = "/images/aluminyum-dograma.png"
         };
         ViewData["BusinessSchema"] = _seo.LocalBusinessSchema();
+        ViewBag.Faqs = await _db.FaqItems.AsNoTracking()
+            .Where(f => f.ServiceId == null && f.IsPublished)
+            .OrderBy(f => f.SortOrder).ThenBy(f => f.Id).ToListAsync();
+        ViewBag.Projects = await ProjectQueries.PublishedAsync(_db, take: 3);
         return View(await _db.Services.AsNoTracking().Where(s => s.IsPublished).OrderBy(s => s.SortOrder).ToListAsync());
     }
 
@@ -76,7 +76,7 @@ public class HomeController : Controller
     [ResponseCache(Duration = 3600)]
     public async Task<ContentResult> Sitemap()
     {
-        var paths = new List<string> { "/", "/kurumsal", "/urunler", "/projeler", "/blog", "/iletisim" };
+        var paths = new List<string> { "/", "/kurumsal", "/urunler", "/projeler", "/galeri", "/blog", "/iletisim" };
         paths.AddRange(await _db.Services.AsNoTracking().Where(s => s.IsPublished).Select(s => "/urunler/" + s.Slug).ToListAsync());
         paths.AddRange(await _db.Projects.AsNoTracking().Where(p => p.IsPublished).Select(p => "/projeler/" + p.Slug).ToListAsync());
         paths.AddRange(await _db.BlogPosts.AsNoTracking().Where(p => p.IsPublished).Select(p => "/blog/" + p.Slug).ToListAsync());

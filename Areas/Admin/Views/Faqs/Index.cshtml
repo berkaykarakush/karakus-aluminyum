@@ -1,0 +1,45 @@
+@model IReadOnlyList<KarakusAluminyum.Web.Models.FaqItem>
+@{
+    ViewData["Title"] = "Sık Sorulan Sorular";
+    var page = (string)ViewBag.Page;
+    var services = (SelectList)ViewBag.Services;
+    var newUrl = int.TryParse(page, out var serviceId) ? $"/yonetim/sss/ekle?hizmet={serviceId}" : "/yonetim/sss/ekle";
+}
+<div class="admin-actions"><h1>Sık Sorulan Sorular</h1><a class="admin-btn" href="@newUrl">+ Yeni soru</a></div>
+<div class="admin-panel">
+  <form class="admin-actions" method="get" action="/yonetim/sss">
+    <select name="sayfa" aria-label="Sayfaya göre filtrele">
+      <option value="" selected="@(page == "")">Tüm sayfalar</option>
+      <option value="genel" selected="@(page == "genel")">Ana sayfa</option>
+      @foreach (var s in services)
+      {
+        <option value="@s.Value" selected="@(page == s.Value)">@s.Text</option>
+      }
+    </select>
+    <button class="admin-btn">Filtrele</button>
+  </form>
+  <table class="admin-table">
+    <thead><tr><th>Sayfa</th><th>Soru</th><th>Cevap</th><th>Sıra</th><th>Durum</th><th>İşlem</th></tr></thead>
+    <tbody>
+    @foreach (var x in Model)
+    {
+      <tr>
+        <td>@(x.Service?.Name ?? "Ana sayfa")</td>
+        <td>@x.Question</td>
+        <td>@(x.Answer.Length > 90 ? x.Answer[..90] + "…" : x.Answer)</td>
+        <td>@x.SortOrder</td>
+        <td>@(x.IsPublished ? "Yayında" : "Taslak")</td>
+        <td>
+          <div class="admin-actions">
+            <a class="admin-btn" href="/yonetim/sss/duzenle/@x.Id">Düzenle</a>
+            <form method="post" action="/yonetim/sss/sil/@x.Id" onsubmit="return confirm('Bu soru silinsin mi?')">
+              @Html.AntiForgeryToken()
+              <button class="admin-btn admin-btn--danger">Sil</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+    }
+    </tbody>
+  </table>
+</div>

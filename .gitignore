@@ -7,3 +7,7 @@ appsettings.Development.json
 .keys/
 .env.*
 !.env.example
+
+# Müşteri verisi içeren örnek belgeler
+/sozlesme-*.pdf
+/teklif-*.pdf

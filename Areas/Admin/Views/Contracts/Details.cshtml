@@ -1,0 +1,37 @@
+@model KarakusAluminyum.Web.Models.Documents.Contract
+@using KarakusAluminyum.Web.Models.Documents
+@using KarakusAluminyum.Web.Services.Documents
+@{
+    ViewData["Title"] = "Sözleşme";
+    var problems = (List<string>)ViewBag.PlanErrors;
+    var isDraft = Model.Status == ContractStatus.Draft;
+}
+<div class="admin-actions">
+  <h1>Sözleşme @Model.ContractNumber</h1>
+  <a class="admin-btn" href="/yonetim/sozlesmeler">Sözleşme listesi</a>
+  <a class="admin-btn" href="/yonetim/sozlesmeler/yazdir/@Model.Id" target="_blank" rel="noopener">Görüntüle / PDF</a>
+  @if (isDraft) { <a class="admin-btn" href="/yonetim/sozlesmeler/duzenle/@Model.Id">Düzenle</a> }
+</div>
+<div class="admin-panel">
+  <div class="admin-grid">
+    <div><span class="admin-muted">Alıcı</span><h2>@Model.BuyerName</h2><p>@Model.BuyerAddress<br />@Model.BuyerTaxInfo</p></div>
+    <div><span class="admin-muted">Başlık</span><h2>@Model.Title</h2><p>Tarih: @TurkishNumbers.Date(Model.DocumentDate)<br />Durum: @(Model.Status switch { ContractStatus.Signed => "İmzalandı", ContractStatus.Cancelled => "İptal", _ => "Taslak" })</p></div>
+    <div><span class="admin-muted">Toplam bedel</span><h2>@TurkishNumbers.Money(Model.TotalAmount)</h2><p>@TurkishNumbers.MoneyWords(Model.TotalAmount)</p>
+      @if (Model.Quote is not null) { <p><a href="/yonetim/crm/teklifler/detay/@Model.QuoteId">Teklif: @Model.Quote.QuoteNumber</a></p> }</div>
+  </div>
+  @if (problems.Count > 0) { <p class="notice" style="background:#fff7e3;border-color:#d9a400;color:#73530c">@string.Join(" ", problems)</p> }
+</div>
+<div class="admin-panel">
+  <div class="admin-actions">
+    @if (isDraft)
+    {
+      <form method="post" action="/yonetim/sozlesmeler/imzala/@Model.Id" onsubmit="return confirm('İmzalandı olarak işaretlenen sözleşme artık değiştirilemez. Devam edilsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn">İmzalandı olarak işaretle</button></form>
+      <form method="post" action="/yonetim/sozlesmeler/sablonu-yenile/@Model.Id">@Html.AntiForgeryToken()<button class="admin-btn">Şablonu yenile</button></form>
+      <form method="post" action="/yonetim/sozlesmeler/sil/@Model.Id" onsubmit="return confirm('Taslak silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form>
+    }
+    @if (Model.Status != ContractStatus.Cancelled)
+    {
+      <form method="post" action="/yonetim/sozlesmeler/iptal/@Model.Id" onsubmit="return confirm('Sözleşme iptal edilsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">İptal et</button></form>
+    }
+  </div>
+</div>

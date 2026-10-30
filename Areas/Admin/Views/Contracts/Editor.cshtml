@@ -1,0 +1,78 @@
+@model KarakusAluminyum.Web.Models.Documents.ContractInputVm
+@using System.Text.Json
+@using KarakusAluminyum.Web.Models.Crm
+@using KarakusAluminyum.Web.Models.Documents
+@{
+    int? contractId = ViewBag.ContractId;
+    ViewData["Title"] = contractId is null ? "Yeni sözleşme" : "Sözleşmeyi düzenle";
+    var action = contractId is null ? "/yonetim/sozlesmeler/ekle" : $"/yonetim/sozlesmeler/duzenle/{contractId}";
+    var customers = ViewBag.Customers as List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> ?? new();
+    var clauses = ((List<TemplateClause>)ViewBag.Clauses).Select(c => new { id = c.Id, name = c.Name, quoteText = c.QuoteText, contractText = c.ContractText });
+}
+<link rel="stylesheet" href="~/css/document-editor.css" asp-append-version="true" />
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/sozlesmeler">Sözleşme listesi</a></div>
+<form id="doc-form" class="doc-editor" method="post" action="@action" data-mode="contract">
+  @Html.AntiForgeryToken()
+  <input type="hidden" asp-for="DocumentJson" />
+  <div asp-validation-summary="All" class="doc-errors"></div>
+
+  <section class="doc-card">
+    <h2>Taraflar ve tarih</h2>
+    <div class="doc-grid">
+      <div><label asp-for="CustomerId">Müşteri *</label><select asp-for="CustomerId" asp-items="customers" required><option value="">Müşteri seçin</option></select></div>
+      <div><label asp-for="Title">Sözleşme başlığı (listede görünür) *</label><input asp-for="Title" required /></div>
+      <div><label asp-for="DocumentDate">Sözleşme tarihi</label><input asp-for="DocumentDate" type="date" value="@Model.DocumentDate.ToString("yyyy-MM-dd")" /></div>
+      <div><label asp-for="PageCount">Sayfa sayısı</label><input asp-for="PageCount" type="number" min="1" /><p class="doc-help">Metinde geçer. Baskı önizlemesinde doğrulayın.</p></div>
+    </div>
+    <div class="doc-grid">
+      <div><label asp-for="BuyerName">Alıcı ünvanı / adı *</label><input asp-for="BuyerName" required /></div>
+      <div><label asp-for="BuyerTaxInfo">Alıcı vergi dairesi ve no</label><input asp-for="BuyerTaxInfo" /></div>
+    </div>
+    <label asp-for="BuyerAddress">Alıcı adresi</label><textarea asp-for="BuyerAddress" rows="2"></textarea>
+  </section>
+
+  <section class="doc-card">
+    <h2>Sözleşmenin konusu</h2>
+    <p class="admin-muted"><code>{{alan}}</code> yazdığınız her yer aşağıda değişkene dönüşür, <code>**metin**</code> kalın basılır.</p>
+    <label for="doc-subject">Konu</label><textarea id="doc-subject" rows="2" data-content="subject" placeholder="Örn. 1 adet villanın doğrama, cam, korkuluk ve panjur imalatı ile montaj işlerinin yapılmasıdır."></textarea>
+    <label for="doc-note">Not (blokların ardından)</label><textarea id="doc-note" rows="3" data-content="note"></textarea>
+    <label for="doc-closing">Bedele geçiş metni</label><textarea id="doc-closing" rows="2" data-content="closing"></textarea>
+  </section>
+
+  <section class="doc-card">
+    <h2>Değişkenler</h2>
+    <p class="admin-muted">Tüm belgede geçerli değerler. Henüz bilinmeyenleri boş bırakın; çıktıda elle doldurulacak çizgi olarak basılır.</p>
+    <div id="doc-variables" class="doc-grid"></div>
+  </section>
+
+  <section class="doc-card">
+    <h2>Bloklar ve iş kalemleri</h2>
+    <p class="admin-muted">Hazır maddeleri seçin. Blok kopyalayıp yalnızca adet gibi değerleri değiştirebilirsiniz.</p>
+    <div id="doc-blocks"></div>
+    <div class="doc-row"><button type="button" class="doc-btn" id="doc-add-block">+ Blok ekle</button></div>
+  </section>
+
+  <section class="doc-card">
+    <h2>Bedel ve ödeme planı</h2>
+    <div class="doc-grid">
+      <div><label asp-for="TotalAmount">İşin toplam bedeli (TL)</label><input asp-for="TotalAmount" type="number" step="0.01" min="0" /></div>
+      <div><label asp-for="VatMode">KDV gösterimi</label>
+        <select asp-for="VatMode"><option value="@VatMode.Included">KDV dahil</option><option value="@VatMode.None">KDV belirtilmesin</option><option value="@VatMode.Added">+ KDV</option></select></div>
+    </div>
+    <label for="doc-price-note">Bedel notu</label><textarea id="doc-price-note" rows="2" data-content="priceNote" placeholder="Örn. fatura ile ilgili özel not"></textarea>
+    <h3 style="margin:14px 0 6px;font-size:13px">Ödeme planı</h3>
+    <div id="doc-payments"></div>
+  </section>
+
+  <section class="doc-card">
+    <h2>Ek: çizimler</h2>
+    <p class="admin-muted">Seçilen pencere çizimleri poz listesi olarak sözleşmenin sonuna eklenir.</p>
+    <div id="doc-designs-list"></div>
+  </section>
+
+  <div class="doc-actions"><button class="admin-btn" type="submit">Kaydet</button><a class="admin-btn" href="/yonetim/sozlesmeler">İptal</a></div>
+</form>
+<script type="application/json" id="doc-customers">@Html.Raw(JsonSerializer.Serialize(ViewBag.CustomerDetails))</script>
+<script type="application/json" id="doc-clauses">@Html.Raw(JsonSerializer.Serialize(clauses))</script>
+<script type="application/json" id="doc-designs">@Html.Raw(JsonSerializer.Serialize(ViewBag.Designs))</script>
+<script src="~/js/document-editor.js" asp-append-version="true"></script>

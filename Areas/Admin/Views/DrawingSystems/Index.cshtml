@@ -1,0 +1,18 @@
+@model List<KarakusAluminyum.Web.Models.Drawing.ProfileSystem>
+@using KarakusAluminyum.Web.Models.Drawing
+@{ ViewData["Title"] = "Sistemler"; }
+<div class="admin-actions"><h1>Sistemler</h1><a class="admin-btn" href="/yonetim/cizim">Çizim listesi</a><a class="admin-btn" href="/yonetim/camlar/tipler">Cam tipleri</a></div>
+<p class="admin-muted">Kesim ölçüleri ve maliyetler buradaki değerlerle hesaplanır. Üretime geçmeden önce değerleri kullandığınız ürünün teknik kataloğuna göre girin.</p>
+@foreach (var category in ProductCategories.All)
+{
+  <div class="admin-panel">
+    <div class="admin-actions"><h2 style="margin:0">@ProductCategories.Label(category)</h2><a class="admin-btn" href="/yonetim/cizim/sistemler/ekle?tur=@category">+ Yeni sistem</a></div>
+    <table class="admin-table"><thead><tr><th>Ad</th><th>Boy (@Units.Code)</th><th>Durum</th><th>İşlem</th></tr></thead><tbody>
+    @foreach (var x in Model.Where(m => m.Category == category))
+    {
+      <tr><td>@x.Name</td><td>@Units.Format(x.BarLengthMm)</td><td>@(x.IsActive ? "Aktif" : "Pasif")</td>
+        <td><div class="admin-actions"><a class="admin-btn" href="/yonetim/cizim/sistemler/duzenle/@x.Id">Düzenle</a><form method="post" action="/yonetim/cizim/sistemler/sil/@x.Id" onsubmit="return confirm('Bu sistem silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form></div></td></tr>
+    }
+    </tbody></table>
+  </div>
+}

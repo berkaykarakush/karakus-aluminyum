@@ -1,5 +1,6 @@
 using KarakusAluminyum.Web.Data;
 using KarakusAluminyum.Web.Models;
+using KarakusAluminyum.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 namespace KarakusAluminyum.Web.Controllers;
@@ -12,20 +13,21 @@ public class ProjectsController : Controller
     public async Task<IActionResult> Index()
     {
         ViewData["Seo"] = new SeoViewModel { Title="Projelerimiz | Karakuş Alüminyum", Description="Karakuş Alüminyum'un alüminyum doğrama ve mimari sistem uygulamalarını proje portföyünde inceleyin.", CanonicalPath="/projeler" };
-        var items=await _db.Projects.AsNoTracking().Where(x=>x.IsPublished).OrderByDescending(x=>x.CreatedUtc).Select(x=>new ProjectItem(x.Slug,x.Title,x.Type,x.Summary,x.Image,x.Location)).ToListAsync();
-        return View((IReadOnlyList<ProjectItem>)items);
+        return View((IReadOnlyList<ProjectItem>)await ProjectQueries.PublishedAsync(_db));
     }
     [HttpGet("{slug}")]
     public async Task<IActionResult> Detail(string slug)
     {
         var x=await _db.Projects.AsNoTracking().FirstOrDefaultAsync(p=>p.IsPublished && p.Slug==slug);
         if(x is null) return NotFound();
-        var project=new ProjectItem(x.Slug,x.Title,x.Type,x.Summary,x.Image,x.Location);
-        ViewData["Seo"] = new SeoViewModel { Title=project.Title+" | Karakuş Alüminyum", Description=project.Summary, CanonicalPath="/projeler/"+project.Slug, ImagePath=project.Image, Type="article" };
-        ViewBag.Content=x.Content;
-        ViewBag.Gallery = await _db.GalleryImages.AsNoTracking()
+        var gallery = await _db.GalleryImages.AsNoTracking()
             .Where(g => g.ProjectId == x.Id && g.IsPublished)
             .OrderBy(g => g.SortOrder).ToListAsync();
+        var image = x.Image is null or ProjectQueries.PlaceholderImage ? gallery.FirstOrDefault()?.ImagePath ?? ProjectQueries.PlaceholderImage : x.Image;
+        var project=new ProjectItem(x.Slug,x.Title,x.Type,x.Summary,image,x.Location);
+        ViewData["Seo"] = new SeoViewModel { Title=project.Title+" | Karakuş Alüminyum", Description=project.Summary, CanonicalPath="/projeler/"+project.Slug, ImagePath=project.Image, Type="article" };
+        ViewBag.Content=x.Content;
+        ViewBag.Gallery = gallery.Where(g => g.ImagePath != image).ToList(); // kapak görseli galeride tekrar etmesin
         return View(project);
     }
 }

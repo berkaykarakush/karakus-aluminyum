@@ -1,0 +1,27 @@
+@model List<KarakusAluminyum.Web.Models.Documents.TemplateClause>
+@{ ViewData["Title"] = "Belge şablonları"; }
+<div class="admin-actions"><h1>Belge şablonları</h1></div>
+<div class="admin-panel">
+  <h2>Şablon ayarları</h2>
+  <p class="admin-muted">Logo, firma bilgileri, imza yetkilisi ve sabit metinler. Her belge oluşturulduğunda bu ayarların kopyasını alır; imzalı sözleşmeler sonradan değişmez.</p>
+  <div class="admin-actions">
+    <a class="admin-btn" href="/yonetim/sablonlar/quote">Teklif şablonu</a>
+    <a class="admin-btn" href="/yonetim/sablonlar/contract">Sözleşme şablonu</a>
+  </div>
+</div>
+<div class="admin-panel">
+  <div class="admin-actions"><h2 style="margin:0">Hazır maddeler</h2><a class="admin-btn" href="/yonetim/sablonlar/maddeler/ekle">+ Yeni madde</a></div>
+  <p class="admin-muted">Bloklara eklenen iş kalemi metinleri. <code>{{renk}}</code> gibi alanlar belge hazırlanırken doldurulur.</p>
+  <table class="admin-table">
+    <thead><tr><th>Sıra</th><th>Madde</th><th>Teklif metni</th><th>Durum</th><th>İşlem</th></tr></thead>
+    <tbody>
+    @foreach (var x in Model)
+    {
+      <tr>
+        <td>@x.SortOrder</td><td>@x.Name</td><td>@x.QuoteText</td><td>@(x.IsActive ? "Aktif" : "Pasif")</td>
+        <td><div class="admin-actions"><a class="admin-btn" href="/yonetim/sablonlar/maddeler/duzenle/@x.Id">Düzenle</a><form method="post" action="/yonetim/sablonlar/maddeler/sil/@x.Id" onsubmit="return confirm('Bu madde silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form></div></td>
+      </tr>
+    }
+    </tbody>
+  </table>
+</div>

@@ -1,0 +1,64 @@
+@model KarakusAluminyum.Web.Models.Crm.QuoteInputViewModel
+@using System.Text.Json
+@using KarakusAluminyum.Web.Models.Crm
+@using KarakusAluminyum.Web.Models.Documents
+@{
+    var editing = Model.Id != 0;
+    ViewData["Title"] = editing ? "Teklifi düzenle" : "Yeni teklif";
+    var action = editing ? $"/yonetim/crm/teklifler/duzenle/{Model.Id}" : "/yonetim/crm/teklifler/ekle";
+    var customers = ViewBag.Customers as List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> ?? new();
+    var clauses = ((List<TemplateClause>)ViewBag.Clauses).Select(c => new { id = c.Id, name = c.Name, quoteText = c.QuoteText, contractText = c.ContractText });
+}
+<link rel="stylesheet" href="~/css/document-editor.css" asp-append-version="true" />
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/crm/teklifler">Teklif listesi</a></div>
+<form id="doc-form" class="doc-editor" method="post" action="@action" data-mode="quote">
+  @Html.AntiForgeryToken()
+  <input type="hidden" asp-for="DocumentJson" />
+  <div asp-validation-summary="All" class="doc-errors"></div>
+
+  <section class="doc-card">
+    <h2>Teklif bilgileri</h2>
+    <div class="doc-grid">
+      <div><label asp-for="CustomerId">Müşteri *</label><select asp-for="CustomerId" asp-items="customers" required><option value="">Müşteri seçin</option></select></div>
+      <div><label asp-for="Title">Teklif başlığı *</label><input asp-for="Title" required placeholder="Örn. 3 blok inşaat doğrama işi" /></div>
+      <div><label asp-for="DocumentDate">Teklif tarihi</label><input asp-for="DocumentDate" type="date" value="@Model.DocumentDate.ToString("yyyy-MM-dd")" /></div>
+      <div><label asp-for="ValidUntilUtc">Geçerlilik tarihi</label><input asp-for="ValidUntilUtc" type="date" value="@Model.ValidUntilUtc?.ToString("yyyy-MM-dd")" /></div>
+      <div><label asp-for="VatMode">KDV gösterimi</label>
+        <select asp-for="VatMode"><option value="@VatMode.Included">Fiyatlar KDV dahil</option><option value="@VatMode.None">KDV belirtilmesin</option><option value="@VatMode.Added">KDV toplama eklensin</option></select></div>
+      <div><label asp-for="TaxRate">KDV oranı (%)</label><input asp-for="TaxRate" type="number" step="0.01" min="0" max="100" /></div>
+      <div><label asp-for="DiscountRate">İskonto (%)</label><input asp-for="DiscountRate" type="number" step="0.01" min="0" max="100" /></div>
+    </div>
+  </section>
+
+  <section class="doc-card">
+    <h2>Metinler</h2>
+    <p class="admin-muted">Şablondan gelir, bu teklife özel değiştirebilirsiniz. <code>{{alan}}</code> yazdığınız her yer aşağıda değişkene dönüşür, <code>**metin**</code> kalın basılır.</p>
+    <label for="doc-intro">Giriş metni</label><textarea id="doc-intro" rows="3" data-content="intro"></textarea>
+    <label for="doc-closing">Fiyat öncesi metin</label><textarea id="doc-closing" rows="2" data-content="closing"></textarea>
+    <label for="doc-note">Not</label><textarea id="doc-note" rows="2" data-content="note" placeholder="Örn. Bodrum kattaki doğramalar fiyata dahil değildir."></textarea>
+  </section>
+
+  <section class="doc-card">
+    <h2>Değişkenler</h2>
+    <p class="admin-muted">Tüm belgede geçerli değerler. Boş bırakılanlar çıktıda çizgi olarak basılır.</p>
+    <div id="doc-variables" class="doc-grid"></div>
+  </section>
+
+  <section class="doc-card">
+    <h2>Bloklar</h2>
+    <p class="admin-muted">Her blok ayrı sayfada basılır. Aynı metinleri tekrar yazmamak için bloğu kopyalayın.</p>
+    <div id="doc-blocks"></div>
+    <div class="doc-row"><button type="button" class="doc-btn" id="doc-add-block">+ Blok ekle</button><strong id="doc-total"></strong></div>
+  </section>
+
+  <section class="doc-card">
+    <h2>Ek: çizimler</h2>
+    <p class="admin-muted">Seçilen pencere çizimleri poz listesi olarak belgenin sonuna eklenir.</p>
+    <div id="doc-designs-list"></div>
+  </section>
+
+  <div class="doc-actions"><button class="admin-btn" type="submit">@(editing ? "Değişiklikleri kaydet" : "Teklifi oluştur")</button><a class="admin-btn" href="/yonetim/crm/teklifler">İptal</a></div>
+</form>
+<script type="application/json" id="doc-clauses">@Html.Raw(JsonSerializer.Serialize(clauses))</script>
+<script type="application/json" id="doc-designs">@Html.Raw(JsonSerializer.Serialize(ViewBag.Designs))</script>
+<script src="~/js/document-editor.js" asp-append-version="true"></script>

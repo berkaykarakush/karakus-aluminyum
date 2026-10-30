@@ -1,5 +1,7 @@
 using KarakusAluminyum.Web.Models;
 using KarakusAluminyum.Web.Models.Crm;
+using KarakusAluminyum.Web.Models.Documents;
+using KarakusAluminyum.Web.Models.Drawing;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,6 +20,15 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<QuoteItem> QuoteItems => Set<QuoteItem>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<GalleryImage> GalleryImages => Set<GalleryImage>();
+    public DbSet<FaqItem> FaqItems => Set<FaqItem>();
+    public DbSet<ProfileSystem> ProfileSystems => Set<ProfileSystem>();
+    public DbSet<GlassType> GlassTypes => Set<GlassType>();
+    public DbSet<WindowDesign> WindowDesigns => Set<WindowDesign>();
+    public DbSet<GlassList> GlassLists => Set<GlassList>();
+    public DbSet<GlassListItem> GlassListItems => Set<GlassListItem>();
+    public DbSet<DocumentTemplate> DocumentTemplates => Set<DocumentTemplate>();
+    public DbSet<TemplateClause> TemplateClauses => Set<TemplateClause>();
+    public DbSet<Contract> Contracts => Set<Contract>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -53,5 +64,29 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
                 .HasForeignKey(x => x.ServiceId).OnDelete(DeleteBehavior.Cascade);
             builder.Entity<GalleryImage>().HasOne(x => x.Project).WithMany()
                 .HasForeignKey(x => x.ProjectId).OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<FaqItem>().HasIndex(x => new { x.ServiceId, x.SortOrder });
+        builder.Entity<FaqItem>().HasOne(x => x.Service).WithMany()
+            .HasForeignKey(x => x.ServiceId).OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<DocumentTemplate>().HasIndex(x => x.Kind).IsUnique();
+        builder.Entity<Contract>().HasIndex(x => x.ContractNumber).IsUnique();
+        builder.Entity<Contract>().HasOne(x => x.Customer).WithMany()
+            .HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<Contract>().HasOne(x => x.Quote).WithMany()
+            .HasForeignKey(x => x.QuoteId).OnDelete(DeleteBehavior.SetNull);
+
+        builder.Entity<WindowDesign>().HasIndex(x => x.UpdatedUtc);
+        builder.Entity<WindowDesign>().HasOne(x => x.Customer).WithMany()
+            .HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<WindowDesign>().HasOne(x => x.ProfileSystem).WithMany()
+            .HasForeignKey(x => x.ProfileSystemId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<GlassList>().HasIndex(x => x.UpdatedUtc);
+        builder.Entity<GlassList>().HasOne(x => x.Customer).WithMany()
+            .HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<GlassListItem>().HasOne(x => x.GlassList).WithMany(x => x.Items)
+            .HasForeignKey(x => x.GlassListId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<GlassListItem>().HasOne(x => x.GlassType).WithMany()
+            .HasForeignKey(x => x.GlassTypeId).OnDelete(DeleteBehavior.Restrict);
     }
 }

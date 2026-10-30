@@ -5,6 +5,9 @@ namespace KarakusAluminyum.Web.Models.Crm;
 
 public enum QuoteStatus { Draft = 0, Sent = 1, Accepted = 2, Rejected = 3, Expired = 4, Converted = 5 }
 
+// Added: KDV toplama eklenir. Included: tutarlar KDV dahildir. None: belgede KDV belirtilmez.
+public enum VatMode { Added = 0, Included = 1, None = 2 }
+
 public sealed class Quote
 {
     public int Id { get; set; }
@@ -14,7 +17,11 @@ public sealed class Quote
     [Required, StringLength(180)] public string Title { get; set; } = "";
     public QuoteStatus Status { get; set; } = QuoteStatus.Draft;
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+    public DateTime DocumentDate { get; set; } = DateTime.UtcNow;
     public DateTime? ValidUntilUtc { get; set; }
+    public VatMode VatMode { get; set; } = VatMode.Added;
+    public string DocumentJson { get; set; } = "{}";
+    public string SnapshotJson { get; set; } = "{}";
     [StringLength(2000)] public string? Notes { get; set; }
     [Column(TypeName = "numeric(5,2)")] public decimal TaxRate { get; set; } = 20m;
     [Column(TypeName = "numeric(5,2)")] public decimal DiscountRate { get; set; }
@@ -30,6 +37,8 @@ public sealed class QuoteItem
     public int Id { get; set; }
     public int QuoteId { get; set; }
     public Quote? Quote { get; set; }
+    [StringLength(120)] public string? BlockName { get; set; }
+    public int SortOrder { get; set; }
     [Required, StringLength(200)] public string Description { get; set; } = "";
     [Column(TypeName = "numeric(18,3)")] public decimal Quantity { get; set; } = 1;
     [StringLength(20)] public string Unit { get; set; } = "Adet";

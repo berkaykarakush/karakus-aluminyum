@@ -8,3 +8,6 @@
 .keys/
 *.user
 *.suo
+
+/sozlesme-*.pdf
+/teklif-*.pdf

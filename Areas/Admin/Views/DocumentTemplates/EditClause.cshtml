@@ -1,0 +1,20 @@
+@model KarakusAluminyum.Web.Models.Documents.TemplateClause
+@{
+    var editing = Model.Id != 0;
+    ViewData["Title"] = editing ? "Maddeyi düzenle" : "Yeni madde";
+    var action = editing ? $"/yonetim/sablonlar/maddeler/duzenle/{Model.Id}" : "/yonetim/sablonlar/maddeler/ekle";
+}
+<h1>@ViewData["Title"]</h1>
+<div class="admin-panel">
+  <form class="admin-form" method="post" action="@action">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="All"></div>
+    <label asp-for="Name">Madde adı</label><input asp-for="Name" required />
+    <label asp-for="QuoteText">Teklif metni</label><textarea asp-for="QuoteText"></textarea>
+    <label asp-for="ContractText">Sözleşme metni</label><textarea asp-for="ContractText"></textarea>
+    <p class="admin-muted"><code>{{alan_adi}}</code> belge hazırlanırken doldurulur, <code>**metin**</code> kalın basılır.</p>
+    <label asp-for="SortOrder">Sıra</label><input asp-for="SortOrder" type="number" />
+    <p><label><input asp-for="IsActive" type="checkbox" style="width:auto" /> Aktif</label></p>
+    <div class="admin-actions"><button class="admin-btn" type="submit">Kaydet</button><a href="/yonetim/sablonlar">İptal</a></div>
+  </form>
+</div>

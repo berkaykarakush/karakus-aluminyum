@@ -1,0 +1,5 @@
+@model KarakusAluminyum.Web.Models.Documents.DocumentTemplate
+<div class="doc-foot">
+  @if (!string.IsNullOrWhiteSpace(Model.Phone)) { <div>Tel: @Model.Phone</div> }
+  @if (!string.IsNullOrWhiteSpace(Model.FooterAddress)) { <div>Adres: @Model.FooterAddress</div> }
+</div>

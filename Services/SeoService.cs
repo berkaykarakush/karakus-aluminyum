@@ -23,7 +23,7 @@ public sealed class SeoService
         ["name"] = _settings.SiteName,
         ["url"] = Canonical("/"),
         ["logo"] = Canonical("/images/transparent.png"),
-        ["image"] = Canonical("/images/aluminum-dograma.png"),
+        ["image"] = Canonical("/images/aluminyum-dograma.png"),
         ["description"] = "İzmir'de mimari alüminyum doğrama ve sistem çözümleri.",
         ["telephone"] = _settings.PhoneE164,
         ["email"] = _settings.Email,

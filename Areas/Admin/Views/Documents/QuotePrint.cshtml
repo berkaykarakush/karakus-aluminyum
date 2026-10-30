@@ -1,0 +1,90 @@
+@model KarakusAluminyum.Web.Services.Documents.QuotePrintVm
+@using KarakusAluminyum.Web.Models.Crm
+@using KarakusAluminyum.Web.Services.Documents
+@{
+    Layout = null;
+    var t = Model.Template;
+    var c = Model.Content;
+    var system = Model.System;
+    var quote = Model.Quote;
+    ViewData["DocDate"] = TurkishNumbers.Date(quote.DocumentDate);
+    var multiple = Model.Blocks.Count > 1;
+    var showSummary = multiple || quote.DiscountAmount > 0 || quote.VatMode == VatMode.Added;
+}
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>@t.Title - @Model.CustomerName</title>
+  <link rel="stylesheet" href="~/css/document-print.css" asp-append-version="true" />
+</head>
+<body class="doc doc--quote">
+  <div class="doc-toolbar"><button type="button" onclick="window.print()">Yazdır / PDF kaydet</button></div>
+  @for (var i = 0; i < Model.Blocks.Count; i++)
+  {
+    var view = Model.Blocks[i];
+    var block = view.Block;
+    <table class="doc-sheet">
+      <thead><tr><td><partial name="~/Areas/Admin/Views/Documents/_DocumentHead.cshtml" model="t" /></td></tr></thead>
+      <tfoot><tr><td><partial name="~/Areas/Admin/Views/Documents/_DocumentFoot.cshtml" model="t" /></td></tr></tfoot>
+      <tbody><tr><td class="doc-body">
+        <p>Sayın @Model.CustomerName,</p>
+        <p>@TemplateText.ToHtml(c.Intro, block.Variables, c.Variables, system)</p>
+        @foreach (var clause in block.Clauses)
+        {
+          <p>@TemplateText.ToHtml(clause.Text, block.Variables, c.Variables, system)</p>
+        }
+        <p>@TemplateText.ToHtml(c.Closing, block.Variables, c.Variables, system)</p>
+
+        <div class="doc-prices">
+          @if (!string.IsNullOrWhiteSpace(block.Name)) { <p class="doc-block-name">@block.Name</p> }
+          @if (block.ShowLines && view.Items.Count > 0)
+          {
+            <table class="doc-lines"><tbody>
+              @foreach (var item in view.Items)
+              {
+                <tr>
+                  <td>@item.Description @(item.Quantity != 1 ? $"({item.Quantity:0.###} {item.Unit})" : "")</td>
+                  <td class="doc-amount">@TurkishNumbers.Money(item.LineTotal)</td>
+                </tr>
+              }
+            </tbody></table>
+          }
+          <table class="doc-lines doc-total"><tbody>
+            <tr>
+              <td>İşin Toplam Tutarı</td>
+              <td class="doc-amount">@TurkishNumbers.Money(view.Subtotal)@(quote.VatMode == VatMode.Included ? " (KDV Dahil)" : "")<br />(@TurkishNumbers.MoneyWords(view.Subtotal))</td>
+            </tr>
+          </tbody></table>
+        </div>
+
+        @if (i == Model.Blocks.Count - 1 && showSummary)
+        {
+          <table class="doc-lines doc-summary"><tbody>
+            @if (quote.DiscountAmount > 0 || quote.VatMode == VatMode.Added) { <tr><td>Ara Toplam</td><td class="doc-amount">@TurkishNumbers.Money(quote.Subtotal)</td></tr> }
+            @if (quote.DiscountAmount > 0) { <tr><td>İskonto (%@quote.DiscountRate.ToString("0.##"))</td><td class="doc-amount">-@TurkishNumbers.Money(quote.DiscountAmount)</td></tr> }
+            @if (quote.VatMode == VatMode.Added) { <tr><td>KDV (%@quote.TaxRate.ToString("0.##"))</td><td class="doc-amount">@TurkishNumbers.Money(quote.TaxAmount)</td></tr> }
+            <tr class="doc-grand"><td>Genel Toplam@(quote.VatMode == VatMode.Included ? " (KDV Dahil)" : "")</td><td class="doc-amount">@TurkishNumbers.Money(quote.GrandTotal)<br />(@TurkishNumbers.MoneyWords(quote.GrandTotal))</td></tr>
+          </tbody></table>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(c.Note)) { <p>Not: @TemplateText.ToHtml(c.Note, block.Variables, c.Variables, system)</p> }
+        <p class="doc-signoff">@TemplateText.ToHtml(t.SignOff, system)<br />@t.Signatory</p>
+      </td></tr></tbody>
+    </table>
+  }
+  @if (Model.Attachments.Items.Count > 0)
+  {
+    <table class="doc-sheet">
+      <thead><tr><td><partial name="~/Areas/Admin/Views/Documents/_DocumentHead.cshtml" model="t" /></td></tr></thead>
+      <tfoot><tr><td><partial name="~/Areas/Admin/Views/Documents/_DocumentFoot.cshtml" model="t" /></td></tr></tfoot>
+      <tbody><tr><td class="doc-body"><partial name="~/Areas/Admin/Views/Documents/_Attachments.cshtml" model="Model.Attachments" /></td></tr></tbody>
+    </table>
+  }
+  <div class="doc-print-foot"><partial name="~/Areas/Admin/Views/Documents/_DocumentFoot.cshtml" model="t" /></div>
+  <script src="~/js/units.js" asp-append-version="true"></script>
+  <script src="~/js/window-drawing.js" asp-append-version="true"></script>
+  <script>document.querySelectorAll("[data-doc-drawing]").forEach((svg) => WindowDrawing.render(svg, JSON.parse(svg.dataset.docDrawing)));</script>
+</body>
+</html>

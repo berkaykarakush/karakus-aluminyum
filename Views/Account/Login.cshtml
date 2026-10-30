@@ -1,2 +1,21 @@
 @model KarakusAluminyum.Web.Controllers.LoginInput
-@{ViewData["Title"]="Yönetici Girişi";Layout="~/Views/Shared/_Layout.cshtml";}<section class="section"><div class="container" style="max-width:520px"><h1>Yönetici Girişi</h1><form method="post" action="/yonetim-giris">@Html.AntiForgeryToken()<input type="hidden" name="returnUrl" value="@ViewBag.ReturnUrl"/><div asp-validation-summary="All"></div><label asp-for="Email">E-posta</label><input asp-for="Email" autocomplete="username"/><span asp-validation-for="Email"></span><label asp-for="Password">Parola</label><input asp-for="Password" autocomplete="current-password"/><span asp-validation-for="Password"></span><p><label><input asp-for="RememberMe" type="checkbox"/> Beni hatırla</label></p><button class="button button--primary" type="submit">Giriş yap</button></form></div></section>
+@{ViewData["Title"]="Yönetici Girişi";Layout="~/Views/Shared/_Layout.cshtml";}
+<section class="section section--soft">
+  <div class="container" style="max-width:520px">
+    <div class="contact-panel">
+      <span class="eyebrow">Yönetim</span>
+      <h1 style="font-size:44px">Yönetici Girişi</h1>
+      <form method="post" action="/yonetim-giris">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="returnUrl" value="@ViewBag.ReturnUrl"/>
+        <div class="validation-summary" asp-validation-summary="All"></div>
+        <div class="form-grid" style="grid-template-columns:1fr">
+          <div class="form-field"><label asp-for="Email">E-posta</label><input asp-for="Email" autocomplete="username"/><span class="field-error" asp-validation-for="Email"></span></div>
+          <div class="form-field"><label asp-for="Password">Parola</label><input asp-for="Password" autocomplete="current-password"/><span class="field-error" asp-validation-for="Password"></span></div>
+          <div class="form-field consent"><label><input asp-for="RememberMe" type="checkbox"/> Beni hatırla</label></div>
+          <button class="button button--dark" type="submit">Giriş yap</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>

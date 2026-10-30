@@ -1,0 +1,90 @@
+@model KarakusAluminyum.Web.Models.Drawing.GlassList
+@using KarakusAluminyum.Web.Areas.Admin.Controllers
+@using KarakusAluminyum.Web.Models.Drawing
+@using KarakusAluminyum.Web.Services.Drawing
+@{
+    ViewData["Title"] = "Cam listesi";
+    var quotes = (SelectList)ViewBag.Quotes;
+    var plans = (List<(GlassType Type, GlassPlatePlan Plan)>)ViewBag.Plans;
+    string N(decimal v) => v.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+}
+<link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
+<div class="admin-actions wd-noprint">
+  <h1>Cam listesi</h1>
+  <a class="admin-btn" href="/yonetim/camlar">Cam listeleri</a>
+  <a class="admin-btn" href="/yonetim/camlar/duzenle/@Model.Id">Düzenle</a>
+  <button class="admin-btn" type="button" onclick="window.print()">Yazdır / PDF kaydet</button>
+</div>
+<div class="wd-sheet">
+  <div class="admin-panel">
+    <h2>@Model.Name</h2>
+    <p class="admin-muted">@Model.Customer?.Name</p>
+    <table class="admin-table wd-table">
+      <thead><tr><th>Poz</th><th>Cam tipi</th><th>G × Y (@Units.Code)</th><th>Adet</th><th>m²</th><th>Tutar</th><th>Not</th></tr></thead>
+      <tbody>
+      @foreach (var i in Model.Items)
+      {
+        <tr><td>@i.Position</td><td>@i.GlassType?.Name @(i.Shaped ? "(şablon)" : "")</td><td>@Units.Size(i.WidthMm, i.HeightMm)</td><td>@i.Quantity</td><td>@GlassListsController.RowArea(i).ToString("N3", KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture)</td><td>@GlassListsController.RowPrice(i).ToString("N2", KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture) ₺</td><td>@i.Note</td></tr>
+      }
+      </tbody>
+      <tfoot><tr><td colspan="3"><strong>Toplam</strong></td><td><strong>@Model.Items.Sum(i => i.Quantity)</strong></td><td><strong>@Model.Items.Sum(GlassListsController.RowArea).ToString("N3", KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture)</strong></td><td><strong>@GlassListsController.ListTotal(Model).ToString("N2", KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture) ₺</strong></td><td></td></tr></tfoot>
+    </table>
+    @if (Model.Items.Any(i => i.GlassType?.PricePerM2 == 0)) { <p class="wd-warnings" style="list-style:none">Bazı cam tiplerinin fiyatı girilmemiş.</p> }
+    @if (!string.IsNullOrWhiteSpace(Model.Notes)) { <p style="white-space:pre-wrap">@Model.Notes</p> }
+  </div>
+  <div class="admin-panel">
+    <h2>Cam çizimleri</h2>
+    <div class="gl-drawings">
+      @foreach (var i in Model.Items)
+      {
+        var scale = 100m / Math.Max(i.WidthMm, i.HeightMm);
+        var rw = i.WidthMm * scale; var rh = i.HeightMm * scale;
+        var x = (130m - rw) / 2; var y = (120m - rh) / 2;
+        <div class="gl-drawing">
+          <svg viewBox="0 0 130 120" role="img" aria-label="@Units.Size(i.WidthMm, i.HeightMm) @Units.Code cam">
+            <rect x="@N(x)" y="@N(y)" width="@N(rw)" height="@N(rh)" fill="#cfe4f0" stroke="#26313a" stroke-width=".6" />
+            <text x="65" y="@N(y - 2)" font-size="7" text-anchor="middle" fill="#1b252d">@Units.Format(i.WidthMm)</text>
+            <text x="@N(x - 2)" y="60" font-size="7" text-anchor="middle" fill="#1b252d" transform="rotate(-90 @N(x - 2) 60)">@Units.Format(i.HeightMm)</text>
+          </svg>
+          <div><strong>@i.Position</strong> @i.Quantity adet</div>
+          <div>@i.GlassType?.Name</div>
+        </div>
+      }
+    </div>
+  </div>
+  <div class="admin-panel">
+    <h2>Plaka yerleşimi</h2>
+    <p class="admin-muted">Kesim için tahmini yerleşimdir; camcının optimizasyonu daha iyi sonuç verebilir. Şablonlu camlar dikdörtgen olarak hesaplanır.</p>
+    @foreach (var (type, plan) in plans)
+    {
+      <h3>@type.Name: @plan.Plates.Count plaka (@Units.Size(plan.SheetWidthMm, plan.SheetHeightMm) @Units.Code), verim %@plan.UtilisationPercent</h3>
+      @if (plan.TooLarge.Count > 0) { <ul class="wd-errors">@foreach (var item in plan.TooLarge) { <li>Plakaya sığmıyor: @item</li> }</ul> }
+      @for (var p = 0; p < plan.Plates.Count; p++)
+      {
+        <div class="admin-muted">Plaka @(p + 1)</div>
+        <svg class="gl-plate" viewBox="0 0 @N(plan.SheetWidthMm) @N(plan.SheetHeightMm)" role="img" aria-label="Plaka @(p + 1) yerleşimi">
+          @foreach (var piece in plan.Plates[p].Pieces)
+          {
+            var font = Math.Min(Math.Min(piece.WidthMm, piece.HeightMm) / 4, plan.SheetWidthMm / 40);
+            <g>
+              <rect x="@N(piece.X)" y="@N(piece.Y)" width="@N(piece.WidthMm)" height="@N(piece.HeightMm)" fill="#cfe4f0" stroke="#26313a" stroke-width="@N(plan.SheetWidthMm / 600)" />
+              <text x="@N(piece.X + piece.WidthMm / 2)" y="@N(piece.Y + piece.HeightMm / 2)" font-size="@N(font)" text-anchor="middle" dominant-baseline="middle" fill="#1b252d">@Units.Format(piece.WidthMm)×@Units.Format(piece.HeightMm)</text>
+            </g>
+          }
+        </svg>
+      }
+    }
+  </div>
+  <div class="admin-panel wd-noprint">
+    <h2>Teklife ekle</h2>
+    @if (quotes.Any())
+    {
+      <form class="admin-actions" method="post" action="/yonetim/camlar/teklife-ekle/@Model.Id">
+        @Html.AntiForgeryToken()
+        <select name="quoteId" aria-label="Taslak teklif" asp-items="quotes"></select>
+        <button class="admin-btn">Toplam tutarla ekle</button>
+      </form>
+    }
+    else { <p class="admin-muted">Taslak durumunda teklif yok.</p> }
+  </div>
+</div>

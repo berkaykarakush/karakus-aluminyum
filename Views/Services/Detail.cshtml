@@ -1,5 +1,5 @@
 @model ServicePage
-<section class="page-hero">
+<section class="page-hero" style="--hero-image:url('@Model.Image')">
     <div class="container">
         <nav class="breadcrumbs" aria-label="İçerik yolu">
             <a href="/">Ana Sayfa</a>
@@ -32,26 +32,8 @@
     </div>
 </section>
 
-<section class="section section--soft">
-    <div class="container">
-        <div class="section-heading">
-            <div>
-                <span class="eyebrow">Sık Sorulan Sorular</span>
-                <h2>@Model.Name hakkında merak edilenler.</h2>
-            </div>
-        </div>
-        <div class="faq-list">
-            @foreach (var faq in Model.Faqs) 
-            { 
-                var parts = faq.Split('|', 2); 
-                <article class="faq-item">
-                    <h3>@parts[0]</h3>
-                    <p>@(parts.Length > 1 ? parts[1] : "")</p>
-                </article> 
-            }
-        </div>
-    </div>
-</section>
+@{ ViewData["FaqHeading"] = Model.Name + " hakkında merak edilenler."; }
+<partial name="_Faqs" model="(IReadOnlyList<KarakusAluminyum.Web.Models.FaqItem>)ViewBag.Faqs" />
 
 <section class="section">
     <div class="container">

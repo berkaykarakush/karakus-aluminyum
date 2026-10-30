@@ -1,0 +1,43 @@
+@model KarakusAluminyum.Web.Models.Drawing.GlassListInputVm
+@using System.Text.Json
+@{
+    var editing = Model.Id != 0;
+    ViewData["Title"] = editing ? "Cam listesini düzenle" : "Yeni cam listesi";
+    var action = editing ? $"/yonetim/camlar/duzenle/{Model.Id}" : "/yonetim/camlar/ekle";
+}
+<link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/document-editor.css" asp-append-version="true" />
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/camlar">Cam listeleri</a></div>
+<form id="gl-form" class="doc-editor" method="post" action="@action">
+  @Html.AntiForgeryToken()
+  <input type="hidden" asp-for="ItemsJson" />
+  <div asp-validation-summary="All" class="doc-errors"></div>
+  <section class="doc-card">
+    <div class="doc-grid">
+      <div><label asp-for="Name">Liste adı *</label><input asp-for="Name" required placeholder="Örn. A Blok camları" /></div>
+      <div><label asp-for="CustomerId">Müşteri</label><select asp-for="CustomerId" asp-items="(SelectList)ViewBag.Customers"><option value="">-</option></select></div>
+      <div><label for="gl-default-type">Yeni satırların cam tipi</label><select id="gl-default-type">
+        @foreach (var t in ((IEnumerable<dynamic>)ViewBag.GlassTypes).Where(t => t.active)) { <option value="@t.id">@t.name</option> }
+      </select></div>
+    </div>
+  </section>
+  <section class="doc-card">
+    <h2>Toplu ölçü ekle</h2>
+    <p class="admin-muted">Her satıra bir ölçü yazın veya Excel'den yapıştırın: <code>genişlik yükseklik adet</code>. Başına poz yazabilirsiniz: <code>P1 100 120 3</code></p>
+    <textarea id="gl-paste" rows="4" aria-label="Toplu ölçü" placeholder="100 120 3&#10;P2 85x140x2"></textarea>
+    <div class="doc-row"><label for="gl-paste-unit" style="margin:0">Bu ölçülerin birimi</label><select id="gl-paste-unit" style="flex:0 0 auto;width:auto!important"><option value="mm">mm</option><option value="cm">cm</option><option value="m">m</option></select><button type="button" class="doc-btn" id="gl-paste-add">Listeye ekle</button><span id="gl-paste-note" class="doc-help"></span></div>
+  </section>
+  <section class="doc-card">
+    <h2>Cam ölçüleri</h2>
+    <table class="gl-table">
+      <thead><tr><th></th><th>Poz</th><th>Genişlik</th><th>Yükseklik</th><th>Adet</th><th>Cam tipi</th><th>Not</th><th></th></tr></thead>
+      <tbody id="gl-rows"></tbody>
+    </table>
+    <div class="doc-row"><button type="button" class="doc-btn" id="gl-add">+ Ölçü ekle</button></div>
+    <div id="gl-totals"></div>
+  </section>
+  <section class="doc-card"><label asp-for="Notes">Notlar</label><textarea asp-for="Notes" rows="2"></textarea></section>
+  <div class="doc-actions"><button class="admin-btn" type="submit">Kaydet</button><a class="admin-btn" href="/yonetim/camlar">İptal</a></div>
+</form>
+<script type="application/json" id="gl-types">@Html.Raw(JsonSerializer.Serialize(ViewBag.GlassTypes))</script>
+<script src="~/js/glass-list.js" asp-append-version="true"></script>

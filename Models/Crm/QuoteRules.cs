@@ -3,7 +3,7 @@ namespace KarakusAluminyum.Web.Models.Crm;
 public static class QuoteRules
 {
     public static (decimal Subtotal, decimal DiscountAmount, decimal TaxAmount, decimal GrandTotal) Calculate(
-        IEnumerable<QuoteItem> items, decimal discountRate, decimal taxRate)
+        IEnumerable<QuoteItem> items, decimal discountRate, decimal taxRate, VatMode vatMode = VatMode.Added)
     {
         if (discountRate is < 0 or > 100) throw new ArgumentOutOfRangeException(nameof(discountRate));
         if (taxRate is < 0 or > 100) throw new ArgumentOutOfRangeException(nameof(taxRate));
@@ -13,8 +13,17 @@ public static class QuoteRules
             line.LineTotal = decimal.Round(line.Quantity * line.UnitPrice, 2, MidpointRounding.AwayFromZero);
         var subtotal = lines.Sum(x => x.LineTotal);
         var discount = decimal.Round(subtotal * discountRate / 100m, 2, MidpointRounding.AwayFromZero);
-        var tax = decimal.Round((subtotal - discount) * taxRate / 100m, 2, MidpointRounding.AwayFromZero);
-        return (subtotal, discount, tax, subtotal - discount + tax);
+        var net = subtotal - discount;
+        switch (vatMode)
+        {
+            case VatMode.Included:
+                return (subtotal, discount, decimal.Round(net - net / (1 + taxRate / 100m), 2, MidpointRounding.AwayFromZero), net);
+            case VatMode.None:
+                return (subtotal, discount, 0m, net);
+            default:
+                var tax = decimal.Round(net * taxRate / 100m, 2, MidpointRounding.AwayFromZero);
+                return (subtotal, discount, tax, net + tax);
+        }
     }
 
     public static bool CanTransition(QuoteStatus current, QuoteStatus next) => (current, next) switch

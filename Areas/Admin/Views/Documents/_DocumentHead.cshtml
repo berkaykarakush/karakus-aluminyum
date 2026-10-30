@@ -1,0 +1,7 @@
+@model KarakusAluminyum.Web.Models.Documents.DocumentTemplate
+@* Baskıda her sayfanın üstünde tekrar eden antet *@
+<div class="doc-head">
+  @if (!string.IsNullOrWhiteSpace(Model.LogoPath)) { <img class="doc-logo" src="@Model.LogoPath" alt="@Model.SellerName" /> }
+  <div class="doc-date">@ViewData["DocDate"]</div>
+</div>
+<div class="doc-title">@Model.Title</div>
