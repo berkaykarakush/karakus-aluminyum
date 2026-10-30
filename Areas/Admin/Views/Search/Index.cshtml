@@ -1,0 +1,11 @@
+@model List<KarakusAluminyum.Web.Areas.Admin.Controllers.SearchHit>
+@{ ViewData["Title"] = "Arama"; var query = (string)ViewBag.Query; }
+<div class="admin-page-heading"><div><h1>Arama</h1><div class="admin-muted">@(query.Length < 2 ? "En az 2 karakter yazın." : $"\"{query}\" için {Model.Count} sonuç")</div></div></div>
+@if (query.Length >= 2 && Model.Count == 0) { <div class="admin-panel"><p class="admin-muted">Sonuç bulunamadı.</p></div> }
+@foreach (var group in Model.GroupBy(x => x.Group))
+{
+  <section class="admin-panel">
+    <h2>@group.Key</h2>
+    <ul class="admin-list">@foreach (var hit in group) { <li><a href="@hit.Url"><span>@hit.Title</span><small>@hit.Detail</small></a></li> }</ul>
+  </section>
+}

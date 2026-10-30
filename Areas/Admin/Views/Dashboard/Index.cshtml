@@ -1,14 +1,48 @@
-@model KarakusAluminyum.Web.Areas.Admin.Controllers.DashboardStats
-@{ViewData["Title"]="Ana Sayfa";}
-<div class="admin-page-heading"><div><h1>Hoş geldiniz, @(User.Identity?.Name ?? "Yönetici")</h1><div class="admin-muted">Karakuş Alüminyum yönetim paneline hoş geldiniz.</div></div><div class="admin-muted">@DateTime.Now.ToString("dd MMMM yyyy, dddd")</div></div>
-<section class="admin-grid">
-<div class="admin-stat"><span class="admin-stat-icon">▤</span><div class="admin-muted" style="margin-top:12px">Hizmetler</div><strong>@Model.Services</strong><a href="/yonetim/hizmetler">Hizmetleri yönet →</a></div>
-<div class="admin-stat"><span class="admin-stat-icon" style="background:#e5f8ef;color:#159765">▣</span><div class="admin-muted" style="margin-top:12px">Projeler</div><strong>@Model.Projects</strong><a href="/yonetim/projeler">Projeleri yönet →</a></div>
-<div class="admin-stat"><span class="admin-stat-icon" style="background:#fff2df;color:#d88913">▤</span><div class="admin-muted" style="margin-top:12px">Blog yazıları</div><strong>@Model.Posts</strong><a href="/yonetim/yazilar">Yazıları yönet →</a></div>
-<div class="admin-stat"><span class="admin-stat-icon" style="background:#ffe9ed;color:#e04455">✉</span><div class="admin-muted" style="margin-top:12px">Okunmamış mesaj</div><strong>@Model.UnreadMessages</strong><a href="/yonetim/mesajlar">Mesajları görüntüle →</a></div>
-</section>
-<div class="admin-grid" style="grid-template-columns:minmax(0,1.55fr) minmax(260px,1fr);margin-top:16px;align-items:stretch">
-<section class="admin-panel"><h2>Hızlı işlemler</h2><p class="admin-muted">Sık kullanılan yönetim ekranlarına buradan ulaşabilirsiniz.</p><div class="admin-actions"><a class="admin-btn" href="/yonetim/crm/teklifler/ekle">＋ Yeni teklif oluştur</a><a class="admin-btn admin-btn--secondary" href="/yonetim/crm/musteriler">♧ Müşterileri görüntüle</a><a class="admin-btn admin-btn--secondary" href="/yonetim/projeler/ekle">＋ Proje ekle</a><a class="admin-btn admin-btn--secondary" href="/yonetim/yazilar/ekle">＋ Blog yazısı ekle</a></div></section>
-<section class="admin-panel" style="background:linear-gradient(135deg,#172943,#244a78);color:white;border:0"><div style="font-size:11px;letter-spacing:1.5px;opacity:.7">KARAKUŞ ALÜMİNYUM</div><h2 style="font-size:22px;line-height:1.35;margin:14px 0">Kaliteli alüminyum,<br/>güçlü yapılar.</h2><p style="opacity:.8;line-height:1.7">Kurumsal site içeriklerinizi, projelerinizi ve müşteri tekliflerinizi tek panelden yönetin.</p><a href="/" target="_blank" rel="noopener" class="admin-btn" style="background:white;color:#1c3760">Siteyi görüntüle ↗</a></section>
+@model KarakusAluminyum.Web.Areas.Admin.Controllers.DashboardVm
+@using KarakusAluminyum.Web.Services.Documents
+@{
+    ViewData["Title"] = "Ana Sayfa";
+    var sales = Model.Report.Sales;
+    var open = Model.Tasks.Where(t => t.Count > 0).ToList();
+    var missing = Model.Setup.Where(s => !s.Done).ToList();
+}
+<div class="admin-page-heading">
+  <div><h1>Hoş geldiniz</h1><div class="admin-muted">Son 30 günün özeti</div></div>
+  <div class="admin-actions"><a class="admin-btn" href="/yonetim/crm/teklifler/ekle">+ Yeni teklif</a><a class="admin-btn admin-btn--secondary" href="/yonetim/cizim/ekle">+ Yeni çizim</a><a class="admin-btn admin-btn--secondary" href="/yonetim/raporlar">Raporlar</a></div>
 </div>
-<section class="admin-panel"><h2>Yayın öncesi kontrol</h2><div class="admin-muted" style="line-height:1.9">• Proje, hizmet ve blog içeriklerinde görsel seçerek dosya yükleyebilirsiniz.<br/>• Üretim ortamında HTTPS kullanın ve veritabanı yedeklerini düzenli alın.<br/>• Yönetici parolasını güçlü ve benzersiz tutun; gizli bilgileri Git'e göndermeyin.</div></section>
+<section class="report-kpis">
+  <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KarakusAluminyum.Web.Areas.Admin.Models.KpiVm("Teklif tutarı", TurkishNumbers.Money(sales.QuoteTotal), sales.QuoteTotal, sales.PreviousQuoteTotal)' />
+  <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KarakusAluminyum.Web.Areas.Admin.Models.KpiVm("İmzalı sözleşme", TurkishNumbers.Money(sales.SignedTotal), sales.SignedTotal, sales.PreviousSignedTotal)' />
+  <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KarakusAluminyum.Web.Areas.Admin.Models.KpiVm("Yeni müşteri", sales.NewCustomers.ToString(), sales.NewCustomers, sales.PreviousNewCustomers)' />
+  <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KarakusAluminyum.Web.Areas.Admin.Models.KpiVm("Site oturumu", Model.Report.Web.Sessions.ToString(), Model.Report.Web.Sessions, Model.Report.Web.PreviousSessions)' />
+</section>
+<div class="admin-columns">
+  <section class="admin-panel">
+    <h2>Yapılacaklar</h2>
+    @if (open.Count == 0) { <p class="admin-muted">Bekleyen iş yok.</p> }
+    else
+    {
+      <ul class="admin-list">
+        @foreach (var task in open) { <li><a href="@task.Url"><span>@task.Text</span><strong>@task.Count</strong></a></li> }
+      </ul>
+    }
+  </section>
+  <section class="admin-panel">
+    <h2>Son mesajlar</h2>
+    @if (Model.RecentMessages.Count == 0) { <p class="admin-muted">Henüz mesaj yok.</p> }
+    <ul class="admin-list">@foreach (var x in Model.RecentMessages) { <li><a href="@x.Url"><span>@x.Title</span><small>@x.Detail</small></a></li> }</ul>
+  </section>
+  <section class="admin-panel">
+    <h2>Son teklifler</h2>
+    @if (Model.RecentQuotes.Count == 0) { <p class="admin-muted">Henüz teklif yok.</p> }
+    <ul class="admin-list">@foreach (var x in Model.RecentQuotes) { <li><a href="@x.Url"><span>@x.Title</span><small>@x.Detail</small></a></li> }</ul>
+  </section>
+</div>
+@if (missing.Count > 0)
+{
+  <section class="admin-panel">
+    <h2>Kurulumu tamamlayın</h2>
+    <p class="admin-muted">Bu bilgiler girilmeden ilgili özellikler tam çalışmaz.</p>
+    <ul class="admin-list">@foreach (var item in missing) { <li><a href="@item.Url"><span>@item.Text</span><small>Girin →</small></a></li> }</ul>
+  </section>
+}

@@ -9,8 +9,9 @@ namespace KarakusAluminyum.Web.Controllers;
 public class HomeController : Controller
 {
     private readonly SeoService _seo;
+    private readonly SiteSettingsProvider _settings;
     private readonly AppDbContext _db;
-    public HomeController(SeoService seo, AppDbContext db) { _seo = seo; _db = db; }
+    public HomeController(SeoService seo, AppDbContext db, SiteSettingsProvider settings) { _seo = seo; _db = db; _settings = settings; }
 
     public async Task<IActionResult> Index()
     {
@@ -21,7 +22,7 @@ public class HomeController : Controller
             CanonicalPath = "/",
             ImagePath = "/images/aluminyum-dograma.png"
         };
-        ViewData["BusinessSchema"] = _seo.LocalBusinessSchema();
+        ViewData["BusinessSchema"] = _seo.LocalBusinessSchema(await _settings.GetAsync());
         ViewBag.Faqs = await _db.FaqItems.AsNoTracking()
             .Where(f => f.ServiceId == null && f.IsPublished)
             .OrderBy(f => f.SortOrder).ThenBy(f => f.Id).ToListAsync();
@@ -69,8 +70,8 @@ public class HomeController : Controller
 
     [Route("robots.txt")]
     [ResponseCache(Duration = 3600)]
-    public ContentResult Robots() =>
-        Content($"User-agent: *\nAllow: /\nDisallow: /yonetim/\nSitemap: {_seo.Canonical("/sitemap.xml")}\n", "text/plain");
+    public async Task<ContentResult> Robots() =>
+        Content($"User-agent: *\nAllow: /\nDisallow: /yonetim/\nSitemap: {_seo.Canonical("/sitemap.xml", await _settings.GetAsync())}\n", "text/plain");
 
     [Route("sitemap.xml")]
     [ResponseCache(Duration = 3600)]
@@ -80,11 +81,12 @@ public class HomeController : Controller
         paths.AddRange(await _db.Services.AsNoTracking().Where(s => s.IsPublished).Select(s => "/urunler/" + s.Slug).ToListAsync());
         paths.AddRange(await _db.Projects.AsNoTracking().Where(p => p.IsPublished).Select(p => "/projeler/" + p.Slug).ToListAsync());
         paths.AddRange(await _db.BlogPosts.AsNoTracking().Where(p => p.IsPublished).Select(p => "/blog/" + p.Slug).ToListAsync());
+        var settings = await _settings.GetAsync();
         var xml = new System.Text.StringBuilder();
         xml.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
         xml.AppendLine("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">");
         foreach (var path in paths.Distinct())
-            xml.AppendLine($"  <url><loc>{System.Security.SecurityElement.Escape(_seo.Canonical(path))}</loc></url>");
+            xml.AppendLine($"  <url><loc>{System.Security.SecurityElement.Escape(_seo.Canonical(path, settings))}</loc></url>");
         xml.AppendLine("</urlset>");
         return Content(xml.ToString(), "application/xml; charset=utf-8");
     }

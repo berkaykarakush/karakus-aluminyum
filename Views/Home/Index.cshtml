@@ -1,5 +1,8 @@
 @model List<KarakusAluminyum.Web.Models.ServiceContent>
+@inject KarakusAluminyum.Web.Services.SiteSettingsProvider SettingsProvider
 @{
+    var site = await SettingsProvider.GetAsync();
+    var trustItems = site.TrustItems.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     var schema = ViewData["BusinessSchema"];
     var projects = (IReadOnlyList<ProjectItem>)ViewBag.Projects;
 }
@@ -8,11 +11,11 @@
 }
 <section class="hero">
     <div class="container hero__content">
-        <span class="eyebrow">Mimari Alüminyum Sistemleri</span>
-        <h1>Mimariye değer katan <em>alüminyum çözümleri.</em></h1>
-        <p>Alüminyum doğrama, sürme sistemler, cephe ve tamamlayıcı mimari çözümler. Projenizin ihtiyaçlarını birlikte değerlendirelim.</p>
+        <span class="eyebrow">@site.HeroEyebrow</span>
+        <h1>@site.HeroTitle <em>@site.HeroTitleEmphasis</em></h1>
+        <p>@site.HeroText</p>
         <div class="hero__actions"><a class="button button--silver" href="/iletisim">Projeniz için teklif alın <span aria-hidden="true">↗</span></a><a class="button button--outline" href="/projeler">Uygulamalarımızı inceleyin</a></div>
-        <div class="trust-row"><span>Projeye özel çözümler</span><span>Modern mimari yaklaşım</span><span>İzmir ve çevresi</span></div>
+        <div class="trust-row">@foreach (var item in trustItems) { <span>@item</span> }</div>
     </div>
 </section>
 @if (Model.Count > 0)
@@ -66,7 +69,7 @@
     <div class="container">
         <div class="split">
             <div class="split__visual"><img src="/images/kapi-ve-pencere-sistemleri.png" alt="Alüminyum kapı ve pencere uygulama detayı" loading="lazy" width="900" height="1000" /></div>
-            <div class="split__copy"><span class="eyebrow">Karakuş Alüminyum</span><h2>Detaylara önem veren, projeye odaklı yaklaşım.</h2><p>Her proje farklı ölçülerle ve farklı beklentilerle başlar. Açıklıktan donanıma, camdan montaj detayına kadar sistemi projenizin ihtiyaçlarına göre birlikte değerlendiriyoruz.</p><ul class="check-list"><li>Proje ihtiyaçlarına göre sistem değerlendirmesi</li><li>Ürün seçimi ve uygulama sürecinde açık iletişim</li><li>Uygulama öncesi ölçü ve detayların değerlendirilmesi</li></ul><a class="button button--dark" href="/kurumsal">Bizi daha yakından tanıyın ↗</a></div>
+            <div class="split__copy"><span class="eyebrow">Karakuş Alüminyum</span><h2>@site.ApproachTitle</h2><p>@site.ApproachText</p><ul class="check-list"><li>Proje ihtiyaçlarına göre sistem değerlendirmesi</li><li>Ürün seçimi ve uygulama sürecinde açık iletişim</li><li>Uygulama öncesi ölçü ve detayların değerlendirilmesi</li></ul><a class="button button--dark" href="/kurumsal">Bizi daha yakından tanıyın ↗</a></div>
         </div>
         <div class="steps">
             <div class="step"><span>01</span><h3>Görüşme</h3><p>Projenizi, kullanım amacını ve beklentilerinizi dinliyoruz.</p></div>
@@ -92,4 +95,4 @@
 }
 @{ ViewData["FaqHeading"] = "Karar vermenize yardımcı bilgiler."; }
 <partial name="_Faqs" model="(IReadOnlyList<KarakusAluminyum.Web.Models.FaqItem>)ViewBag.Faqs" />
-<section class="section section--soft"><div class="container"><div class="cta-band"><div><h2>Projeniz için doğru sistemi birlikte belirleyelim.</h2><p>İhtiyacınızı anlatın, ekibimizle iletişime geçin.</p></div><a class="button button--silver" href="/iletisim">İletişime geçin ↗</a></div></div></section>
+<section class="section section--soft"><div class="container"><div class="cta-band"><div><h2>@site.CtaTitle</h2><p>@site.CtaText</p></div><a class="button button--silver" href="/iletisim">İletişime geçin ↗</a></div></div></section>

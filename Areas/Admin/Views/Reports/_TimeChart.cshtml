@@ -1,0 +1,103 @@
+@model KarakusAluminyum.Web.Services.TimeChart
+@using System.Globalization
+@using System.Text.Json
+@{
+    const double W = 860, H = 280, Left = 62, Top = 14, Bottom = 30;
+    var Right = Model.Columns ? 12d : 96d;
+    string N(double v) => v.ToString("0.##", CultureInfo.InvariantCulture);
+    var count = Model.Labels.Count;
+    var hasData = Model.Series.Any(s => s.Values.Any(v => v != 0));
+    var rawMax = hasData ? (double)Model.Series.SelectMany(s => s.Values).Max() : 1;
+    // Eksen üst sınırı temiz bir sayıya yuvarlanır.
+    var magnitude = Math.Pow(10, Math.Floor(Math.Log10(Math.Max(rawMax, 1))));
+    // Adet eksenlerinde ara değerler tam sayı kalır; "0,3 mesaj" gibi değer oluşmaz.
+    var steps = Model.Money ? new[] { 1, 2, 2.5, 5, 10 } : new double[] { 1, 2, 4, 8, 10 };
+    var niceMax = steps.Select(m => m * magnitude).First(v => v >= rawMax);
+    var ticks = !Model.Money && niceMax < 4 ? (int)niceMax : 4;
+    var columns = Model.Columns;
+    double band = (W - Left - Right) / Math.Max(count, 1);
+    double X(int i) => columns ? Left + band * (i + 0.5) : count <= 1 ? Left : Left + i * (W - Left - Right) / (count - 1);
+    double Y(double v) => Top + (H - Top - Bottom) * (1 - v / niceMax);
+    string Compact(double v) => v >= 1_000_000 ? (v / 1_000_000).ToString("0.#", KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture) + " Mn" : v >= 1000 ? (v / 1000).ToString("0.#", KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture) + " B" : v.ToString("0.#", KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture);
+    var labelEvery = Math.Max(1, (int)Math.Ceiling(count / 8.0));
+    var data = JsonSerializer.Serialize(new { labels = Model.Labels, money = Model.Money, series = Model.Series.Select(s => new { name = s.Name, values = s.Values }), x = Enumerable.Range(0, count).Select(X), left = Left, right = W - Right, top = Top, bottom = H - Bottom, width = W, height = H });
+    var used = new List<double>();
+}
+@if (!hasData) { <p class="admin-muted">Bu aralıkta veri yok.</p> }
+else
+{
+  <div class="report-chart" data-report-chart="@data">
+    @if (Model.Series.Count > 1)
+    {
+      <div class="report-legend">
+        @for (var s = 0; s < Model.Series.Count; s++) { <span><i class="report-key report-key--@(s + 1)"></i>@Model.Series[s].Name</span> }
+      </div>
+    }
+    <svg viewBox="0 0 @N(W) @N(H)" role="img" aria-label="@string.Join(", ", Model.Series.Select(s => s.Name)) zaman grafiği" tabindex="0">
+      @for (var t = 0; t <= ticks; t++)
+      {
+        var value = niceMax * t / ticks;
+        <g>
+          <line class="report-grid" x1="@N(Left)" x2="@N(W - Right)" y1="@N(Y(value))" y2="@N(Y(value))"></line>
+          <text class="report-axis" x="@N(Left - 8)" y="@N(Y(value) + 4)" text-anchor="end">@Compact(value)</text>
+        </g>
+      }
+      @for (var i = 0; i < count; i += labelEvery)
+      {
+        <g><text class="report-axis" x="@N(X(i))" y="@N(H - 8)" text-anchor="middle">@Model.Labels[i]</text></g>
+      }
+      @if (columns)
+      {
+        var gap = 2d;
+        var groupWidth = Math.Min(band * 0.7, 24d * Model.Series.Count + gap);
+        var barWidth = (groupWidth - gap * (Model.Series.Count - 1)) / Model.Series.Count;
+        for (var i = 0; i < count; i++)
+        {
+          for (var s = 0; s < Model.Series.Count; s++)
+          {
+            var value = (double)Model.Series[s].Values[i];
+            if (value <= 0) { continue; }
+            var x = X(i) - groupWidth / 2 + s * (barWidth + gap);
+            var top = Y(value);
+            var bottom = Y(0);
+            var radius = Math.Min(4, Math.Min(barWidth / 2, bottom - top));
+            <path class="report-bar report-bar--@(s + 1)" d="M@(N(x)),@(N(bottom)) V@(N(top + radius)) Q@(N(x)),@(N(top)) @(N(x + radius)),@(N(top)) H@(N(x + barWidth - radius)) Q@(N(x + barWidth)),@(N(top)) @(N(x + barWidth)),@(N(top + radius)) V@(N(bottom)) Z"></path>
+          }
+        }
+      }
+      else
+      {
+        for (var s = 0; s < Model.Series.Count; s++)
+        {
+          var series = Model.Series[s];
+          var points = string.Join(" ", series.Values.Select((v, i) => $"{N(X(i))},{N(Y((double)v))}"));
+          var last = (double)series.Values[^1];
+          var labelY = Y(last);
+          while (used.Any(u => Math.Abs(u - labelY) < 14)) labelY -= 14;
+          used.Add(labelY);
+          <g>
+            <polyline class="report-line report-line--@(s + 1)" points="@points"></polyline>
+            <circle class="report-dot report-dot--@(s + 1)" cx="@N(X(count - 1))" cy="@N(Y(last))" r="4"></circle>
+            <text class="report-end" x="@N(W - Right + 9)" y="@N(labelY + 4)">@Compact(last)</text>
+          </g>
+        }
+      }
+      <line class="report-cross" y1="@N(Top)" y2="@N(H - Bottom)" hidden></line>
+    </svg>
+    <div class="report-tip" hidden></div>
+  </div>
+  <details class="report-table">
+    <summary>Tablo olarak göster</summary>
+    <div class="report-table__scroll">
+      <table class="admin-table">
+        <thead><tr><th>Dönem</th>@foreach (var s in Model.Series) { <th>@s.Name</th> }</tr></thead>
+        <tbody>
+          @for (var i = 0; i < count; i++)
+          {
+            <tr><td>@Model.Labels[i]</td>@foreach (var s in Model.Series) { <td>@(Model.Money ? KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Money(s.Values[i]) : s.Values[i].ToString("0"))</td> }</tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </details>
+}

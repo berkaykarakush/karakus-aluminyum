@@ -1,2 +1,46 @@
 @model List<KarakusAluminyum.Web.Models.SiteSettingRecord>
-@{ViewData["Title"]="Site ayarları";}<h1>Site ayarları</h1><p class="admin-muted">Bu ayarlar veritabanında saklanır ve genel iletişim bilgileri web sitesinde kullanılır. Canonical URL / JSON-LD gibi SEO alanlarını yayın öncesinde appsettings.json ile de eşleştirin.</p><div class="admin-panel"><form class="admin-form" method="post" action="/yonetim/ayarlar/kaydet">@Html.AntiForgeryToken()@for(var i=0;i<Model.Count;i++){<input type="hidden" name="items[@i].Id" value="@Model[i].Id"/><label>@Model[i].Key — @Model[i].Description</label><input name="items[@i].Value" value="@Model[i].Value"/><input type="hidden" name="items[@i].Key" value="@Model[i].Key"/><input type="hidden" name="items[@i].Description" value="@Model[i].Description"/>}<button class="admin-btn">Ayarları kaydet</button></form></div>
+@using KarakusAluminyum.Web.Services
+@{
+    ViewData["Title"] = "Site ayarları";
+    var values = Model.ToDictionary(x => x.Key, x => x.Value);
+    var other = Model.Where(x => SiteSettingCatalog.Find(x.Key) is null).ToList();
+}
+<div class="admin-page-heading"><div><h1>Site ayarları</h1><div class="admin-muted">Değerler veritabanında tutulur ve kaydedince sitede hemen geçerli olur.</div></div></div>
+<form class="admin-form" method="post" action="/yonetim/ayarlar/kaydet">
+  @Html.AntiForgeryToken()
+  <div asp-validation-summary="All" class="validation-summary-errors"></div>
+  @foreach (var group in SiteSettingCatalog.Groups)
+  {
+    <section class="admin-panel">
+      <h2>@group</h2>
+      @if (group == SiteSettingCatalog.AnalyticsGroup)
+      {
+        <p class="admin-muted">Kimlikleri girdiğinizde kodlar siteye otomatik eklenir. Yalnızca çerez bildiriminde onay veren ziyaretçilerde yüklenir; yönetici girişi yapmış kullanıcılar sayılmaz.</p>
+      }
+      @foreach (var definition in SiteSettingCatalog.All.Where(d => d.Group == group && values.ContainsKey(d.Key)))
+      {
+        var id = "setting-" + definition.Key;
+        var value = values[definition.Key];
+        @if (definition.Kind == SettingKind.Toggle)
+        {
+          <label class="admin-check"><input type="checkbox" name="values[@definition.Key]" value="true" checked="@(value == "true")" /> @definition.Label</label>
+        }
+        else
+        {
+          <label for="@id">@definition.Label</label>
+          @if (definition.Kind == SettingKind.LongText) { <textarea id="@id" name="values[@definition.Key]" rows="3">@value</textarea> }
+          else { <input id="@id" name="values[@definition.Key]" value="@value" /> }
+        }
+        @if (definition.Help is not null) { <p class="admin-hint">@definition.Help</p> }
+      }
+    </section>
+  }
+  @if (other.Count > 0)
+  {
+    <section class="admin-panel">
+      <h2>Diğer</h2>
+      @foreach (var row in other) { <label>@row.Key</label><input name="values[@row.Key]" value="@row.Value" /> }
+    </section>
+  }
+  <div class="admin-sticky-actions"><button class="admin-btn">Ayarları kaydet</button></div>
+</form>

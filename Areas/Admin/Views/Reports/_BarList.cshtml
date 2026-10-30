@@ -1,0 +1,17 @@
+@model IReadOnlyList<KarakusAluminyum.Web.Services.BarRow>
+@{ var max = Model.Count == 0 ? 0 : Model.Max(r => r.Value); }
+@if (Model.Count == 0) { <p class="admin-muted">Bu aralıkta veri yok.</p> }
+else
+{
+  <ul class="report-bars">
+    @foreach (var row in Model)
+    {
+      var width = max <= 0 ? 0 : row.Value / max * 100m;
+      <li>
+        <span class="report-bars__label" title="@row.Label">@row.Label</span>
+        <span class="report-bars__track"><span class="report-bars__fill" style="width:@width.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)%"></span></span>
+        <span class="report-bars__value">@row.Display</span>
+      </li>
+    }
+  </ul>
+}

@@ -1052,3 +1052,67 @@ public sealed class LengthUnitPageTests(PostgresFixture postgres)
         Assert.Contains("/js/units.js", html);
     }
 }
+
+// Önceki doğrulamada kaçan senaryoların testleri
+public sealed class GlassPlateGapTests
+{
+    [Fact]
+    public void Gap_IsAppliedAfterEveryPieceOnShelf()
+    {
+        // 3 x 1000 + 2 boşluk x 2 = 3004 > 3003: üçüncü parça aynı rafa sığmaz.
+        var pieces = Enumerable.Range(0, 3).Select(_ => ("Cam", 1000m, 500m)).ToList();
+        var tight = GlassPlateOptimizer.Optimize(pieces, 3003, 2250, 2);
+        Assert.Contains(Assert.Single(tight.Plates).Pieces, p => p.Y > 0);
+        var fits = GlassPlateOptimizer.Optimize(pieces, 3004, 2250, 2);
+        Assert.All(Assert.Single(fits.Plates).Pieces, p => Assert.Equal(0m, p.Y));
+    }
+}
+
+[Collection("postgres")]
+public sealed class DrawingGuardTests(PostgresFixture postgres)
+{
+    [Fact]
+    public async Task GlassList_CannotBeAddedToNonDraftQuote()
+    {
+        var app = postgres.Shared;
+        var client = app.NewClient();
+        await client.LoginAsync(AppFactory.AdminEmail);
+        var token = await client.GetTokenAsync("/yonetim/camlar/ekle");
+        var (listId, quoteId) = await app.WithDbAsync(async db =>
+        {
+            var type = new GlassType { Name = "Koruma " + Guid.NewGuid().ToString("N")[..6], PricePerM2 = 1000 };
+            var customer = new Customer { Name = "Koruma " + Guid.NewGuid().ToString("N")[..6] };
+            var list = new GlassList { Name = "Koruma listesi", Items = { new GlassListItem { GlassType = type, WidthMm = 1000, HeightMm = 1000 } } };
+            db.GlassLists.Add(list);
+            db.Customers.Add(customer);
+            await db.SaveChangesAsync();
+            var quote = new Quote { QuoteNumber = "K-" + Guid.NewGuid().ToString("N")[..10], Title = "Gönderilmiş", CustomerId = customer.Id, Status = QuoteStatus.Sent };
+            db.Quotes.Add(quote);
+            await db.SaveChangesAsync();
+            return (list.Id, quote.Id);
+        });
+
+        await client.PostFormAsync($"/yonetim/camlar/teklife-ekle/{listId}", token, ("quoteId", quoteId.ToString()));
+        Assert.False(await app.WithDbAsync(db => db.QuoteItems.AnyAsync(i => i.QuoteId == quoteId)));
+    }
+
+    [Fact]
+    public async Task EditingDesign_CannotChangeItsCategory()
+    {
+        var app = postgres.Shared;
+        var client = app.NewClient();
+        await client.LoginAsync(AppFactory.AdminEmail);
+        var token = await client.GetTokenAsync("/yonetim/cizim/ekle?tur=aluminum");
+        var (id, systemId) = await app.WithDbAsync(async db =>
+        {
+            var system = await db.ProfileSystems.FirstAsync(s => s.Category == ProductCategories.Aluminum);
+            var design = new WindowDesign { Name = "Tür " + Guid.NewGuid().ToString("N")[..6], ProfileSystemId = system.Id, WidthMm = 1000, HeightMm = 1000, LayoutJson = "{\"opening\":\"fixed\"}" };
+            db.WindowDesigns.Add(design);
+            await db.SaveChangesAsync();
+            return (design.Id, system.Id);
+        });
+
+        await client.PostFormAsync($"/yonetim/cizim/duzenle/{id}", token, ("Name", "Değişti"), ("Category", "shutter"), ("ProfileSystemId", systemId.ToString()), ("ColorHex", "#3a4046"), ("WidthMm", "1000"), ("HeightMm", "1000"), ("Quantity", "1"), ("Shape", "rect"), ("LayoutJson", "{\"opening\":\"fixed\"}"));
+        Assert.Equal(ProductCategories.Aluminum, await app.WithDbAsync(db => db.WindowDesigns.Where(d => d.Id == id).Select(d => d.Category).SingleAsync()));
+    }
+}

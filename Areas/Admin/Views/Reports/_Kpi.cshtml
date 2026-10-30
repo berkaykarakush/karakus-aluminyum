@@ -1,0 +1,6 @@
+@model KarakusAluminyum.Web.Areas.Admin.Models.KpiVm
+<div class="report-kpi">
+  <span class="report-kpi__label">@Model.Label</span>
+  <strong class="report-kpi__value">@Model.Value</strong>
+  @if (Model.Change is not null) { <span class="report-kpi__change">@Model.Change</span> }
+</div>

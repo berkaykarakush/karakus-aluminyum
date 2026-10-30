@@ -1,6 +1,7 @@
 using System.Text.Json;
 using KarakusAluminyum.Web.Models;
 using KarakusAluminyum.Web.Models.Drawing;
+using KarakusAluminyum.Web.Services;
 using KarakusAluminyum.Web.Services.Documents;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -191,59 +192,19 @@ public static class SeedData
             });
         }
 
-        // Doğrulanmış firma bilgileri. Bilinmeyen sosyal medya hesapları veya iletişim kanalları uydurulmaz.
-        var settingSeeds = new Dictionary<string, (string Value, string Description)>
+        // Eksik ayarları ekle. Yöneticinin değerine dokunma; yalnızca eski yer tutucular düzeltilir.
+        var existingSettings = await db.SiteSettingRecords.ToListAsync();
+        foreach (var definition in SiteSettingCatalog.All)
         {
-            ["SiteName"] = ("Karakuş Alüminyum", "Web sitesi başlığı"),
-            ["BaseUrl"] = ("https://www.karakusaluminyum.com", "Canonical alan adı"),
-            ["PhoneDisplay"] = ("+90 553 835 48 72", "Görünen telefon"),
-            ["PhoneE164"] = ("+905538354872", "Uluslararası telefon biçimi"),
-            ["Email"] = ("info@karakusaluminyum.com", "İletişim e-postası"),
-            ["Address"] = ("Karacaoğlan Mah. 6252 Sk. No: 3, Bornova/İzmir", "İşletme adresi"),
-            ["City"] = ("İzmir", "Şehir"),
-            ["PrimaryServiceArea"] = ("Bornova", "Ana hizmet bölgesi"),
-            ["WhatsAppNumber"] = ("905538354872", "Ülke koduyla WhatsApp numarası"),
-            ["GoogleMapsUrl"] = ("https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3125.168057091929!2d27.206807025382613!3d38.43758697370485!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14b962db502ab2f7%3A0xe5025465f1957d53!2zS2FyYWt1xZ8gQWzDvG1pbnl1bQ!5e0!3m2!1str!2str!4v1793255765258!5m2!1str!2str", "Google Maps bağlantısı"),
-            ["GoogleBusinessProfileUrl"] = ("https://share.google/0QhP26b6Mp7BmGUGt", "Google İşletme Profili bağlantısı; doğrulandıktan sonra girilmeli"),
-            ["InstagramUrl"] = ("https://www.instagram.com/karakus-aluminyum", "Instagram bağlantısı; doğrulandıktan sonra girilmeli"),
-            ["FacebookUrl"] = ("https://www.facebook.com/karakus-aluminyum", "Facebook bağlantısı; doğrulandıktan sonra girilmeli"),
-            ["LinkedInUrl"] = ("https://www.linkedin.com/karakus-aluminyum", "LinkedIn bağlantısı")
-        };
-
-        var settingKeys = settingSeeds.Keys.ToArray();
-        var existingSettings = await db.SiteSettingRecords.Where(s => settingKeys.Contains(s.Key)).ToListAsync();
-        var authoritativeKeys = new HashSet<string>(StringComparer.Ordinal)
-        {
-            "SiteName", "BaseUrl", "PhoneDisplay", "PhoneE164", "Email", "Address", "City", "PrimaryServiceArea", "WhatsAppNumber"
-        };
-
-        foreach (var pair in settingSeeds)
-        {
-            var setting = existingSettings.FirstOrDefault(s => s.Key == pair.Key);
+            var setting = existingSettings.FirstOrDefault(s => s.Key == definition.Key);
             if (setting is null)
-            {
-                db.SiteSettingRecords.Add(new SiteSettingRecord { Key = pair.Key, Value = pair.Value.Value, Description = pair.Value.Description });
-                continue;
-            }
-
-            // Kesin firma bilgilerini düzelt; sosyal bağlantılar gibi doğrulanmamış/isteğe bağlı alanları mevcutsa ezme.
-            if (authoritativeKeys.Contains(pair.Key))
-            {
-                setting.Value = pair.Value.Value;
-                setting.Description = pair.Value.Description;
-            }
-            else if (string.IsNullOrWhiteSpace(setting.Value)
-                || setting.Value.Contains("DOMAININIZ", StringComparison.OrdinalIgnoreCase)
-                || setting.Value.Contains("XXX", StringComparison.OrdinalIgnoreCase)
-                || setting.Value.Contains("XXXXXXXX", StringComparison.OrdinalIgnoreCase)
-                || setting.Value == "İzmir, Türkiye"
-                || setting.Value == "0232 XXX XX XX"
-                || setting.Value == "90XXXXXXXXXX")
-            {
-                setting.Value = pair.Value.Value;
-                setting.Description = pair.Value.Description;
-            }
+                db.SiteSettingRecords.Add(new SiteSettingRecord { Key = definition.Key, Value = definition.Default, Description = definition.Label });
+            else if (setting.Value.Contains("DOMAININIZ", StringComparison.OrdinalIgnoreCase) || setting.Value.Contains("XXX", StringComparison.OrdinalIgnoreCase))
+                setting.Value = definition.Default;
         }
+
+        // Anonim ziyaret kayıtları 400 günden uzun tutulmaz.
+        await db.AnalyticsEvents.Where(e => e.OccurredUtc < DateTime.UtcNow.AddDays(-400)).ExecuteDeleteAsync();
 
         // Yeni eklenen hizmet/projeler galeri seed'inin sorgularında görünsün diye önce kaydedilir.
         await db.SaveChangesAsync();

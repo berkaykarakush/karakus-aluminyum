@@ -8,35 +8,38 @@ public sealed class SeoService
     private readonly SiteSettings _settings;
     public SeoService(IOptions<SiteSettings> options) => _settings = options.Value;
 
-    public string Canonical(string path)
+    // Panel ayarları verilirse onlar kullanılır; appsettings yalnızca başlangıç değeridir.
+    public string Canonical(string path, SiteSettings? settings = null)
     {
-        var baseUrl = _settings.BaseUrl.TrimEnd('/');
+        var baseUrl = (settings ?? _settings).BaseUrl.TrimEnd('/');
         var cleanPath = string.IsNullOrWhiteSpace(path) ? "/" : path;
         if (!cleanPath.StartsWith('/')) cleanPath = "/" + cleanPath;
         return baseUrl + cleanPath;
     }
 
-    public object LocalBusinessSchema() => new Dictionary<string, object?>
+    public object LocalBusinessSchema(SiteSettings? current = null) => BuildSchema(current ?? _settings);
+
+    private object BuildSchema(SiteSettings site) => new Dictionary<string, object?>
     {
         ["@context"] = "https://schema.org",
         ["@type"] = "HomeAndConstructionBusiness",
-        ["name"] = _settings.SiteName,
-        ["url"] = Canonical("/"),
-        ["logo"] = Canonical("/images/transparent.png"),
-        ["image"] = Canonical("/images/aluminyum-dograma.png"),
+        ["name"] = site.SiteName,
+        ["url"] = Canonical("/", site),
+        ["logo"] = Canonical("/images/transparent.png", site),
+        ["image"] = Canonical("/images/aluminyum-dograma.png", site),
         ["description"] = "İzmir'de mimari alüminyum doğrama ve sistem çözümleri.",
-        ["telephone"] = _settings.PhoneE164,
-        ["email"] = _settings.Email,
+        ["telephone"] = site.PhoneE164,
+        ["email"] = site.Email,
         ["address"] = new Dictionary<string, object?>
         {
             ["@type"] = "PostalAddress",
-            ["addressLocality"] = _settings.City,
-            ["addressRegion"] = _settings.City,
-            ["streetAddress"] = _settings.Address,
+            ["addressLocality"] = site.City,
+            ["addressRegion"] = site.City,
+            ["streetAddress"] = site.Address,
             ["addressCountry"] = "TR"
         },
-        ["areaServed"] = new[] { _settings.City, _settings.PrimaryServiceArea },
-        ["sameAs"] = new[] { _settings.InstagramUrl, _settings.FacebookUrl, _settings.LinkedInUrl }
+        ["areaServed"] = new[] { site.City, site.PrimaryServiceArea },
+        ["sameAs"] = new[] { site.InstagramUrl, site.FacebookUrl, site.LinkedInUrl }
             .Where(x => !string.IsNullOrWhiteSpace(x)).ToArray()
     };
 }

@@ -1,0 +1,88 @@
+@model KarakusAluminyum.Web.Services.FullReport
+@using KarakusAluminyum.Web.Areas.Admin.Models
+@using KarakusAluminyum.Web.Services.Documents
+@{
+    ViewData["Title"] = "Raporlar";
+    var r = Model.Range;
+    var s = Model.Sales; var p = Model.Production; var c = Model.Contact; var w = Model.Web;
+    var ranges = new[] { ("7", "Son 7 gün"), ("30", "Son 30 gün"), ("90", "Son 90 gün"), ("365", "Son 12 ay") };
+    string Csv(string section) => $"/yonetim/raporlar/csv?bolum={section}&aralik={r.Key}&bas={r.FromText}&bit={r.ToText}";
+    string Percent(decimal? value) => value is null ? "-" : "%" + value.Value.ToString("0.#", TurkishNumbers.Culture);
+}
+<div class="admin-page-heading"><div><h1>Raporlar</h1><div class="admin-muted">Veriler bu sitenin veritabanından gelir. Yüzdeler bir önceki eşit dönemle karşılaştırılır.</div></div></div>
+<form class="report-filter" method="get" action="/yonetim/raporlar">
+  <nav aria-label="Tarih aralığı">
+    @foreach (var (key, text) in ranges) { <a class="@(r.Key == key ? "is-active" : "")" href="/yonetim/raporlar?aralik=@key">@text</a> }
+  </nav>
+  <input type="hidden" name="aralik" value="ozel" />
+  <label>Başlangıç <input type="date" name="bas" value="@r.FromText" /></label>
+  <label>Bitiş <input type="date" name="bit" value="@r.ToText" /></label>
+  <button class="admin-btn admin-btn--secondary">Uygula</button>
+</form>
+
+<nav class="report-sections" aria-label="Rapor bölümleri"><a href="#satis">Satış</a><a href="#uretim">Üretim</a><a href="#iletisim">İletişim</a><a href="#web">Web sitesi</a></nav>
+
+<section id="satis" class="report-section">
+  <div class="report-section__head"><h2>Satış</h2><a class="admin-btn admin-btn--secondary" href="@Csv("satis")">CSV indir</a></div>
+  <div class="report-kpis">
+    <partial name="_Kpi" model='new KpiVm("Teklif sayısı", s.QuoteCount.ToString(), s.QuoteCount, s.PreviousQuoteCount)' />
+    <partial name="_Kpi" model='new KpiVm("Teklif tutarı", TurkishNumbers.Money(s.QuoteTotal), s.QuoteTotal, s.PreviousQuoteTotal)' />
+    <partial name="_Kpi" model='new KpiVm("Ortalama teklif", TurkishNumbers.Money(s.AverageQuote), s.AverageQuote, null)' />
+    <partial name="_Kpi" model='new KpiVm("Kabul oranı", Percent(s.AcceptanceRate), s.AcceptanceRate ?? 0, s.AcceptanceRate is null ? null : s.PreviousAcceptanceRate, true)' />
+    <partial name="_Kpi" model='new KpiVm("İmzalı sözleşme", TurkishNumbers.Money(s.SignedTotal), s.SignedTotal, s.PreviousSignedTotal)' />
+    <partial name="_Kpi" model='new KpiVm("Yeni müşteri", s.NewCustomers.ToString(), s.NewCustomers, s.PreviousNewCustomers)' />
+  </div>
+  <div class="admin-panel"><h3>Teklif ve imzalı sözleşme tutarı</h3><partial name="_TimeChart" model="s.Chart" /></div>
+  <div class="admin-columns">
+    <div class="admin-panel"><h3>Duruma göre teklifler</h3><partial name="_BarList" model="s.QuotesByStatus" /></div>
+    <div class="admin-panel"><h3>En yüksek teklif tutarlı müşteriler</h3><partial name="_BarList" model="s.TopCustomers" /></div>
+    <div class="admin-panel"><h3>Sözleşmeler</h3><partial name="_BarList" model="s.ContractsByStatus" /></div>
+    <div class="admin-panel"><h3>İmzalı sözleşmelerde ödeme planı</h3><partial name="_BarList" model="s.PaymentsByKind" /></div>
+  </div>
+</section>
+
+<section id="uretim" class="report-section">
+  <div class="report-section__head"><h2>Üretim</h2><a class="admin-btn admin-btn--secondary" href="@Csv("uretim")">CSV indir</a></div>
+  <div class="report-kpis">
+    <partial name="_Kpi" model='new KpiVm("Çizim", p.DesignCount.ToString(), p.DesignCount, null)' />
+    <partial name="_Kpi" model='new KpiVm("Çizilen ürün adedi", p.UnitCount.ToString(), p.UnitCount, null)' />
+    <partial name="_Kpi" model='new KpiVm("Cam listesi", p.GlassListCount.ToString(), p.GlassListCount, null)' />
+    <partial name="_Kpi" model='new KpiVm("Cam adedi", p.GlassPieces.ToString(), p.GlassPieces, null)' />
+    <partial name="_Kpi" model='new KpiVm("Cam alanı", p.GlassAreaM2.ToString("N2", TurkishNumbers.Culture) + " m²", p.GlassAreaM2, null)' />
+    <partial name="_Kpi" model='new KpiVm("Cam tutarı", TurkishNumbers.Money(p.GlassValue), p.GlassValue, null)' />
+  </div>
+  <div class="admin-columns">
+    <div class="admin-panel"><h3>Ürün türüne göre adet</h3><partial name="_BarList" model="p.UnitsByCategory" /></div>
+    <div class="admin-panel"><h3>Cam tipine göre alan</h3><partial name="_BarList" model="p.GlassByType" /></div>
+  </div>
+</section>
+
+<section id="iletisim" class="report-section">
+  <div class="report-section__head"><h2>İletişim</h2><a class="admin-btn admin-btn--secondary" href="@Csv("iletisim")">CSV indir</a></div>
+  <div class="report-kpis">
+    <partial name="_Kpi" model='new KpiVm("Gelen mesaj", c.MessageCount.ToString(), c.MessageCount, c.PreviousMessageCount)' />
+    <partial name="_Kpi" model='new KpiVm("Okunmamış (toplam)", c.Unread.ToString(), c.Unread, null)' />
+  </div>
+  <div class="admin-panel"><h3>Mesaj sayısı</h3><partial name="_TimeChart" model="c.Chart" /></div>
+  <div class="admin-panel"><h3>Hizmete göre mesajlar</h3><partial name="_BarList" model="c.ByService" /></div>
+</section>
+
+<section id="web" class="report-section">
+  <div class="report-section__head"><h2>Web sitesi</h2><a class="admin-btn admin-btn--secondary" href="@Csv("web")">CSV indir</a></div>
+  <p class="admin-muted">Yalnızca çerez onayı veren ziyaretçiler sayılır; gerçek ziyaret bundan yüksektir. Google Analytics: @((bool)ViewBag.Ga4Connected ? "bağlı" : "bağlı değil") · Meta Pixel: @((bool)ViewBag.PixelConnected ? "bağlı" : "bağlı değil") @if (User.IsInRole("Admin")) { <a href="/yonetim/ayarlar">Ayarlar</a> }</p>
+  <div class="report-kpis">
+    <partial name="_Kpi" model='new KpiVm("Oturum", w.Sessions.ToString(), w.Sessions, w.PreviousSessions)' />
+    <partial name="_Kpi" model='new KpiVm("Sayfa görüntüleme", w.PageViews.ToString(), w.PageViews, null)' />
+    <partial name="_Kpi" model='new KpiVm("Form gönderen oturum", w.Leads.ToString(), w.Leads, w.PreviousLeads)' />
+    <partial name="_Kpi" model='new KpiVm("Dönüşüm oranı", Percent(w.ConversionRate), w.ConversionRate ?? 0, null)' />
+  </div>
+  <div class="admin-panel"><h3>Oturum ve sayfa görüntüleme</h3><partial name="_TimeChart" model="w.Chart" /></div>
+  <div class="admin-columns">
+    <div class="admin-panel"><h3>En çok görüntülenen sayfalar</h3><partial name="_BarList" model="w.TopPages" /></div>
+    <div class="admin-panel"><h3>Kaynaklar</h3><partial name="_BarList" model="w.Sources" /></div>
+    <div class="admin-panel"><h3>Cihazlar</h3><partial name="_BarList" model="w.Devices" /></div>
+    <div class="admin-panel"><h3>Olaylar</h3><partial name="_BarList" model="w.Events" /></div>
+    <div class="admin-panel"><h3>Kaynağa göre form gönderimi</h3><partial name="_BarList" model="w.LeadsBySource" /></div>
+  </div>
+</section>
+<script src="~/js/reports.js" asp-append-version="true"></script>

@@ -10,6 +10,11 @@
     var settings = await SettingsProvider.GetAsync();
     var canonical = settings.BaseUrl.TrimEnd('/') + (seo.CanonicalPath.StartsWith('/') ? seo.CanonicalPath : "/" + seo.CanonicalPath);
     var imageUrl = string.IsNullOrWhiteSpace(seo.ImagePath) ? "" : settings.BaseUrl.TrimEnd('/') + seo.ImagePath;
+    // Yönetici oturumu ve aranmayan sayfalar (giriş, hata) ölçüme girmez.
+    var firstParty = settings.FirstPartyAnalyticsEnabled == "true";
+    // Teşekkür sayfası aranmaz ama dönüşümü ölçmek için izlenir.
+    var trackable = User.Identity?.IsAuthenticated != true && (!seo.Robots.Contains("noindex", StringComparison.OrdinalIgnoreCase) || ViewData["TrackEvent"] is not null);
+    var tracking = trackable && (firstParty || !string.IsNullOrWhiteSpace(settings.Ga4MeasurementId) || !string.IsNullOrWhiteSpace(settings.MetaPixelId));
 }
 <!doctype html>
 <html lang="tr">
@@ -42,6 +47,8 @@
     {
         <script type="application/ld+json">@Html.Raw(JsonSerializer.Serialize(schema))</script>
     }
+    @if (!string.IsNullOrWhiteSpace(settings.GoogleSiteVerification)) { <meta name="google-site-verification" content="@settings.GoogleSiteVerification" /> }
+    @if (!string.IsNullOrWhiteSpace(settings.MetaDomainVerification)) { <meta name="facebook-domain-verification" content="@settings.MetaDomainVerification" /> }
     @await RenderSectionAsync("Head", required: false)
 </head>
 <body>
@@ -88,7 +95,7 @@
         <div class="container footer-grid">
             <div class="footer-brand">
                 <a class="brand brand--footer" href="/"><img src="/images/transparent.png" alt="Karakuş Alüminyum" width="206" height="64" loading="lazy" /></a>
-                <p>Mimari projeler için estetik, işlevsel ve uzun ömürlü alüminyum çözümleri.</p>
+                <p>@settings.FooterText</p>
             </div>
             <div><h2>Hızlı Erişim</h2><a href="/kurumsal">Hakkımızda</a><a href="/urunler">Ürün ve Hizmetler</a><a href="/projeler">Projelerimiz</a><a href="/galeri">Galeri</a><a href="/blog">Bilgi Merkezi</a><a href="/iletisim">İletişim</a></div>
             <div><h2>Hizmetler</h2>
@@ -99,11 +106,23 @@
             </div>
             <div><h2>İletişim</h2><p>@settings.Address</p><a href="tel:@settings.PhoneE164">@settings.PhoneDisplay</a><a href="mailto:@settings.Email">@settings.Email</a>@if (!string.IsNullOrWhiteSpace(settings.GoogleMapsUrl)) { <a href="@settings.GoogleMapsUrl" rel="noopener noreferrer" target="_blank">Haritada görüntüle ↗</a> }</div>
         </div>
-        <div class="container footer-bottom"><span>© @DateTime.Now.Year @settings.SiteName. Tüm hakları saklıdır.</span><div><a href="/gizlilik-politikasi">Gizlilik</a><a href="/kvkk-aydinlatma-metni">KVKK</a></div></div>
+        <div class="container footer-bottom"><span>© @DateTime.Now.Year @settings.SiteName. Tüm hakları saklıdır.</span><div><a href="/gizlilik-politikasi">Gizlilik</a><a href="/kvkk-aydinlatma-metni">KVKK</a>@if (tracking) { <button type="button" class="footer-link-button" data-consent-open>Çerez tercihleri</button> }</div></div>
     </footer>
     @if (!string.IsNullOrWhiteSpace(settings.WhatsAppNumber) && !settings.WhatsAppNumber.Contains('X'))
     {
         <a class="floating-contact" href="https://wa.me/@settings.WhatsAppNumber" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp üzerinden iletişim">WhatsApp <span aria-hidden="true">↗</span></a>
+    }
+    @if (tracking)
+    {
+        <div id="consent-banner" class="consent-banner" role="dialog" aria-label="Çerez tercihleri" hidden>
+            <p>@settings.ConsentText <a href="/gizlilik-politikasi">Ayrıntılar</a></p>
+            <div class="consent-banner__actions">
+                <button type="button" class="button button--small button--outline-light" data-consent-reject>Reddet</button>
+                <button type="button" class="button button--small button--silver" data-consent-accept>Kabul et</button>
+            </div>
+        </div>
+        <script type="application/json" id="tracking-config">@Html.Raw(JsonSerializer.Serialize(new { ga4 = settings.Ga4MeasurementId, pixel = settings.MetaPixelId, firstParty, @event = ViewData["TrackEvent"] as string, eventLabel = ViewData["TrackLabel"] as string }))</script>
+        <script src="~/js/tracking.js" asp-append-version="true" defer></script>
     }
     <script src="~/js/site.js" asp-append-version="true" defer></script>
     @await RenderSectionAsync("Scripts", required: false)

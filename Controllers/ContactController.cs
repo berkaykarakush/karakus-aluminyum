@@ -41,6 +41,8 @@ public class ContactController : Controller
     [HttpGet("tesekkurler")]
     public IActionResult Thanks()
     {
+        // Yalnızca gerçek form gönderiminden gelindiğinde dönüşüm sayılır; bot tuzağı veya doğrudan açılış sayılmaz.
+        if (TempData["ContactNotice"] is string) { ViewData["TrackEvent"] = "lead"; }
         ViewData["Seo"] = new SeoViewModel { Title="Talebiniz Alındı | Karakuş Alüminyum", Description="İletişim talebi bilgilendirme sayfası.", CanonicalPath="/iletisim/tesekkurler", Robots="noindex,follow" };
         return View();
     }
