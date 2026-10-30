@@ -54,3 +54,5 @@ body.doc--contract{font-family:Arial,Helvetica,sans-serif;font-size:11.5pt}
   .doc-print-foot{position:fixed;right:25mm;bottom:0;left:25mm;display:block}
   .doc-print-foot .doc-foot{visibility:visible;height:auto}
 }
+.doc-pos .wd-brand{float:right;display:inline-flex;align-items:center;max-width:42%;font-weight:700;text-align:right}
+.doc-pos .wd-brand img{display:block;max-width:100%;height:9mm;object-fit:contain}

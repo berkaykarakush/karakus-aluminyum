@@ -255,6 +255,6 @@ public sealed class ContractsController : Controller
         ViewBag.CustomerDetails = await _db.Customers.AsNoTracking().Where(x => x.Status != CustomerStatus.Passive)
             .Select(x => new { id = x.Id, name = x.Name, address = x.Address, taxInfo = ((x.TaxOffice ?? "") + " " + (x.TaxNumber ?? "")).Trim() }).ToListAsync();
         ViewBag.Clauses = await _db.TemplateClauses.AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.SortOrder).ToListAsync();
-        ViewBag.Designs = await _db.WindowDesigns.AsNoTracking().OrderByDescending(x => x.UpdatedUtc).Take(200).Select(x => new { id = x.Id, name = x.Name, widthMm = x.WidthMm, heightMm = x.HeightMm, quantity = x.Quantity }).ToListAsync();
+        ViewBag.Designs = await _db.WindowDesigns.AsNoTracking().OrderByDescending(x => x.DrawingList!.UpdatedUtc).ThenBy(x => x.DrawingListId).ThenBy(x => x.SortOrder).Take(200).Select(x => new { id = x.Id, listId = x.DrawingListId, listName = x.DrawingList!.Name, name = x.Name, widthMm = x.WidthMm, heightMm = x.HeightMm, quantity = x.Quantity }).ToListAsync();
     }
 }

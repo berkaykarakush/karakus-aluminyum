@@ -411,7 +411,7 @@ public sealed class ContractTests(PostgresFixture postgres)
         var (app, client, token, customer) = await SetupAsync();
         var designId = await app.WithDbAsync(async db =>
         {
-            var design = new WindowDesign { Name = "Sürme Poz", WidthMm = 2200, HeightMm = 2250, Quantity = 2, LayoutJson = "{\"opening\":\"fixed\"}" };
+            var design = new WindowDesign { DrawingList = new DrawingList { Name = "Test" }, Name = "Sürme Poz", WidthMm = 2200, HeightMm = 2250, Quantity = 2, LayoutJson = "{\"opening\":\"fixed\"}" };
             db.WindowDesigns.Add(design);
             await db.SaveChangesAsync();
             return design.Id;

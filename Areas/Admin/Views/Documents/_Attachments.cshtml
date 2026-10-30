@@ -6,6 +6,7 @@
     @foreach (var item in Model.Items)
     {
       <div class="doc-pos">
+        <partial name="_BrandMark" model="item.Design.Brand" />
         <div>Poz: @item.Position</div>
         <div>Adt: @item.Design.Quantity</div>
         <div>@item.Design.Name</div>

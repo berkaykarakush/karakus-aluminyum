@@ -8,7 +8,7 @@
 }
 <div class="admin-page-heading">
   <div><h1>Hoş geldiniz</h1><div class="admin-muted">Son 30 günün özeti</div></div>
-  <div class="admin-actions"><a class="admin-btn" href="/yonetim/crm/teklifler/ekle">+ Yeni teklif</a><a class="admin-btn admin-btn--secondary" href="/yonetim/cizim/ekle">+ Yeni çizim</a><a class="admin-btn admin-btn--secondary" href="/yonetim/raporlar">Raporlar</a></div>
+  <div class="admin-actions"><a class="admin-btn" href="/yonetim/crm/teklifler/ekle">+ Yeni teklif</a><a class="admin-btn admin-btn--secondary" href="/yonetim/cizim/ekle">+ Yeni çizim listesi</a><a class="admin-btn admin-btn--secondary" href="/yonetim/raporlar">Raporlar</a></div>
 </div>
 <section class="report-kpis">
   <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KarakusAluminyum.Web.Areas.Admin.Models.KpiVm("Teklif tutarı", TurkishNumbers.Money(sales.QuoteTotal), sales.QuoteTotal, sales.PreviousQuoteTotal)' />

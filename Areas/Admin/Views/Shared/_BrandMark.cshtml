@@ -1,0 +1,5 @@
+@model KarakusAluminyum.Web.Models.Drawing.Brand?
+@if (Model is not null)
+{
+  <span class="wd-brand">@if (!string.IsNullOrEmpty(Model.LogoPath)) { <img src="@Model.LogoPath" alt="@Model.Name" /> } else { @Model.Name }</span>
+}

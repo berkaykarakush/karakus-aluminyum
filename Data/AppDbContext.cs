@@ -25,6 +25,8 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ProfileSystem> ProfileSystems => Set<ProfileSystem>();
     public DbSet<GlassType> GlassTypes => Set<GlassType>();
     public DbSet<WindowDesign> WindowDesigns => Set<WindowDesign>();
+    public DbSet<DrawingList> DrawingLists => Set<DrawingList>();
+    public DbSet<Brand> Brands => Set<Brand>();
     public DbSet<AnalyticsEvent> AnalyticsEvents => Set<AnalyticsEvent>();
     public DbSet<GlassList> GlassLists => Set<GlassList>();
     public DbSet<GlassListItem> GlassListItems => Set<GlassListItem>();
@@ -80,6 +82,10 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<WindowDesign>().HasOne(x => x.ProfileSystem).WithMany()
             .HasForeignKey(x => x.ProfileSystemId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<WindowDesign>().HasOne(x => x.DrawingList).WithMany(x => x.Items).HasForeignKey(x => x.DrawingListId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<WindowDesign>().HasOne(x => x.Brand).WithMany().HasForeignKey(x => x.BrandId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<DrawingList>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<DrawingList>().HasIndex(x => x.UpdatedUtc);
         builder.Entity<WindowDesign>().HasIndex(x => x.UpdatedUtc);
         builder.Entity<WindowDesign>().HasOne(x => x.Customer).WithMany()
             .HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.SetNull);

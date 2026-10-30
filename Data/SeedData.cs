@@ -81,9 +81,10 @@ public static class SeedData
     public const string DrawingSeededKey = "DrawingSeeded";
     public const string ClausesSeededKey = "ClausesSeeded";
     public const string ProductSystemsSeededKey = "ProductSystemsSeeded";
+    public const string BrandsSeededKey = "BrandsSeeded";
 
     // Tek seferlik seed'lerin işaretçileri; site ayarları ekranında gösterilmez.
-    public static readonly string[] InternalSettingKeys = { GallerySeededKey, HomeFaqsSeededKey, DrawingSeededKey, ClausesSeededKey, ProductSystemsSeededKey };
+    public static readonly string[] InternalSettingKeys = { GallerySeededKey, HomeFaqsSeededKey, DrawingSeededKey, ClausesSeededKey, ProductSystemsSeededKey, BrandsSeededKey };
 
     public static async Task InitializeAsync(IServiceProvider services, IConfiguration config)
     {
@@ -255,6 +256,17 @@ public static class SeedData
             foreach (var category in ProductCategories.All)
                 if (!await db.ProfileSystems.AnyAsync(p => p.Category == category))
                     db.ProfileSystems.Add(new ProfileSystem { Name = $"Örnek {ProductCategories.Label(category)} (değerleri girin)", Category = category, Material = ProductCategories.Label(category) });
+        }
+
+        // Başlangıç markaları: logolar panelden yüklenir, o zamana kadar marka adı yazılır.
+        if (!await db.SiteSettingRecords.AnyAsync(s => s.Key == BrandsSeededKey))
+        {
+            db.SiteSettingRecords.Add(new SiteSettingRecord { Key = BrandsSeededKey, Value = "true", Description = "Başlangıç markaları eklendi" });
+            db.Brands.AddRange(
+                new Brand { Name = "Linea Rossa", Category = ProductCategories.Aluminum, SortOrder = 1 },
+                new Brand { Name = "Winer", Category = ProductCategories.Pvc, SortOrder = 2 },
+                new Brand { Name = "Egepen", Category = ProductCategories.Pvc, SortOrder = 3 },
+                new Brand { Name = "Winsa", Category = ProductCategories.Pvc, SortOrder = 4 });
         }
 
         // Belge şablonları her zaman vardır; hazır maddeler yalnızca bir kez eklenir.

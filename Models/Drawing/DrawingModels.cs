@@ -51,9 +51,38 @@ public sealed class GlassType
     [Column(TypeName = "numeric(10,2)"), Range(0, 50)] public decimal CutGapMm { get; set; } = 2;
 }
 
+// Her çizim bir listenin satırıdır; tek çizim de tek satırlık listedir.
+public sealed class DrawingList
+{
+    public int Id { get; set; }
+    [Required(ErrorMessage = "Liste adı yazın."), StringLength(160)] public string Name { get; set; } = "";
+    public int? CustomerId { get; set; }
+    public Customer? Customer { get; set; }
+    [StringLength(1000)] public string? Notes { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
+    public List<WindowDesign> Items { get; set; } = new();
+}
+
+// Çizimin sağ üstünde görünen ürün markası (ör. Linea Rossa, Egepen).
+public sealed class Brand
+{
+    public int Id { get; set; }
+    [Required(ErrorMessage = "Marka adı yazın."), StringLength(80)] public string Name { get; set; } = "";
+    [StringLength(20)] public string Category { get; set; } = ProductCategories.Aluminum;
+    [StringLength(500)] public string? LogoPath { get; set; }
+    public int SortOrder { get; set; }
+    public bool IsActive { get; set; } = true;
+}
+
 public sealed class WindowDesign
 {
     public int Id { get; set; }
+    public int DrawingListId { get; set; }
+    public DrawingList? DrawingList { get; set; }
+    public int SortOrder { get; set; }
+    public int? BrandId { get; set; }
+    public Brand? Brand { get; set; }
     [Required, StringLength(160)] public string Name { get; set; } = "";
     public int? CustomerId { get; set; }
     public Customer? Customer { get; set; }
@@ -175,6 +204,8 @@ public sealed class DesignInputVm
     public int? CustomerId { get; set; }
     public string Category { get; set; } = ProductCategories.Aluminum;
     public int? ProfileSystemId { get; set; }
+    public int? BrandId { get; set; }
+    public int DrawingListId { get; set; }
     [RegularExpression("^#[0-9a-fA-F]{6}$")] public string ColorHex { get; set; } = "#f4f5f5";
     public int WidthMm { get; set; } = 1500;
     public int HeightMm { get; set; } = 1400;
@@ -186,21 +217,29 @@ public sealed class DesignInputVm
     [StringLength(1000)] public string? Notes { get; set; }
 }
 
-// Toplu çizim ekleme: her satır editörde açılabilen tam bir çizimdir.
-public sealed class BulkDesignInputVm
+public sealed class DrawingListInputVm
 {
+    public int Id { get; set; }
+    [Required(ErrorMessage = "Liste adı yazın."), StringLength(160)] public string Name { get; set; } = "";
     public int? CustomerId { get; set; }
+    [StringLength(1000)] public string? Notes { get; set; }
     [RegularExpression("^#[0-9a-fA-F]{6}$")] public string ColorHex { get; set; } = "#f4f5f5";
     public string ItemsJson { get; set; } = "[]";
 }
 
-public sealed class BulkDesignRow
+public sealed class DrawingRowInput
 {
+    public int? Id { get; set; }
     public string Category { get; set; } = ProductCategories.Aluminum;
+    public int? BrandId { get; set; }
+    public int? ProfileSystemId { get; set; }
     public string? Name { get; set; }
     public int WidthMm { get; set; }
     public int HeightMm { get; set; }
     public int Quantity { get; set; } = 1;
+    public string? ColorHex { get; set; }
+    public string? Shape { get; set; }
+    public int ShapeParamMm { get; set; }
     public string? LayoutJson { get; set; }
     public string? ParamsJson { get; set; }
 }

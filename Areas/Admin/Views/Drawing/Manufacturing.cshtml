@@ -6,7 +6,6 @@
     ViewData["Title"] = "İmalat föyü";
     var c = (WindowCalculation)ViewBag.Calculation;
     var plans = (List<BarPlan>)ViewBag.Plans;
-    var quotes = (SelectList)ViewBag.Quotes;
     var s = Model.ProfileSystem!;
     var drawing = WindowDrawings.Drawing(Model);
     var glassLists = (SelectList)ViewBag.GlassLists;
@@ -15,12 +14,12 @@
 <link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
 <div class="admin-actions wd-noprint">
   <h1>İmalat föyü</h1>
-  <a class="admin-btn" href="/yonetim/cizim/detay/@Model.Id">Çizime dön</a>
+  <a class="admin-btn" href="/yonetim/cizim/detay/@Model.DrawingListId">Listeye dön</a>
   <button class="admin-btn" type="button" onclick="window.print()">Yazdır / PDF kaydet</button>
 </div>
 <div class="wd-sheet">
   <div class="admin-panel">
-    <h2>@Model.Name</h2>
+    <div class="wd-pos__head"><h2>@Model.Name</h2><partial name="_BrandMark" model="Model.Brand" /></div>
     <p class="admin-muted">@ProductCategories.Label(Model.Category) · @Model.Customer?.Name · @s.Name · @Units.Size(Model.WidthMm, Model.HeightMm) @Units.Code · @Model.Quantity adet</p>
     @if (c.Errors.Count > 0) { <ul class="wd-errors">@foreach (var e in c.Errors) { <li>@e</li> }</ul> }
     @if (c.Warnings.Count > 0) { <ul class="wd-warnings">@foreach (var w in c.Warnings) { <li>@w</li> }</ul> }
@@ -81,19 +80,6 @@
         </form>
       }
       else { <p class="admin-muted">Bu çizimde cam yok.</p> }
-    </div>
-    <div class="admin-panel wd-noprint">
-      <h2>Teklife ekle</h2>
-      @if (quotes.Any())
-      {
-        <form class="admin-actions" method="post" action="/yonetim/cizim/teklife-ekle/@Model.Id">
-          @Html.AntiForgeryToken()
-          <select name="quoteId" aria-label="Taslak teklif" asp-items="quotes"></select>
-          <input type="number" name="unitPrice" min="0" step="0.01" value="@c.UnitPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)" aria-label="Birim fiyat" required style="padding:9px 11px;border:1px solid #cfd5d9;border-radius:8px" />
-          <button class="admin-btn">Ekle</button>
-        </form>
-      }
-      else { <p class="admin-muted">Taslak durumunda teklif yok. <a href="/yonetim/crm/teklifler/ekle">Yeni teklif oluşturun.</a></p> }
     </div>
   }
 </div>

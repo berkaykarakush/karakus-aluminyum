@@ -76,11 +76,25 @@
 .wd-bar span:nth-child(even){background:#4a7eab}
 .gl-plate{display:block;width:100%;max-width:560px;height:auto;margin:6px 0 14px;background:#f7f9fc;border:1px solid var(--line)}
 #wd-result h3{margin:14px 0 6px;font-size:14px}
-.db-table{min-width:980px}
-@media(max-width:1000px){.db-table{display:table}}
-.db-table td:nth-child(2) select{min-width:176px}
-.db-table td:nth-child(3) select{min-width:118px}
-.db-table td:nth-child(4) input{min-width:170px}
-.db-table td:nth-child(5),.db-table td:nth-child(6){width:150px}
-.db-table td:nth-child(7){width:80px}
-.db-table td:last-child{white-space:nowrap}
+.dl-table{table-layout:fixed;min-width:1240px}
+@media(max-width:1000px){.dl-table{display:table}}
+.dl-table th:nth-child(1){width:44px}
+.dl-table th:nth-child(2){width:176px}
+.dl-table th:nth-child(3){width:120px}
+.dl-table th:nth-child(4){width:124px}
+.dl-table th:nth-child(6),.dl-table th:nth-child(7){width:156px}
+.dl-table th:nth-child(8){width:76px}
+.dl-table th:nth-child(9){width:176px}
+.dl-table td{width:auto!important}
+.dl-table td:last-child{white-space:nowrap}
+.dl-table .gl-sketch{width:36px;height:36px}
+.wd-brand{display:inline-flex;align-items:center;justify-content:flex-end;min-height:34px;max-width:170px;font-weight:700;font-size:14px;color:#26313a;text-align:right}
+.wd-brand img{display:block;max-width:100%;max-height:44px;object-fit:contain}
+@media(max-width:1000px){.wd-simple .wd-canvas-panel{position:relative}}
+.wd-brand--canvas{position:absolute;top:18px;right:18px;z-index:2;padding:6px 10px;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:8px}
+.wd-pos-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:16px;margin-bottom:16px}
+.wd-pos{min-width:0;margin:0;break-inside:avoid}
+.wd-pos__head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px}
+.wd-pos__links{gap:12px;margin:4px 0 0;font-size:13px}
+@media(max-width:700px){.wd-pos-grid{grid-template-columns:minmax(0,1fr)}}
+@media print{.wd-pos-grid{display:block}.wd-pos{margin-bottom:6mm}}

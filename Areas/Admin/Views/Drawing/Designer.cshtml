@@ -3,15 +3,14 @@
 @inject KarakusAluminyum.Web.Services.SiteSettingsProvider SiteSettings
 @{
     var production = (await SiteSettings.GetAsync()).ProductionDetails;
-    var editing = Model.Id != 0;
     var label = ProductCategories.Label(Model.Category);
-    ViewData["Title"] = (editing ? "Düzenle: " : "Yeni: ") + label;
-    var action = editing ? $"/yonetim/cizim/duzenle/{Model.Id}" : "/yonetim/cizim/ekle";
+    ViewData["Title"] = "Çizim: " + label;
+    var action = $"/yonetim/cizim/poz/{Model.Id}";
     var templates = new[] { ("fixed", "Sabit"), ("single", "Tek kanat"), ("double", "Çift kanat"), ("triple", "Üçlü"), ("sliding", "Sürme"), ("transom", "Üst vasistas"), ("door", "Kapı") };
     var openings = new[] { ("fixed", "Sabit"), ("left", "Sola menteşe"), ("right", "Sağa menteşe"), ("tilt", "Vasistas"), ("tiltLeft", "Açılır-devrilir sol"), ("tiltRight", "Açılır-devrilir sağ"), ("slideLeft", "Sürme sola"), ("slideRight", "Sürme sağa"), ("doorLeft", "Kapı sol"), ("doorRight", "Kapı sağ") };
 }
 <link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
-<div class="admin-actions wd-noprint"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/cizim?tur=@Model.Category">Çizim listesi</a>@if (editing) { <a class="admin-btn" href="/yonetim/cizim/detay/@Model.Id">Çizimi görüntüle</a> }</div>
+<div class="admin-actions wd-noprint"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/cizim/duzenle/@Model.DrawingListId">Listeye dön</a><a class="admin-btn" href="/yonetim/cizim/detay/@Model.DrawingListId">Çizimleri görüntüle</a>@if (production && Model.ProfileSystemId is not null) { <a class="admin-btn" href="/yonetim/cizim/imalat/@Model.Id">İmalat föyü</a> }</div>
 <form id="wd-form" method="post" action="@action">
   @Html.AntiForgeryToken()
   <input type="hidden" asp-for="LayoutJson" />
@@ -27,6 +26,11 @@
           <div><label asp-for="HeightMm">Yükseklik</label><input asp-for="HeightMm" type="number" min="200" max="20000" /></div>
         </div>
         <label asp-for="Quantity">Adet</label><input asp-for="Quantity" type="number" min="1" />
+        <label asp-for="BrandId">Marka</label>
+        <select asp-for="BrandId" data-brand-select>
+          <option value="">Marka yok</option>
+          @foreach (var b in ((List<Brand>)ViewBag.Brands).Where(b => b.IsActive || b.Id == Model.BrandId)) { <option value="@b.Id" data-logo="@b.LogoPath">@b.Name</option> }
+        </select>
         @if (production)
         {
           <label asp-for="ProfileSystemId">Profil sistemi</label>
@@ -56,8 +60,6 @@
       </div>
       <details class="wd-panel">
         <summary>Gelişmiş ayarlar</summary>
-        <label asp-for="CustomerId">Müşteri</label>
-        <select asp-for="CustomerId" asp-items="(SelectList)ViewBag.Customers"><option value="">-</option></select>
         <label asp-for="Shape">Şekil</label>
         <select asp-for="Shape"><option value="rect">Dikdörtgen</option><option value="arch">Kemerli</option><option value="slopeL">Eğimli (sol alçak)</option><option value="slopeR">Eğimli (sağ alçak)</option></select>
         <div id="wd-param-row" hidden><label id="wd-param-label" asp-for="ShapeParamMm">Şekil ölçüsü</label><input asp-for="ShapeParamMm" type="number" min="0" /></div>
@@ -75,7 +77,7 @@
       </details>
     </div>
     <div>
-      <div class="wd-canvas-panel">
+      <div class="wd-canvas-panel"><span id="wd-brand-mark" class="wd-brand wd-brand--canvas" hidden></span>
                 <svg id="wd-canvas" role="img" aria-label="Pencere çizimi"></svg>
         <div class="wd-summary-bar">
           <span class="admin-muted">Bölme ölçülerinin toplamı dış ölçüye eşittir.</span>
@@ -97,4 +99,5 @@
 </form>
 <script src="~/js/window-drawing.js" asp-append-version="true"></script>
 <script src="~/js/window-designer.js" asp-append-version="true"></script>
+<script src="~/js/drawing-brand.js" asp-append-version="true"></script>
 @if (production) { <script src="~/js/drawing-production.js" asp-append-version="true"></script> }

@@ -5,6 +5,7 @@ using KarakusAluminyum.Web.Models.Crm;
 using KarakusAluminyum.Web.Models.Drawing;
 using KarakusAluminyum.Web.Services.Drawing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace KarakusAluminyum.Tests;
@@ -93,6 +94,15 @@ public sealed class WindowCalculatorTests
         Assert.Equal(860m + 2 * 2m, Cut(c, "Yatay kayıt").LengthMm);
         // alt bölme 540..930 = 390 yüksek; iç kayıt tüm bu yüksekliktedir
         Assert.Equal(390m + 2 * 2m, Cut(c, "Dikey kayıt").LengthMm);
+    }
+
+    [Fact]
+    public void SameDirectionNesting_SplitsItsOwnPart_NotTheWholeWindow()
+    {
+        // sınırlar 500 ve 750: 70..460, 540..710, 790..930; cam payı 2x5
+        var c = Calc(Split("v", new[] { 500m, 500m }, Leaf(), Split("v", new[] { 250m, 250m }, Leaf(), Leaf())));
+        Assert.True(c.IsValid);
+        Assert.Equal(new[] { 130m, 160m, 380m }, c.Glass.Select(g => g.WidthMm).Order());
     }
 
     [Theory]
@@ -526,26 +536,43 @@ public sealed class WindowDrawingsTests
     }
 }
 
+internal static class DrawingLists
+{
+    public const string Layout = "{\"id\":\"root\",\"opening\":\"tiltRight\",\"fill\":\"glass\"}";
+    public const string Url = "/yonetim/cizim/ekle";
+
+    public static object Row(string? name, int width = 1000, int height = 1000, int quantity = 2, string layout = Layout, string category = "aluminum", int? system = null, int? brand = null, int? id = null)
+        => new { id, category, name, widthMm = width, heightMm = height, quantity, layoutJson = layout, profileSystemId = system, brandId = brand };
+
+    public static object Product(string? name, string category, string options, int width = 1000, int height = 1400, int? brand = null, int? id = null)
+        => new { id, category, name, widthMm = width, heightMm = height, quantity = 1, paramsJson = options, brandId = brand };
+
+    public static string Rows(params object[] rows) => JsonSerializer.Serialize(rows);
+
+    public static Task<HttpResponseMessage> PostAsync(HttpClient client, string token, string listName, string rows, params (string, string)[] extra)
+        => PostToAsync(client, token, Url, listName, rows, extra);
+
+    public static Task<HttpResponseMessage> PostToAsync(HttpClient client, string token, string url, string listName, string rows, params (string, string)[] extra)
+        => client.PostFormAsync(url, token, new[] { ("Name", listName), ("ColorHex", "#3a4046"), ("ItemsJson", rows) }.Concat(extra).ToArray());
+
+    public static Task<int> ListIdAsync(AppFactory app, string name)
+        => app.WithDbAsync(db => db.DrawingLists.Where(l => l.Name == name).Select(l => l.Id).SingleAsync());
+
+    public static Task<int> DesignIdAsync(AppFactory app, string name)
+        => app.WithDbAsync(db => db.WindowDesigns.Where(d => d.Name == name).Select(d => d.Id).SingleAsync());
+}
+
 [Collection("postgres")]
 public sealed class DrawingPageTests(PostgresFixture postgres)
 {
-    private const string Layout = "{\"id\":\"root\",\"opening\":\"tiltRight\",\"fill\":\"glass\"}";
-
     private static async Task<(HttpClient Client, string Token)> AdminAsync(AppFactory app)
     {
         var client = app.NewClient();
         await client.LoginAsync(AppFactory.AdminEmail);
-        return (client, await client.GetTokenAsync("/yonetim/cizim/ekle?tur=aluminum"));
+        return (client, await client.GetTokenAsync(DrawingLists.Url));
     }
 
-    private static Task<HttpResponseMessage> SaveAsync(HttpClient client, string token, string url, string name, string layout = Layout, int width = 1000, int height = 1000)
-        => client.PostFormAsync(url, token, ("Name", name), ("Category", "aluminum"), ("ColorHex", "#3a4046"),
-            ("WidthMm", width.ToString()), ("HeightMm", height.ToString()), ("Shape", "rect"), ("ShapeParamMm", "0"), ("Quantity", "2"), ("LayoutJson", layout));
-
     private static string Name() => "Çizim " + Guid.NewGuid().ToString("N")[..8];
-
-    private static Task<int> IdAsync(AppFactory app, string name)
-        => app.WithDbAsync(db => db.WindowDesigns.Where(d => d.Name == name).Select(d => d.Id).SingleAsync());
 
     private static Task<int> NewQuoteAsync(AppFactory app, QuoteStatus status) => app.WithDbAsync(async db =>
     {
@@ -559,7 +586,7 @@ public sealed class DrawingPageTests(PostgresFixture postgres)
     });
 
     [Fact]
-    public async Task Seed_CreatesPricelessExamples()
+    public async Task Seed_CreatesPricelessExamples_AndBrandsWithoutLogos()
     {
         var app = postgres.Shared;
         app.NewClient();
@@ -567,36 +594,50 @@ public sealed class DrawingPageTests(PostgresFixture postgres)
         var systems = await app.WithDbAsync(db => db.ProfileSystems.Where(p => p.Name.StartsWith("Örnek")).ToListAsync());
         Assert.All(ProductCategories.All, category => Assert.Contains(systems, p => p.Category == category));
         Assert.All(systems, p => Assert.Equal(0m, p.FramePricePerM));
+
+        var brands = await app.WithDbAsync(db => db.Brands.AsNoTracking().ToDictionaryAsync(b => b.Name));
+        Assert.Equal(ProductCategories.Aluminum, brands["Linea Rossa"].Category);
+        foreach (var name in new[] { "Winer", "Egepen", "Winsa" }) Assert.Equal(ProductCategories.Pvc, brands[name].Category);
+        foreach (var name in new[] { "Linea Rossa", "Winer", "Egepen", "Winsa" }) Assert.Null(brands[name].LogoPath);
     }
 
     [Fact]
-    public async Task Designer_PageRenders()
+    public async Task NewDrawing_IsAlwaysAList_ThereIsNoSingleDrawingPage()
     {
         var (client, _) = await AdminAsync(postgres.Shared);
-        var html = await client.GetStringAsync("/yonetim/cizim/ekle?tur=aluminum");
-        Assert.Contains("id=\"wd-canvas\"", html);
-        Assert.Contains("window-designer.js", html);
+        var editor = await client.GetStringAsync(DrawingLists.Url);
+        Assert.Contains("id=\"dl-rows\"", editor);
+        Assert.Contains("drawing-list.js", editor);
+        Assert.DoesNotContain("wd-canvas", editor);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/yonetim/cizim/toplu-ekle")).StatusCode);
     }
 
     [Fact]
-    public async Task Save_ThenDrawingPageShowsTheShapeWithoutManufacturing()
+    public async Task SingleDrawing_IsSavedAsOneRowList_AndShownWithoutManufacturing()
     {
         var app = postgres.Shared;
         var (client, token) = await AdminAsync(app);
         var name = Name();
 
-        Assert.Equal(HttpStatusCode.Redirect, (await SaveAsync(client, token, "/yonetim/cizim/ekle", name)).StatusCode);
-        var id = await IdAsync(app, name);
+        Assert.Equal(HttpStatusCode.Redirect, (await DrawingLists.PostAsync(client, token, name, DrawingLists.Rows(DrawingLists.Row(name)))).StatusCode);
+        var listId = await DrawingLists.ListIdAsync(app, name);
+        Assert.Equal(1, await app.WithDbAsync(db => db.WindowDesigns.CountAsync(d => d.DrawingListId == listId)));
 
-        var page = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/cizim/detay/{id}"));
-        Assert.Contains("wd-sheet-drawing", page);
+        var page = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/cizim/detay/{listId}"));
+        Assert.Contains("data-drawing", page);
         Assert.Contains("\"opening\":\"tiltRight\"", page);
         Assert.Contains("100 × 100 cm", page);
-        foreach (var removed in new[] { "Kesim", "Maliyet", "Optimizasyon", "Profil", "İmalat" }) Assert.DoesNotContain(removed, page);
+        foreach (var removed in new[] { "Kesim", "Maliyet", "Optimiz", "Profil", "İmalat" }) Assert.DoesNotContain(removed, page);
         Assert.Contains(name, WebUtility.HtmlDecode(await client.GetStringAsync("/yonetim/cizim")));
 
-        Assert.Equal(HttpStatusCode.Redirect, (await SaveAsync(client, token, $"/yonetim/cizim/duzenle/{id}", name, width: 1500)).StatusCode);
-        Assert.Equal(1500, await app.WithDbAsync(db => db.WindowDesigns.Where(d => d.Id == id).Select(d => d.WidthMm).SingleAsync()));
+        var designId = await DrawingLists.DesignIdAsync(app, name);
+        var editor = await client.GetStringAsync($"/yonetim/cizim/poz/{designId}");
+        Assert.Contains("id=\"wd-canvas\"", editor);
+        Assert.Contains($"/yonetim/cizim/duzenle/{listId}", editor);
+        var saved = await client.PostFormAsync($"/yonetim/cizim/poz/{designId}", token, ("Name", name), ("Category", "aluminum"), ("ColorHex", "#3a4046"),
+            ("WidthMm", "1500"), ("HeightMm", "1000"), ("Shape", "rect"), ("ShapeParamMm", "0"), ("Quantity", "2"), ("LayoutJson", DrawingLists.Layout));
+        Assert.Equal(HttpStatusCode.Redirect, saved.StatusCode);
+        Assert.Equal(1500, await app.WithDbAsync(db => db.WindowDesigns.Where(d => d.Id == designId).Select(d => d.WidthMm).SingleAsync()));
     }
 
     [Theory]
@@ -610,45 +651,22 @@ public sealed class DrawingPageTests(PostgresFixture postgres)
     }
 
     [Fact]
-    public async Task Save_RejectsBrokenLayoutsAndPartsThatDoNotAddUp_WithoutSaving()
+    public async Task AddToQuote_AddsPricedRowsOnly_AndRecalculatesDraft_ButNotOtherStatuses()
     {
         var app = postgres.Shared;
         var (client, token) = await AdminAsync(app);
-
-        foreach (var layout in new[] { "{bozuk", "{\"split\":\"v\",\"sizes\":[400,400],\"children\":[{},{}]}" })
-        {
-            var name = Name();
-            Assert.Equal(HttpStatusCode.OK, (await SaveAsync(client, token, "/yonetim/cizim/ekle", name, layout)).StatusCode);
-            Assert.False(await app.WithDbAsync(db => db.WindowDesigns.AnyAsync(d => d.Name == name)));
-        }
-    }
-
-    [Fact]
-    public async Task Save_UnknownCustomer_IsRejected()
-    {
-        var app = postgres.Shared;
-        var (client, token) = await AdminAsync(app);
-        var name = Name();
-        var response = await client.PostFormAsync("/yonetim/cizim/ekle", token, ("Name", name), ("Category", "aluminum"), ("CustomerId", "999999"), ("ColorHex", "#3a4046"),
-            ("WidthMm", "1000"), ("HeightMm", "1000"), ("Shape", "rect"), ("Quantity", "1"), ("LayoutJson", Layout));
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.False(await app.WithDbAsync(db => db.WindowDesigns.AnyAsync(d => d.Name == name)));
-    }
-
-    [Fact]
-    public async Task AddToQuote_UsesTypedPrice_AndRecalculatesDraft_ButNotOtherStatuses()
-    {
-        var app = postgres.Shared;
-        var (client, token) = await AdminAsync(app);
-        var name = Name();
-        await SaveAsync(client, token, "/yonetim/cizim/ekle", name);
-        var designId = await IdAsync(app, name);
+        var list = Name();
+        string[] names = [Name(), Name()];
+        await DrawingLists.PostAsync(client, token, list, DrawingLists.Rows(DrawingLists.Row(names[0]), DrawingLists.Row(names[1])));
+        var listId = await DrawingLists.ListIdAsync(app, list);
+        var first = await DrawingLists.DesignIdAsync(app, names[0]);
+        var second = await DrawingLists.DesignIdAsync(app, names[1]);
 
         var draft = await NewQuoteAsync(app, QuoteStatus.Draft);
-        await client.PostFormAsync($"/yonetim/cizim/teklife-ekle/{designId}", token, ("quoteId", draft.ToString()), ("unitPrice", "1250.50"));
+        await client.PostFormAsync($"/yonetim/cizim/teklife-ekle/{listId}", token, ("quoteId", draft.ToString()), ($"prices[{first}]", "1250.50"), ($"prices[{second}]", ""));
         var quote = await app.WithDbAsync(db => db.Quotes.AsNoTracking().Include(q => q.Items).SingleAsync(q => q.Id == draft));
         var line = Assert.Single(quote.Items);
-        Assert.Contains(name, line.Description);
+        Assert.Contains(names[0], line.Description);
         Assert.Contains("100x100 cm", line.Description);
         Assert.Equal(2m, line.Quantity);
         Assert.Equal(1250.50m, line.UnitPrice);
@@ -656,40 +674,55 @@ public sealed class DrawingPageTests(PostgresFixture postgres)
         Assert.True(quote.GrandTotal > quote.Subtotal);
 
         var sent = await NewQuoteAsync(app, QuoteStatus.Sent);
-        await client.PostFormAsync($"/yonetim/cizim/teklife-ekle/{designId}", token, ("quoteId", sent.ToString()), ("unitPrice", "100"));
+        await client.PostFormAsync($"/yonetim/cizim/teklife-ekle/{listId}", token, ("quoteId", sent.ToString()), ($"prices[{first}]", "100"));
         Assert.False(await app.WithDbAsync(db => db.QuoteItems.AnyAsync(i => i.QuoteId == sent)));
     }
 
     [Theory]
     [InlineData("0")]
     [InlineData("-5")]
+    [InlineData("")]
     public async Task AddToQuote_RejectsMissingPrice(string price)
     {
         var app = postgres.Shared;
         var (client, token) = await AdminAsync(app);
         var name = Name();
-        await SaveAsync(client, token, "/yonetim/cizim/ekle", name);
-        var designId = await IdAsync(app, name);
+        await DrawingLists.PostAsync(client, token, name, DrawingLists.Rows(DrawingLists.Row(name)));
         var quoteId = await NewQuoteAsync(app, QuoteStatus.Draft);
 
-        await client.PostFormAsync($"/yonetim/cizim/teklife-ekle/{designId}", token, ("quoteId", quoteId.ToString()), ("unitPrice", price));
+        await client.PostFormAsync($"/yonetim/cizim/teklife-ekle/{await DrawingLists.ListIdAsync(app, name)}", token, ("quoteId", quoteId.ToString()), ($"prices[{await DrawingLists.DesignIdAsync(app, name)}]", price));
         Assert.False(await app.WithDbAsync(db => db.QuoteItems.AnyAsync(i => i.QuoteId == quoteId)));
     }
 
     [Fact]
-    public async Task CopyAndDelete_Work()
+    public async Task AddToQuote_IgnoresDrawingsOfOtherLists()
     {
         var app = postgres.Shared;
         var (client, token) = await AdminAsync(app);
-        var name = Name();
-        await SaveAsync(client, token, "/yonetim/cizim/ekle", name);
-        var id = await IdAsync(app, name);
+        string[] names = [Name(), Name()];
+        foreach (var name in names) await DrawingLists.PostAsync(client, token, name, DrawingLists.Rows(DrawingLists.Row(name)));
+        var quoteId = await NewQuoteAsync(app, QuoteStatus.Draft);
+
+        await client.PostFormAsync($"/yonetim/cizim/teklife-ekle/{await DrawingLists.ListIdAsync(app, names[0])}", token, ("quoteId", quoteId.ToString()), ($"prices[{await DrawingLists.DesignIdAsync(app, names[1])}]", "100"));
+        Assert.False(await app.WithDbAsync(db => db.QuoteItems.AnyAsync(i => i.QuoteId == quoteId)));
+    }
+
+    [Fact]
+    public async Task CopyAndDelete_WorkOnTheWholeList()
+    {
+        var app = postgres.Shared;
+        var (client, token) = await AdminAsync(app);
+        var list = Name();
+        await DrawingLists.PostAsync(client, token, list, DrawingLists.Rows(DrawingLists.Row(Name()), DrawingLists.Row(Name())));
+        var id = await DrawingLists.ListIdAsync(app, list);
 
         await client.PostFormAsync($"/yonetim/cizim/kopyala/{id}", token);
-        Assert.True(await app.WithDbAsync(db => db.WindowDesigns.AnyAsync(d => d.Name == name + " (kopya)")));
+        Assert.Equal(2, await app.WithDbAsync(db => db.WindowDesigns.CountAsync(d => d.DrawingList!.Name == list + " (kopya)")));
 
         await client.PostFormAsync($"/yonetim/cizim/sil/{id}", token);
-        Assert.False(await app.WithDbAsync(db => db.WindowDesigns.AnyAsync(d => d.Id == id)));
+        Assert.False(await app.WithDbAsync(db => db.DrawingLists.AnyAsync(l => l.Id == id)));
+        Assert.False(await app.WithDbAsync(db => db.WindowDesigns.AnyAsync(d => d.DrawingListId == id)));
+        Assert.Equal(2, await app.WithDbAsync(db => db.WindowDesigns.CountAsync(d => d.DrawingList!.Name == list + " (kopya)")));
     }
 
     [Fact]
@@ -698,49 +731,61 @@ public sealed class DrawingPageTests(PostgresFixture postgres)
         await using (var first = postgres.CreateApp("drawing_upgrade"))
         {
             first.NewClient();
-            await first.WithDbAsync(db => db.Database.ExecuteSqlRawAsync("DROP TABLE \"WindowDesigns\"; DROP TABLE \"GlassListItems\"; DROP TABLE \"GlassLists\"; DROP TABLE \"GlassTypes\""));
+            await first.WithDbAsync(db => db.Database.ExecuteSqlRawAsync("DROP TABLE \"WindowDesigns\"; DROP TABLE \"DrawingLists\"; DROP TABLE \"Brands\"; DROP TABLE \"GlassListItems\"; DROP TABLE \"GlassLists\"; DROP TABLE \"GlassTypes\""));
         }
 
         await using var second = postgres.CreateApp("drawing_upgrade", schemaMode: "existing");
         second.NewClient();
         Assert.Equal(0, await second.WithDbAsync(db => db.WindowDesigns.CountAsync()));
+        Assert.Equal(0, await second.WithDbAsync(db => db.DrawingLists.CountAsync()));
     }
 
-    // Üretim dönemindeki veritabanı: hiçbir veri silinmez, sistem bağı isteğe bağlı olur.
+    // Liste öncesi veritabanı: her çizim kendi listesine taşınır, hiçbir veri silinmez.
     [Fact]
-    public async Task ManufacturingDatabase_KeepsEverything_AndSystemBecomesOptional()
+    public async Task OldDatabase_MovesEachDrawingToItsOwnList_AndKeepsEverything()
     {
         const string sizes = "{\"split\":\"v\",\"sizes\":[1,1],\"children\":[{},{}]}";
-        int systemId;
+        int systemId, designId, customerId;
         await using (var first = postgres.CreateApp("shape_upgrade"))
         {
             first.NewClient();
-            systemId = await first.WithDbAsync(async db =>
+            (systemId, designId, customerId) = await first.WithDbAsync(async db =>
             {
                 var system = new ProfileSystem { Name = "Eski sistem", Category = ProductCategories.Aluminum };
-                db.ProfileSystems.Add(system);
+                var customer = new Customer { Name = "Eski müşteri" };
+                db.AddRange(system, customer);
                 await db.SaveChangesAsync();
-                db.WindowDesigns.Add(new WindowDesign { Name = "Eski çizim", ProfileSystemId = system.Id, WidthMm = 1500, HeightMm = 1400, LayoutJson = sizes });
+                var design = new WindowDesign { DrawingList = new DrawingList { Name = "x" }, Name = "Eski çizim", CustomerId = customer.Id, ProfileSystemId = system.Id, WidthMm = 1500, HeightMm = 1400, LayoutJson = sizes };
+                db.WindowDesigns.Add(design);
+                db.WindowDesigns.Add(new WindowDesign { DrawingList = new DrawingList { Name = "y" }, Name = "İkinci eski", WidthMm = 1000, HeightMm = 1000, LayoutJson = "{}" });
                 db.GlassTypes.Add(new GlassType { Name = "Eski cam", SheetWidthMm = 3000 });
                 await db.SaveChangesAsync();
-                await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"WindowDesigns\" ALTER COLUMN \"ProfileSystemId\" SET NOT NULL");
-                return system.Id;
+                await db.Database.ExecuteSqlRawAsync("""
+                    ALTER TABLE "WindowDesigns" ALTER COLUMN "ProfileSystemId" DROP NOT NULL;
+                    ALTER TABLE "WindowDesigns" DROP COLUMN "DrawingListId", DROP COLUMN "BrandId", DROP COLUMN "SortOrder";
+                    DROP TABLE "DrawingLists"; DROP TABLE "Brands";
+                    """);
+                return (system.Id, design.Id, customer.Id);
             });
         }
 
         await using var second = postgres.CreateApp("shape_upgrade", schemaMode: "existing");
         var (client, _) = await AdminAsync(second);
-        var row = await second.WithDbAsync(db => db.WindowDesigns.AsNoTracking().SingleAsync(d => d.Name == "Eski çizim"));
+        var row = await second.WithDbAsync(db => db.WindowDesigns.AsNoTracking().Include(d => d.DrawingList).SingleAsync(d => d.Id == designId));
         Assert.Equal(systemId, row.ProfileSystemId);
         Assert.Equal(sizes, row.LayoutJson);
+        Assert.Equal("Eski çizim", row.DrawingList!.Name);
+        Assert.Equal(customerId, row.DrawingList.CustomerId);
+        Assert.Equal(2, await second.WithDbAsync(db => db.DrawingLists.CountAsync()));
         Assert.Equal(3000m, await second.WithDbAsync(db => db.GlassTypes.Where(g => g.Name == "Eski cam").Select(g => g.SheetWidthMm).SingleAsync()));
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/yonetim/cizim/detay/{row.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/yonetim/cizim/detay/{row.DrawingListId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/yonetim/cizim/duzenle/{row.DrawingListId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/yonetim/cizim/poz/{designId}")).StatusCode);
 
-        await second.WithDbAsync(async db =>
-        {
-            db.WindowDesigns.Add(new WindowDesign { Name = "Sistemsiz", WidthMm = 1000, HeightMm = 1000, LayoutJson = "{}" });
-            return await db.SaveChangesAsync();
-        });
+        // İkinci açılışta yeniden taşıma yapılmaz.
+        await using var third = postgres.CreateApp("shape_upgrade", schemaMode: "existing");
+        third.NewClient();
+        Assert.Equal(2, await third.WithDbAsync(db => db.DrawingLists.CountAsync()));
     }
 
     // Şekil sürümünde (e565411) silinen kolonlar geri gelir; çizimler sistemsiz kalır.
@@ -753,7 +798,7 @@ public sealed class DrawingPageTests(PostgresFixture postgres)
             await first.WithDbAsync(async db =>
             {
                 await db.Database.ExecuteSqlRawAsync("""
-                    ALTER TABLE "WindowDesigns" DROP COLUMN "ProfileSystemId";
+                    ALTER TABLE "WindowDesigns" DROP COLUMN "ProfileSystemId", DROP COLUMN "DrawingListId", DROP COLUMN "BrandId", DROP COLUMN "SortOrder";
                     ALTER TABLE "GlassTypes" DROP COLUMN "SheetWidthMm", DROP COLUMN "SheetHeightMm", DROP COLUMN "CutGapMm";
                     INSERT INTO "WindowDesigns" ("Name","Category","ColorHex","WidthMm","HeightMm","Shape","ShapeParamMm","Quantity","LayoutJson","ParamsJson","CreatedUtc","UpdatedUtc")
                     VALUES ('Şekil çizimi','aluminum','#ffffff',1500,1400,'rect',0,1,'{{}}','{{}}',now(),now());
@@ -938,50 +983,57 @@ public sealed class CategoryPageTests(PostgresFixture postgres)
     {
         var client = app.NewClient();
         await client.LoginAsync(AppFactory.AdminEmail);
-        return (client, await client.GetTokenAsync("/yonetim/cizim/ekle?tur=shutter"));
-    }
-
-    [Fact]
-    public async Task Chooser_ShowsAllCategories_AndGlassListSeparately()
-    {
-        var (client, _) = await AdminAsync(postgres.Shared);
-        var html = WebUtility.HtmlDecode(await client.GetStringAsync("/yonetim/cizim/ekle"));
-        foreach (var text in new[] { "Alüminyum Doğrama", "Plastik Doğrama", "Panjur", "Korkuluk", "Cam Balkon", "Cam Listesi" }) Assert.Contains(text, html);
+        return (client, await client.GetTokenAsync(DrawingLists.Url));
     }
 
     [Theory]
-    [InlineData("aluminum", "wd-canvas")]
-    [InlineData("pvc", "wd-canvas")]
-    [InlineData("shutter", "pd-canvas")]
-    [InlineData("railing", "pd-canvas")]
-    [InlineData("balcony", "pd-canvas")]
-    public async Task EachCategory_OpensItsDesigner(string category, string canvas)
+    [InlineData("aluminum")]
+    [InlineData("shutter")]
+    [InlineData("railing")]
+    public async Task NewList_PreselectsCategoryFromTheTab(string category)
     {
         var (client, _) = await AdminAsync(postgres.Shared);
-        Assert.Contains(canvas, await client.GetStringAsync($"/yonetim/cizim/ekle?tur={category}"));
+        Assert.Contains($"{DrawingLists.Url}?tur={category}", await client.GetStringAsync($"/yonetim/cizim?tur={category}"));
+        Assert.Matches($"<option[^>]*value=\"{category}\"[^>]*selected|<option[^>]*selected[^>]*value=\"{category}\"", await client.GetStringAsync($"{DrawingLists.Url}?tur={category}"));
     }
 
-    [Fact]
-    public async Task Shutter_SavesShowsAndFiltersByCategory()
+    [Theory]
+    [InlineData("aluminum", "wd-canvas", true)]
+    [InlineData("pvc", "wd-canvas", true)]
+    [InlineData("shutter", "pd-canvas", false)]
+    [InlineData("railing", "pd-canvas", false)]
+    [InlineData("balcony", "pd-canvas", false)]
+    public async Task EachCategory_OpensItsDrawingEditor(string category, string canvas, bool isWindow)
     {
         var app = postgres.Shared;
         var (client, token) = await AdminAsync(app);
-        var name = "Panjur " + Guid.NewGuid().ToString("N")[..8];
+        var name = "Tür " + Guid.NewGuid().ToString("N")[..8];
+        var row = isWindow ? DrawingLists.Row(name, category: category) : DrawingLists.Product(name, category, "{}");
+        await DrawingLists.PostAsync(client, token, name, DrawingLists.Rows(row));
+        Assert.Contains(canvas, await client.GetStringAsync($"/yonetim/cizim/poz/{await DrawingLists.DesignIdAsync(app, name)}"));
+    }
 
-        var saved = await client.PostFormAsync("/yonetim/cizim/ekle", token, ("Name", name), ("Category", "shutter"), ("ColorHex", "#3a4046"),
-            ("WidthMm", "1000"), ("HeightMm", "1400"), ("Quantity", "1"), ("ParamsJson", "{\"drive\":\"manual\"}"));
+    [Fact]
+    public async Task MixedList_SavesEveryCategory_AndTabsFilterLists()
+    {
+        var app = postgres.Shared;
+        var (client, token) = await AdminAsync(app);
+        var name = "Karışık " + Guid.NewGuid().ToString("N")[..8];
+
+        var saved = await DrawingLists.PostAsync(client, token, name, DrawingLists.Rows(DrawingLists.Row(name + " pencere"), DrawingLists.Product(name + " panjur", "shutter", "{\"drive\":\"manual\"}")));
         Assert.Equal(HttpStatusCode.Redirect, saved.StatusCode);
-        var design = await app.WithDbAsync(db => db.WindowDesigns.AsNoTracking().SingleAsync(d => d.Name == name));
-        Assert.Equal(ProductCategories.Shutter, design.Category);
-        Assert.Contains("manual", design.ParamsJson);
+        var shutter = await app.WithDbAsync(db => db.WindowDesigns.AsNoTracking().SingleAsync(d => d.Name == name + " panjur"));
+        Assert.Equal(ProductCategories.Shutter, shutter.Category);
+        Assert.Contains("manual", shutter.ParamsJson);
 
-        var page = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/cizim/detay/{design.Id}"));
+        var page = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/cizim/detay/{shutter.DrawingListId}"));
         Assert.Contains("\"category\":\"shutter\"", page);
         Assert.Contains("\"drive\":\"manual\"", page);
+        Assert.Contains("\"category\":\"aluminum\"", page);
 
         Assert.Contains(name, WebUtility.HtmlDecode(await client.GetStringAsync("/yonetim/cizim?tur=shutter")));
+        Assert.Contains(name, WebUtility.HtmlDecode(await client.GetStringAsync("/yonetim/cizim?tur=aluminum")));
         Assert.DoesNotContain(name, WebUtility.HtmlDecode(await client.GetStringAsync("/yonetim/cizim?tur=railing")));
-        Assert.Contains("name=\"Category\"", await client.GetStringAsync($"/yonetim/cizim/duzenle/{design.Id}"));
     }
 }
 
@@ -1018,10 +1070,10 @@ public sealed class LengthUnitPageTests(PostgresFixture postgres)
         await client.LoginAsync(AppFactory.AdminEmail);
         var id = await app.WithDbAsync(async db =>
         {
-            var design = new WindowDesign { Name = "Birim " + Guid.NewGuid().ToString("N")[..8], WidthMm = 1500, HeightMm = 1400, LayoutJson = "{\"opening\":\"fixed\"}" };
+            var design = new WindowDesign { DrawingList = new DrawingList { Name = "Birim" }, Name = "Birim " + Guid.NewGuid().ToString("N")[..8], WidthMm = 1500, HeightMm = 1400, LayoutJson = "{\"opening\":\"fixed\"}" };
             db.WindowDesigns.Add(design);
             await db.SaveChangesAsync();
-            return design.Id;
+            return design.DrawingListId;
         });
         return (app, client, id);
     }
@@ -1054,7 +1106,7 @@ public sealed class LengthUnitPageTests(PostgresFixture postgres)
     public async Task StoredValues_StayInMillimetres()
     {
         var (app, _, id) = await SetupAsync();
-        Assert.Equal(1500, await app.WithDbAsync(db => db.WindowDesigns.Where(d => d.Id == id).Select(d => d.WidthMm).SingleAsync()));
+        Assert.Equal(1500, await app.WithDbAsync(db => db.WindowDesigns.Where(d => d.DrawingListId == id).Select(d => d.WidthMm).SingleAsync()));
     }
 
     [Fact]
@@ -1102,17 +1154,17 @@ public sealed class DrawingGuardTests(PostgresFixture postgres)
         var app = postgres.Shared;
         var client = app.NewClient();
         await client.LoginAsync(AppFactory.AdminEmail);
-        var token = await client.GetTokenAsync("/yonetim/cizim/ekle?tur=aluminum");
+        var token = await client.GetTokenAsync(DrawingLists.Url);
         var id = await app.WithDbAsync(async db =>
         {
-            var design = new WindowDesign { Name = "Tür " + Guid.NewGuid().ToString("N")[..6], WidthMm = 1000, HeightMm = 1000, LayoutJson = "{\"opening\":\"fixed\"}" };
+            var design = new WindowDesign { DrawingList = new DrawingList { Name = "Tür" }, Name = "Tür " + Guid.NewGuid().ToString("N")[..6], WidthMm = 1000, HeightMm = 1000, LayoutJson = "{\"opening\":\"fixed\"}" };
             db.WindowDesigns.Add(design);
             await db.SaveChangesAsync();
             return design.Id;
         });
 
         var name = "Değişti " + Guid.NewGuid().ToString("N")[..6];
-        await client.PostFormAsync($"/yonetim/cizim/duzenle/{id}", token, ("Name", name), ("Category", "shutter"), ("ColorHex", "#3a4046"), ("WidthMm", "1000"), ("HeightMm", "1000"),
+        await client.PostFormAsync($"/yonetim/cizim/poz/{id}", token, ("Name", name), ("Category", "shutter"), ("ColorHex", "#3a4046"), ("WidthMm", "1000"), ("HeightMm", "1000"),
             ("Shape", "rect"), ("Quantity", "1"), ("LayoutJson", "{\"opening\":\"fixed\"}"), ("ParamsJson", "{\"drive\":\"manual\"}"));
         var row = await app.WithDbAsync(db => db.WindowDesigns.AsNoTracking().SingleAsync(d => d.Id == id));
         Assert.Equal(name, row.Name);
@@ -1123,7 +1175,7 @@ public sealed class DrawingGuardTests(PostgresFixture postgres)
 [Collection("postgres")]
 public sealed class ProductionDetailsTests(PostgresFixture postgres)
 {
-    private const string Layout = "{\"id\":\"root\",\"opening\":\"tiltRight\",\"fill\":\"glass\"}";
+    private const string Layout = DrawingLists.Layout;
 
     private static string Name() => "Üretim " + Guid.NewGuid().ToString("N")[..8];
 
@@ -1133,7 +1185,7 @@ public sealed class ProductionDetailsTests(PostgresFixture postgres)
         var client = app.NewClient();
         await client.LoginAsync(AppFactory.AdminEmail);
         await SetAsync(app, enabled);
-        return (app, client, await client.GetTokenAsync("/yonetim/cizim/ekle?tur=aluminum"));
+        return (app, client, await client.GetTokenAsync(DrawingLists.Url));
     }
 
     private static Task SetAsync(AppFactory app, bool enabled) => app.WithDbAsync(async db =>
@@ -1151,8 +1203,11 @@ public sealed class ProductionDetailsTests(PostgresFixture postgres)
         return system.Id;
     });
 
-    private static Task<HttpResponseMessage> SaveAsync(HttpClient client, string token, string url, string name, int? system)
-        => client.PostFormAsync(url, token, ("Name", name), ("Category", "aluminum"), ("ProfileSystemId", system?.ToString() ?? ""), ("ColorHex", "#3a4046"),
+    private static Task<HttpResponseMessage> SaveAsync(HttpClient client, string token, string name, int? system)
+        => DrawingLists.PostAsync(client, token, name, DrawingLists.Rows(DrawingLists.Row(name, system: system)));
+
+    private static Task<HttpResponseMessage> SaveDrawingAsync(HttpClient client, string token, int id, string name, int? system)
+        => client.PostFormAsync($"/yonetim/cizim/poz/{id}", token, ("Name", name), ("Category", "aluminum"), ("ProfileSystemId", system?.ToString() ?? ""), ("ColorHex", "#3a4046"),
             ("WidthMm", "1000"), ("HeightMm", "1000"), ("Shape", "rect"), ("ShapeParamMm", "0"), ("Quantity", "2"), ("LayoutJson", Layout));
 
     private static Task<int> IdAsync(AppFactory app, string name)
@@ -1176,27 +1231,29 @@ public sealed class ProductionDetailsTests(PostgresFixture postgres)
         var name = Name();
         await app.WithDbAsync(async db =>
         {
-            db.WindowDesigns.Add(new WindowDesign { Name = name, ProfileSystemId = system, WidthMm = 1000, HeightMm = 1000, LayoutJson = Layout });
+            db.WindowDesigns.Add(new WindowDesign { DrawingList = new DrawingList { Name = name }, Name = name, ProfileSystemId = system, WidthMm = 1000, HeightMm = 1000, LayoutJson = Layout });
             return await db.SaveChangesAsync();
         });
         var id = await IdAsync(app, name);
+        var listId = await DrawingLists.ListIdAsync(app, name);
         string[] pages = [$"/yonetim/cizim/imalat/{id}", "/yonetim/cizim/sistemler", $"/yonetim/cizim/optimizasyon?ids={id}"];
 
         foreach (var page in pages) Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync(page)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await client.PostFormAsync($"/yonetim/camlar/cizimden/{id}", token)).StatusCode);
-        var list = await client.GetStringAsync("/yonetim/cizim");
+        var list = await client.GetStringAsync($"/yonetim/cizim/detay/{listId}");
         Assert.DoesNotContain("/yonetim/cizim/imalat", list);
-        Assert.DoesNotContain("/yonetim/cizim/sistemler", list);
-        Assert.DoesNotContain("drawing-production.js", await client.GetStringAsync("/yonetim/cizim/ekle?tur=aluminum"));
+        Assert.DoesNotContain("/yonetim/cizim/optimizasyon", list);
+        Assert.DoesNotContain("/yonetim/cizim/sistemler", await client.GetStringAsync("/yonetim/cizim"));
+        Assert.DoesNotContain("drawing-production.js", await client.GetStringAsync($"/yonetim/cizim/poz/{id}"));
         Assert.DoesNotContain("Doğrama sistemi fiyatları", WebUtility.HtmlDecode(await client.GetStringAsync("/yonetim")));
 
         await client.PostFormAsync("/yonetim/ayarlar/kaydet", token, ("values[ProductionDetailsEnabled]", "true"));
         foreach (var page in pages) Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(page)).StatusCode);
-        list = await client.GetStringAsync("/yonetim/cizim");
+        list = await client.GetStringAsync($"/yonetim/cizim/detay/{listId}");
         Assert.Contains($"/yonetim/cizim/imalat/{id}", list);
-        Assert.Contains("/yonetim/cizim/sistemler", list);
-        Assert.Contains("wd-optimize", list);
-        var designer = await client.GetStringAsync("/yonetim/cizim/ekle?tur=aluminum");
+        Assert.Contains($"/yonetim/cizim/optimizasyon?ids={id}", list);
+        Assert.Contains("/yonetim/cizim/sistemler", await client.GetStringAsync("/yonetim/cizim"));
+        var designer = await client.GetStringAsync($"/yonetim/cizim/poz/{id}");
         Assert.Contains("drawing-production.js", designer);
         Assert.Contains("name=\"ProfileSystemId\"", designer);
         Assert.Contains("Doğrama sistemi fiyatları", WebUtility.HtmlDecode(await client.GetStringAsync("/yonetim")));
@@ -1214,7 +1271,7 @@ public sealed class ProductionDetailsTests(PostgresFixture postgres)
         var system = await SystemAsync(app);
         var name = Name();
 
-        Assert.Equal(HttpStatusCode.Redirect, (await SaveAsync(client, token, "/yonetim/cizim/ekle", name, system)).StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, (await SaveAsync(client, token, name, system)).StatusCode);
         var id = await IdAsync(app, name);
         var sheet = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/cizim/imalat/{id}"));
         foreach (var text in new[] { "Kasa yan", "Kanat yatay", "Profil kesim optimizasyonu", "Birim satış" }) Assert.Contains(text, sheet);
@@ -1230,7 +1287,7 @@ public sealed class ProductionDetailsTests(PostgresFixture postgres)
             db.Quotes.Add(new Quote { QuoteNumber = "P-" + Guid.NewGuid().ToString("N")[..10], Title = "Taslak", CustomerId = customer.Id });
             return await db.SaveChangesAsync();
         });
-        Assert.Contains($"value=\"{price.ToString(System.Globalization.CultureInfo.InvariantCulture)}\"", await client.GetStringAsync($"/yonetim/cizim/detay/{id}"));
+        Assert.Contains($"value=\"{price.ToString(System.Globalization.CultureInfo.InvariantCulture)}\"", await client.GetStringAsync($"/yonetim/cizim/detay/{await DrawingLists.ListIdAsync(app, name)}"));
     }
 
     [Fact]
@@ -1239,13 +1296,15 @@ public sealed class ProductionDetailsTests(PostgresFixture postgres)
         var (app, client, token) = await OpenAsync("prod_nosystem");
         await using var _ = app;
         var name = Name();
-        Assert.Equal(HttpStatusCode.Redirect, (await SaveAsync(client, token, "/yonetim/cizim/ekle", name, null)).StatusCode);
+        await SaveAsync(client, token, name, null);
         var id = await IdAsync(app, name);
+        Assert.Equal(HttpStatusCode.Redirect, (await SaveDrawingAsync(client, token, id, name, null)).StatusCode);
+        Assert.Null(await app.WithDbAsync(db => db.WindowDesigns.Where(d => d.Id == id).Select(d => d.ProfileSystemId).SingleAsync()));
 
         var response = await client.GetAsync($"/yonetim/cizim/imalat/{id}");
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Contains($"/yonetim/cizim/duzenle/{id}", response.Headers.Location!.ToString(), StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("name=\"ids\"", await client.GetStringAsync("/yonetim/cizim")); // optimizasyona seçilemez
+        Assert.Contains($"/yonetim/cizim/poz/{id}", response.Headers.Location!.ToString(), StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("/yonetim/cizim/optimizasyon", await client.GetStringAsync($"/yonetim/cizim/detay/{await DrawingLists.ListIdAsync(app, name)}"));
     }
 
     [Fact]
@@ -1257,15 +1316,18 @@ public sealed class ProductionDetailsTests(PostgresFixture postgres)
         var shutter = await SystemAsync(app, "shutter");
 
         var wrong = Name();
-        Assert.Equal(HttpStatusCode.OK, (await SaveAsync(client, token, "/yonetim/cizim/ekle", wrong, shutter)).StatusCode); // başka türün sistemi
+        Assert.Equal(HttpStatusCode.OK, (await SaveAsync(client, token, wrong, shutter)).StatusCode); // başka türün sistemi
         Assert.False(await app.WithDbAsync(db => db.WindowDesigns.AnyAsync(d => d.Name == wrong)));
 
         var name = Name();
-        await SaveAsync(client, token, "/yonetim/cizim/ekle", name, aluminum);
+        await SaveAsync(client, token, name, aluminum);
         var id = await IdAsync(app, name);
+        var listId = await DrawingLists.ListIdAsync(app, name);
 
         await SetAsync(app, false);
-        Assert.Equal(HttpStatusCode.Redirect, (await SaveAsync(client, token, $"/yonetim/cizim/duzenle/{id}", name, null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, (await SaveDrawingAsync(client, token, id, name, null)).StatusCode);
+        Assert.Equal(aluminum, await app.WithDbAsync(db => db.WindowDesigns.Where(d => d.Id == id).Select(d => d.ProfileSystemId).SingleAsync()));
+        Assert.Equal(HttpStatusCode.Redirect, (await DrawingLists.PostToAsync(client, token, $"/yonetim/cizim/duzenle/{listId}", name, DrawingLists.Rows(DrawingLists.Row(name, id: id)))).StatusCode);
         Assert.Equal(aluminum, await app.WithDbAsync(db => db.WindowDesigns.Where(d => d.Id == id).Select(d => d.ProfileSystemId).SingleAsync()));
     }
 
@@ -1301,9 +1363,10 @@ public sealed class ProductionDetailsTests(PostgresFixture postgres)
         await using var _ = app;
         var system = await SystemAsync(app);
         string[] names = [Name(), Name()];
-        foreach (var name in names) await SaveAsync(client, token, "/yonetim/cizim/ekle", name, system);
+        foreach (var name in names) await SaveAsync(client, token, name, system);
         var without = Name();
-        await SaveAsync(client, token, "/yonetim/cizim/ekle", without, null);
+        await SaveAsync(client, token, without, null);
+        await SaveDrawingAsync(client, token, await IdAsync(app, without), without, null);
         var ids = await app.WithDbAsync(db => db.WindowDesigns.Where(d => names.Contains(d.Name) || d.Name == without).Select(d => d.Id).ToListAsync());
 
         var html = WebUtility.HtmlDecode(await client.GetStringAsync("/yonetim/cizim/optimizasyon?" + string.Join("&", ids.Select(i => $"ids={i}"))));
@@ -1354,7 +1417,7 @@ public sealed class ProductionDetailsTests(PostgresFixture postgres)
         {
             var system = new ProfileSystem { Name = name, FrameWidthMm = 70, GlassClearanceMm = 5, FramePricePerM = 100 };
             db.GlassTypes.Add(new GlassType { Name = "Aktarım camı" });
-            var design = new WindowDesign { Name = name, ProfileSystem = system, WidthMm = 1000, HeightMm = 1000, Quantity = 3, LayoutJson = "{\"opening\":\"fixed\"}" };
+            var design = new WindowDesign { DrawingList = new DrawingList { Name = name }, Name = name, ProfileSystem = system, WidthMm = 1000, HeightMm = 1000, Quantity = 3, LayoutJson = "{\"opening\":\"fixed\"}" };
             db.WindowDesigns.Add(design);
             await db.SaveChangesAsync();
             return design.Id;
@@ -1371,109 +1434,166 @@ public sealed class ProductionDetailsTests(PostgresFixture postgres)
 }
 
 [Collection("postgres")]
-public sealed class BulkDrawingTests(PostgresFixture postgres)
+public sealed class DrawingListTests(PostgresFixture postgres)
 {
-    private const string Url = "/yonetim/cizim/toplu-ekle";
-    private const string Leaf = "{\"id\":\"root\",\"opening\":\"fixed\"}";
-
     private static async Task<(HttpClient Client, string Token)> AdminAsync(AppFactory app)
     {
         var client = app.NewClient();
         await client.LoginAsync(AppFactory.AdminEmail);
-        return (client, await client.GetTokenAsync(Url));
+        return (client, await client.GetTokenAsync(DrawingLists.Url));
     }
 
     private static string Tag() => "T" + Guid.NewGuid().ToString("N")[..8];
-    private static object Window(string? name, int width = 1500, int height = 1400, int quantity = 1, string layout = Leaf, string category = "aluminum")
-        => new { category, name, widthMm = width, heightMm = height, quantity, layoutJson = layout };
-    private static string Json(params object[] rows) => JsonSerializer.Serialize(rows);
-    private static Task<HttpResponseMessage> PostAsync(HttpClient client, string token, string rows, params (string, string)[] extra)
-        => client.PostFormAsync(Url, token, new[] { ("ColorHex", "#3a4046"), ("ItemsJson", rows) }.Concat(extra).ToArray());
 
     [Fact]
-    public async Task Page_IsLinkedFromListAndChooser()
-    {
-        var (client, _) = await AdminAsync(postgres.Shared);
-        Assert.Contains(Url, await client.GetStringAsync("/yonetim/cizim"));
-        Assert.Contains($"{Url}?tur=railing", await client.GetStringAsync("/yonetim/cizim?tur=railing"));
-        Assert.Contains(Url, await client.GetStringAsync("/yonetim/cizim/ekle"));
-        var page = await client.GetStringAsync($"{Url}?tur=railing");
-        Assert.Contains("drawing-bulk.js", page);
-        Assert.Matches("<option[^>]*value=\"railing\"[^>]*selected|<option[^>]*selected[^>]*value=\"railing\"", page);
-    }
-
-    [Fact]
-    public async Task AllRows_AreSaved_WithSharedCustomerColorAndAutomaticNames()
+    public async Task AllRows_AreSaved_WithSharedCustomerColorOrderAndAutomaticNames()
     {
         var app = postgres.Shared;
         var (client, token) = await AdminAsync(app);
         var tag = Tag();
         var customer = await app.WithDbAsync(async db =>
         {
-            var row = new Customer { Name = "Toplu " + tag };
+            var row = new Customer { Name = "Liste " + tag };
             db.Customers.Add(row);
             await db.SaveChangesAsync();
             return row.Id;
         });
         var split = "{\"split\":\"v\",\"sizes\":[900,900],\"children\":[{},{}]}";
-        var rows = Json(Window(tag + " salon", 1800, 1400, 2, split),
-            new { category = "shutter", name = tag + " panjur", widthMm = 1000, heightMm = 1400, quantity = 1, paramsJson = "{\"drive\":\"manual\"}" },
-            new { category = "balcony", name = "", widthMm = 3000, heightMm = 2200, quantity = 1, paramsJson = "{\"openType\":\"folding\",\"panelCount\":4}" });
+        var rows = DrawingLists.Rows(DrawingLists.Row(tag + " salon", 1800, 1400, 2, split), DrawingLists.Row("Poz 1"),
+            DrawingLists.Product(tag + " panjur", "shutter", "{\"drive\":\"manual\"}"),
+            DrawingLists.Product("", "balcony", "{\"openType\":\"folding\",\"panelCount\":4}", 3000, 2200));
 
-        var response = await PostAsync(client, token, rows, ("CustomerId", customer.ToString()));
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, (await DrawingLists.PostAsync(client, token, tag, rows, ("CustomerId", customer.ToString()))).StatusCode);
 
-        var saved = await app.WithDbAsync(db => db.WindowDesigns.AsNoTracking().Where(d => d.CustomerId == customer).OrderBy(d => d.Id).ToListAsync());
-        Assert.Equal(3, saved.Count);
+        var list = await app.WithDbAsync(db => db.DrawingLists.AsNoTracking().Include(l => l.Items).SingleAsync(l => l.Name == tag));
+        Assert.Equal(customer, list.CustomerId);
+        var saved = list.Items.OrderBy(d => d.SortOrder).ToList();
+        Assert.Equal(new[] { 0, 1, 2, 3 }, saved.Select(d => d.SortOrder));
         Assert.All(saved, d => Assert.Equal("#3a4046", d.ColorHex));
+        Assert.All(saved, d => Assert.Equal(customer, d.CustomerId));
         Assert.All(saved, d => Assert.Null(d.ProfileSystemId));
-        Assert.Equal(1800, saved[0].WidthMm);
-        Assert.Equal(2, saved[0].Quantity);
+        Assert.Equal((1800, 2), (saved[0].WidthMm, saved[0].Quantity));
         Assert.Contains("\"split\":\"v\"", saved[0].LayoutJson);
-        Assert.Equal("shutter", saved[1].Category);
-        Assert.Contains("manual", saved[1].ParamsJson);
-        Assert.Equal("Poz 3", saved[2].Name);
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/yonetim/cizim/duzenle/{saved[1].Id}")).StatusCode);
+        Assert.Contains("manual", saved[2].ParamsJson);
+        Assert.Equal("Poz 2", saved[3].Name); // "Poz 1" kullanıldığı için atlanır
     }
 
     [Fact]
-    public async Task OneBadRow_SavesNothing_AndNamesTheRow()
+    public async Task OneBadRow_SavesNothing_NamesTheRow_AndKeepsTheInput()
     {
         var app = postgres.Shared;
         var (client, token) = await AdminAsync(app);
+        var list = Tag();
         var good = Tag();
-        var rows = Json(Window(good), Window(Tag(), width: 50), new { category = "masa", name = Tag(), widthMm = 1000, heightMm = 1000, quantity = 1 },
-            Window(Tag(), layout: "{\"split\":\"v\",\"sizes\":[100,100],\"children\":[{},{}]}"), Window(Tag(), quantity: 0));
+        var rows = DrawingLists.Rows(DrawingLists.Row(good), DrawingLists.Row(Tag(), width: 50), DrawingLists.Row(Tag(), category: "masa"),
+            DrawingLists.Row(Tag(), layout: "{\"split\":\"v\",\"sizes\":[100,100],\"children\":[{},{}]}"), DrawingLists.Row(Tag(), quantity: 0));
 
-        var response = await PostAsync(client, token, rows);
+        var response = await DrawingLists.PostAsync(client, token, list, rows);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var html = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync());
         foreach (var row in new[] { "2. satır", "3. satır", "4. satır", "5. satır" }) Assert.Contains(row, html);
         Assert.DoesNotContain("1. satır", html);
-        Assert.Contains(good, html); // girilen satırlar kaybolmaz
+        Assert.Contains(good, html);
+        Assert.False(await app.WithDbAsync(db => db.DrawingLists.AnyAsync(l => l.Name == list)));
         Assert.False(await app.WithDbAsync(db => db.WindowDesigns.AnyAsync(d => d.Name == good)));
     }
 
     [Fact]
-    public async Task BrokenEmptyOrTooManyRows_AreRejected()
+    public async Task BrokenEmptyOrTooManyRows_AndUnknownCustomer_AreRejected()
     {
         var app = postgres.Shared;
         var (client, token) = await AdminAsync(app);
-        var tag = Tag();
-        var many = Json(Enumerable.Range(0, 201).Select(_ => Window(tag)).ToArray());
+        var many = DrawingLists.Rows(Enumerable.Range(0, 201).Select(_ => DrawingLists.Row(null)).ToArray());
         foreach (var rows in new[] { "{bozuk", "[]", many })
-            Assert.Equal(HttpStatusCode.OK, (await PostAsync(client, token, rows)).StatusCode);
-        Assert.False(await app.WithDbAsync(db => db.WindowDesigns.AnyAsync(d => d.Name == tag)));
+        {
+            var name = Tag();
+            Assert.Equal(HttpStatusCode.OK, (await DrawingLists.PostAsync(client, token, name, rows)).StatusCode);
+            Assert.False(await app.WithDbAsync(db => db.DrawingLists.AnyAsync(l => l.Name == name)));
+        }
 
-        var customerName = Tag();
-        Assert.Equal(HttpStatusCode.OK, (await PostAsync(client, token, Json(Window(customerName)), ("CustomerId", "999999"))).StatusCode);
-        Assert.False(await app.WithDbAsync(db => db.WindowDesigns.AnyAsync(d => d.Name == customerName)));
+        var unknown = Tag();
+        Assert.Equal(HttpStatusCode.OK, (await DrawingLists.PostAsync(client, token, unknown, DrawingLists.Rows(DrawingLists.Row(null)), ("CustomerId", "999999"))).StatusCode);
+        Assert.False(await app.WithDbAsync(db => db.DrawingLists.AnyAsync(l => l.Name == unknown)));
     }
 
     [Fact]
-    public async Task WithProductionDetails_RowsGetTheFirstActiveSystem_AndItsRules()
+    public async Task EditingList_UpdatesKeepsAddsAndRemovesRows()
     {
-        await using var app = postgres.CreateApp("bulk_production");
+        var app = postgres.Shared;
+        var (client, token) = await AdminAsync(app);
+        var list = Tag();
+        string[] names = [Tag(), Tag(), Tag()];
+        await DrawingLists.PostAsync(client, token, list, DrawingLists.Rows(names.Select(n => DrawingLists.Row(n)).ToArray()));
+        var listId = await DrawingLists.ListIdAsync(app, list);
+        var keep = await DrawingLists.DesignIdAsync(app, names[0]);
+        var drop = await DrawingLists.DesignIdAsync(app, names[1]);
+        var moved = await DrawingLists.DesignIdAsync(app, names[2]);
+
+        // Editör satırların kayıtlı kimliklerini ve ölçülerini sayfaya koyar.
+        var editor = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/cizim/duzenle/{listId}"));
+        Assert.Contains($"\"id\":{keep}", editor);
+
+        var added = Tag();
+        var response = await DrawingLists.PostToAsync(client, token, $"/yonetim/cizim/duzenle/{listId}", list + " yeni", DrawingLists.Rows(
+            DrawingLists.Row(names[2], id: moved), DrawingLists.Row(names[0], 1200, id: keep), DrawingLists.Row(added)));
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+
+        var rows = await app.WithDbAsync(db => db.WindowDesigns.AsNoTracking().Where(d => d.DrawingListId == listId).OrderBy(d => d.SortOrder).ToListAsync());
+        Assert.Equal(new[] { names[2], names[0], added }, rows.Select(d => d.Name));
+        Assert.Equal(moved, rows[0].Id);
+        Assert.Equal((keep, 1200), (rows[1].Id, rows[1].WidthMm));
+        Assert.False(await app.WithDbAsync(db => db.WindowDesigns.AnyAsync(d => d.Id == drop)));
+        Assert.Equal(list + " yeni", await app.WithDbAsync(db => db.DrawingLists.Where(l => l.Id == listId).Select(l => l.Name).SingleAsync()));
+    }
+
+    [Fact]
+    public async Task EditingList_KeepsCategoryShapeAndEditorDetailsOfSavedRows()
+    {
+        var app = postgres.Shared;
+        var (client, token) = await AdminAsync(app);
+        var name = Tag();
+        var (listId, id) = await app.WithDbAsync(async db =>
+        {
+            var design = new WindowDesign { DrawingList = new DrawingList { Name = name }, Name = name, WidthMm = 1500, HeightMm = 1400, Shape = "arch", ShapeParamMm = 400, ColorHex = "#111111", LayoutJson = "{\"opening\":\"tiltLeft\"}" };
+            db.WindowDesigns.Add(design);
+            await db.SaveChangesAsync();
+            return (design.DrawingListId, design.Id);
+        });
+
+        // Kemer ölçüsü listeden gelmez: satır şekli korunur, kemer kuralı yine uygulanır.
+        var rows = JsonSerializer.Serialize(new[] { new { id, category = "shutter", name, widthMm = 1500, heightMm = 1400, quantity = 3, shape = "rect", layoutJson = "{\"opening\":\"tiltLeft\"}", paramsJson = "{\"drive\":\"manual\"}" } });
+        Assert.Equal(HttpStatusCode.Redirect, (await DrawingLists.PostToAsync(client, token, $"/yonetim/cizim/duzenle/{listId}", name, rows)).StatusCode);
+        var row = await app.WithDbAsync(db => db.WindowDesigns.AsNoTracking().SingleAsync(d => d.Id == id));
+        Assert.Equal((ProductCategories.Aluminum, "arch", 400, 3, "#3a4046".Length), (row.Category, row.Shape, row.ShapeParamMm, row.Quantity, row.ColorHex.Length));
+        Assert.Contains("tiltLeft", row.LayoutJson);
+
+        var narrow = JsonSerializer.Serialize(new[] { new { id, name, widthMm = 700, heightMm = 1400, quantity = 3, layoutJson = "{\"opening\":\"fixed\"}" } });
+        Assert.Equal(HttpStatusCode.OK, (await DrawingLists.PostToAsync(client, token, $"/yonetim/cizim/duzenle/{listId}", name, narrow)).StatusCode);
+        Assert.Equal(1500, await app.WithDbAsync(db => db.WindowDesigns.Where(d => d.Id == id).Select(d => d.WidthMm).SingleAsync()));
+    }
+
+    [Fact]
+    public async Task RowOfAnotherList_IsRejected()
+    {
+        var app = postgres.Shared;
+        var (client, token) = await AdminAsync(app);
+        string[] lists = [Tag(), Tag()];
+        foreach (var list in lists) await DrawingLists.PostAsync(client, token, list, DrawingLists.Rows(DrawingLists.Row(list)));
+        var stolen = await DrawingLists.DesignIdAsync(app, lists[1]);
+
+        var response = await DrawingLists.PostToAsync(client, token, $"/yonetim/cizim/duzenle/{await DrawingLists.ListIdAsync(app, lists[0])}", lists[0], DrawingLists.Rows(DrawingLists.Row("Çalındı", 1200, id: stolen)));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal((lists[1], 1000), await app.WithDbAsync(async db =>
+        {
+            var row = await db.WindowDesigns.AsNoTracking().SingleAsync(d => d.Id == stolen);
+            return (row.Name, row.WidthMm);
+        }));
+    }
+
+    [Fact]
+    public async Task WithProductionDetails_NewRowsGetTheFirstActiveSystem_AndItsRules()
+    {
+        await using var app = postgres.CreateApp("list_production");
         var (client, token) = await AdminAsync(app);
         await app.WithDbAsync(async db =>
         {
@@ -1483,17 +1603,167 @@ public sealed class BulkDrawingTests(PostgresFixture postgres)
         var system = await app.WithDbAsync(db => db.ProfileSystems.Where(p => p.IsActive && p.Category == "aluminum").OrderBy(p => p.Name).Select(p => p.Id).FirstAsync());
 
         var tag = Tag();
-        await PostAsync(client, token, Json(Window(tag)));
+        await DrawingLists.PostAsync(client, token, tag, DrawingLists.Rows(DrawingLists.Row(tag)));
         Assert.Equal(system, await app.WithDbAsync(db => db.WindowDesigns.Where(d => d.Name == tag).Select(d => d.ProfileSystemId).SingleAsync()));
 
-        var bad = Tag(); // kemer değil ama kasa payından küçük açıklık: şekil geçerli, imalat kuralı reddeder
         await app.WithDbAsync(async db =>
         {
             (await db.ProfileSystems.SingleAsync(p => p.Id == system)).FrameWidthMm = 200;
             return await db.SaveChangesAsync();
         });
-        var response = await PostAsync(client, token, Json(Window(bad, 300, 300)));
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var bad = Tag(); // şekil geçerli, kasa payından küçük açıklığı imalat kuralı reddeder
+        Assert.Equal(HttpStatusCode.OK, (await DrawingLists.PostAsync(client, token, bad, DrawingLists.Rows(DrawingLists.Row(bad, 300, 300)))).StatusCode);
         Assert.False(await app.WithDbAsync(db => db.WindowDesigns.AnyAsync(d => d.Name == bad)));
+    }
+}
+
+[Collection("postgres")]
+public sealed class BrandTests(PostgresFixture postgres)
+{
+    private static async Task<(HttpClient Client, string Token)> AdminAsync(AppFactory app)
+    {
+        var client = app.NewClient();
+        await client.LoginAsync(AppFactory.AdminEmail);
+        return (client, await client.GetTokenAsync("/yonetim/markalar/ekle"));
+    }
+
+    private static string Tag() => "M" + Guid.NewGuid().ToString("N")[..8];
+
+    private static Task<int> NewBrandAsync(AppFactory app, string name, string category = "aluminum", string? logo = null, bool active = true) => app.WithDbAsync(async db =>
+    {
+        var brand = new Brand { Name = name, Category = category, LogoPath = logo, IsActive = active };
+        db.Brands.Add(brand);
+        await db.SaveChangesAsync();
+        return brand.Id;
+    });
+
+    private static Task<HttpResponseMessage> UploadAsync(HttpClient client, string token, string url, string name, string category, string fileName, params (string, string)[] extra)
+    {
+        var form = new MultipartFormDataContent
+        {
+            { new StringContent(token), "__RequestVerificationToken" }, { new StringContent(name), "Name" }, { new StringContent(category), "Category" }, { new StringContent("true"), "IsActive" },
+            { new ByteArrayContent(new byte[] { 0x89, 0x50, 0x4E, 0x47 }), "logoFile", fileName }
+        };
+        foreach (var (key, value) in extra) form.Add(new StringContent(value), key);
+        return client.PostAsync(url, form);
+    }
+
+    [Fact]
+    public async Task Brand_IsSavedWithLogo_AndLogoCanBeReplacedOrRemoved()
+    {
+        var app = postgres.Shared;
+        var (client, token) = await AdminAsync(app);
+        var name = Tag();
+
+        Assert.Equal(HttpStatusCode.Redirect, (await UploadAsync(client, token, "/yonetim/markalar/ekle", name, "pvc", "logo.png")).StatusCode);
+        var brand = await app.WithDbAsync(db => db.Brands.AsNoTracking().SingleAsync(b => b.Name == name));
+        Assert.Equal(ProductCategories.Pvc, brand.Category);
+        Assert.StartsWith("/uploads/images/", brand.LogoPath);
+        Assert.Contains(brand.LogoPath!, await client.GetStringAsync("/yonetim/markalar"));
+
+        await client.PostFormAsync($"/yonetim/markalar/duzenle/{brand.Id}", token, ("Name", name), ("Category", "pvc"), ("IsActive", "true"));
+        Assert.Equal(brand.LogoPath, await app.WithDbAsync(db => db.Brands.Where(b => b.Id == brand.Id).Select(b => b.LogoPath).SingleAsync())); // dosya seçilmezse korunur
+
+        await client.PostFormAsync($"/yonetim/markalar/duzenle/{brand.Id}", token, ("Name", name), ("Category", "pvc"), ("IsActive", "true"), ("removeLogo", "true"));
+        Assert.Null(await app.WithDbAsync(db => db.Brands.Where(b => b.Id == brand.Id).Select(b => b.LogoPath).SingleAsync()));
+    }
+
+    [Theory]
+    [InlineData("logo.svg")]
+    [InlineData("logo.exe")]
+    public async Task UnsafeLogoFile_IsRejected(string fileName)
+    {
+        var app = postgres.Shared;
+        var (client, token) = await AdminAsync(app);
+        var name = Tag();
+        Assert.Equal(HttpStatusCode.OK, (await UploadAsync(client, token, "/yonetim/markalar/ekle", name, "pvc", fileName)).StatusCode);
+        Assert.False(await app.WithDbAsync(db => db.Brands.AnyAsync(b => b.Name == name)));
+    }
+
+    [Fact]
+    public async Task UsedBrand_CannotBeDeletedOrMoved_UnusedCan()
+    {
+        var app = postgres.Shared;
+        var (client, token) = await AdminAsync(app);
+        var name = Tag();
+        var used = await NewBrandAsync(app, name);
+        var free = await NewBrandAsync(app, Tag());
+        var row = Tag();
+        await DrawingLists.PostAsync(client, token, row, DrawingLists.Rows(DrawingLists.Row(row, brand: used)));
+
+        Assert.Equal(HttpStatusCode.Redirect, (await client.PostFormAsync($"/yonetim/markalar/sil/{used}", token)).StatusCode);
+        Assert.True(await app.WithDbAsync(db => db.Brands.AnyAsync(b => b.Id == used)));
+        Assert.Equal(HttpStatusCode.OK, (await client.PostFormAsync($"/yonetim/markalar/duzenle/{used}", token, ("Name", name), ("Category", "pvc"))).StatusCode);
+        Assert.Equal(ProductCategories.Aluminum, await app.WithDbAsync(db => db.Brands.Where(b => b.Id == used).Select(b => b.Category).SingleAsync()));
+
+        await client.PostFormAsync($"/yonetim/markalar/sil/{free}", token);
+        Assert.False(await app.WithDbAsync(db => db.Brands.AnyAsync(b => b.Id == free)));
+    }
+
+    [Fact]
+    public async Task BrandOfAnotherCategory_IsRejected_InListAndEditor()
+    {
+        var app = postgres.Shared;
+        var (client, token) = await AdminAsync(app);
+        var pvc = await NewBrandAsync(app, Tag(), "pvc");
+        var aluminum = await NewBrandAsync(app, Tag());
+        var bad = Tag();
+        Assert.Equal(HttpStatusCode.OK, (await DrawingLists.PostAsync(client, token, bad, DrawingLists.Rows(DrawingLists.Row(bad, brand: pvc)))).StatusCode);
+        Assert.False(await app.WithDbAsync(db => db.DrawingLists.AnyAsync(l => l.Name == bad)));
+        var missing = Tag();
+        Assert.Equal(HttpStatusCode.OK, (await DrawingLists.PostAsync(client, token, missing, DrawingLists.Rows(DrawingLists.Row(missing, brand: 999999)))).StatusCode);
+
+        var name = Tag();
+        await DrawingLists.PostAsync(client, token, name, DrawingLists.Rows(DrawingLists.Row(name, brand: aluminum)));
+        var id = await DrawingLists.DesignIdAsync(app, name);
+        Task<HttpResponseMessage> Post(int brand) => client.PostFormAsync($"/yonetim/cizim/poz/{id}", token, ("Name", name), ("ColorHex", "#3a4046"), ("WidthMm", "1000"), ("HeightMm", "1000"), ("Shape", "rect"), ("Quantity", "1"), ("LayoutJson", DrawingLists.Layout), ("BrandId", brand.ToString()));
+        Assert.Equal(HttpStatusCode.OK, (await Post(pvc)).StatusCode);
+        Assert.Equal(aluminum, await app.WithDbAsync(db => db.WindowDesigns.Where(d => d.Id == id).Select(d => d.BrandId).SingleAsync()));
+    }
+
+    [Fact]
+    public async Task EveryDrawing_ShowsItsBrand_AsLogoOrName_OnAllPages()
+    {
+        var app = postgres.Shared;
+        var (client, token) = await AdminAsync(app);
+        const string logo = "/uploads/images/test-logo.png";
+        var withLogo = await NewBrandAsync(app, Tag(), logo: logo);
+        var textName = Tag();
+        var withoutLogo = await NewBrandAsync(app, textName, "pvc");
+        var plain = Tag();
+        var list = Tag();
+        var first = Tag();
+        await DrawingLists.PostAsync(client, token, list, DrawingLists.Rows(DrawingLists.Row(first, brand: withLogo), DrawingLists.Row(Tag(), category: "pvc", brand: withoutLogo), DrawingLists.Row(plain)));
+        var listId = await DrawingLists.ListIdAsync(app, list);
+
+        var page = await client.GetStringAsync($"/yonetim/cizim/detay/{listId}");
+        Assert.Contains($"<img src=\"{logo}\"", page);
+        Assert.Contains(textName, page);
+        Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(page, "class=\"wd-brand\"").Count); // markasız çizimde boş alan yok
+
+        var editor = await client.GetStringAsync($"/yonetim/cizim/poz/{await DrawingLists.DesignIdAsync(app, first)}");
+        Assert.Contains("id=\"wd-brand-mark\"", editor);
+        Assert.Contains($"data-logo=\"{logo}\"", editor);
+        Assert.DoesNotContain(textName, editor); // başka türün markası seçilemez
+
+        var design = await DrawingLists.DesignIdAsync(app, first);
+        var attachments = await KarakusAluminyum.Web.Services.Documents.DocumentViews.LoadAttachmentsAsync(await Task.FromResult(app.Services.CreateScope().ServiceProvider.GetRequiredService<KarakusAluminyum.Web.Data.AppDbContext>()), new[] { design });
+        Assert.Equal(logo, Assert.Single(attachments.Items).Design.Brand!.LogoPath);
+    }
+
+    [Fact]
+    public async Task InactiveBrand_IsHiddenForNewRows_ButKeptOnItsDrawing()
+    {
+        var app = postgres.Shared;
+        var (client, token) = await AdminAsync(app);
+        var name = Tag();
+        var brand = await NewBrandAsync(app, name, active: false);
+        Assert.Contains($"\"active\":false", await client.GetStringAsync(DrawingLists.Url));
+        var row = Tag();
+        await DrawingLists.PostAsync(client, token, row, DrawingLists.Rows(DrawingLists.Row(row, brand: brand)));
+        Assert.Contains(name, await client.GetStringAsync($"/yonetim/cizim/poz/{await DrawingLists.DesignIdAsync(app, row)}"));
+        var other = Tag();
+        await DrawingLists.PostAsync(client, token, other, DrawingLists.Rows(DrawingLists.Row(other)));
+        Assert.DoesNotContain(name, await client.GetStringAsync($"/yonetim/cizim/poz/{await DrawingLists.DesignIdAsync(app, other)}"));
     }
 }

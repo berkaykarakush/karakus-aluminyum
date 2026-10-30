@@ -156,11 +156,25 @@
     const box = document.getElementById("doc-designs-list");
     box.textContent = "";
     if (!designs.length) { box.append(h("p", { className: "admin-muted", textContent: "Henüz çizim yok." })); return; }
-    designs.forEach((design) => box.append(h("label", { className: "doc-check" },
-      h("input", { type: "checkbox", checked: content.designIds.includes(design.id), onchange: (e) => {
-        content.designIds = e.target.checked ? content.designIds.concat(design.id) : content.designIds.filter((id) => id !== design.id);
-      } }),
-      ` ${design.name} (${Units.format(design.widthMm)} x ${Units.format(design.heightMm)} ${Units.code}, ${design.quantity} adet)`)));
+    // Çizimler listeleriyle gruplanır: liste başlığı içindeki tüm çizimleri seçer.
+    const lists = new Map();
+    designs.forEach((design) => { if (!lists.has(design.listId)) lists.set(design.listId, []); lists.get(design.listId).push(design); });
+    lists.forEach((items) => {
+      const allChecked = items.every((design) => content.designIds.includes(design.id));
+      box.append(h("label", { className: "doc-check" },
+        h("input", { type: "checkbox", checked: allChecked, onchange: (e) => {
+          const ids = items.map((design) => design.id);
+          content.designIds = content.designIds.filter((id) => !ids.includes(id)).concat(e.target.checked ? ids : []);
+          renderDesigns();
+        } }),
+        h("strong", { textContent: ` ${items[0].listName}` })));
+      items.forEach((design) => box.append(h("label", { className: "doc-check", style: "margin-left:18px" },
+        h("input", { type: "checkbox", checked: content.designIds.includes(design.id), onchange: (e) => {
+          content.designIds = e.target.checked ? content.designIds.concat(design.id) : content.designIds.filter((id) => id !== design.id);
+          renderDesigns();
+        } }),
+        ` ${design.name} (${Units.format(design.widthMm)} x ${Units.format(design.heightMm)} ${Units.code}, ${design.quantity} adet)`)));
+    });
   }
 
   // Sözleşme alanları, müşteri seçilince adres ve vergi bilgisiyle dolar; yazılanın üstüne yazmaz.

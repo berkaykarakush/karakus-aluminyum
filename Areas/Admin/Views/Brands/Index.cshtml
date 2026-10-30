@@ -1,0 +1,27 @@
+@model List<KarakusAluminyum.Web.Models.Drawing.Brand>
+@using KarakusAluminyum.Web.Models.Drawing
+@{ ViewData["Title"] = "Markalar"; }
+<link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
+<div class="admin-actions"><h1>Markalar</h1><a class="admin-btn" href="/yonetim/markalar/ekle">+ Yeni marka</a><a class="admin-btn" href="/yonetim/cizim">Çizim listeleri</a></div>
+<div class="admin-panel">
+  <p class="admin-muted">Çizimde seçilen markanın logosu çizimin sağ üstünde görünür. Logo yüklenmemişse marka adı yazılır.</p>
+  <table class="admin-table">
+    <thead><tr><th>Logo</th><th>Ad</th><th>Ürün türü</th><th>Durum</th><th>İşlem</th></tr></thead>
+    <tbody>
+    @foreach (var x in Model)
+    {
+      <tr>
+        <td><partial name="_BrandMark" model="x" /></td>
+        <td>@x.Name</td>
+        <td>@ProductCategories.Label(x.Category)</td>
+        <td>@(x.IsActive ? "Aktif" : "Pasif")</td>
+        <td><div class="admin-actions">
+          <a class="admin-btn" href="/yonetim/markalar/duzenle/@x.Id">Düzenle</a>
+          <form method="post" action="/yonetim/markalar/sil/@x.Id" onsubmit="return confirm('Bu marka silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form>
+        </div></td>
+      </tr>
+    }
+    </tbody>
+  </table>
+  @if (Model.Count == 0) { <p class="admin-muted">Henüz marka yok.</p> }
+</div>

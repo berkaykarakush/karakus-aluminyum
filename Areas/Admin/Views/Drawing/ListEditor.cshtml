@@ -1,0 +1,59 @@
+@model KarakusAluminyum.Web.Models.Drawing.DrawingListInputVm
+@using System.Text.Json
+@using KarakusAluminyum.Web.Models.Drawing
+@{
+    var editing = Model.Id != 0;
+    ViewData["Title"] = editing ? "Çizim listesini düzenle" : "Yeni çizim listesi";
+    var action = editing ? $"/yonetim/cizim/duzenle/{Model.Id}" : "/yonetim/cizim/ekle";
+    var selected = ViewBag.Category as string ?? ProductCategories.Aluminum;
+    var brands = ((List<Brand>)ViewBag.Brands).Select(b => new { id = b.Id, name = b.Name, category = b.Category, active = b.IsActive });
+}
+<link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/document-editor.css" asp-append-version="true" />
+<div class="admin-actions"><h1>@ViewData["Title"]</h1>@if (editing) { <a class="admin-btn" href="/yonetim/cizim/detay/@Model.Id">Çizimleri görüntüle</a> }<a class="admin-btn" href="/yonetim/cizim">Çizim listeleri</a></div>
+<form id="dl-form" class="doc-editor" method="post" action="@action">
+  @Html.AntiForgeryToken()
+  <input type="hidden" asp-for="ItemsJson" />
+  <div asp-validation-summary="All" class="doc-errors"></div>
+  <section class="doc-card">
+    <div class="doc-grid">
+      <div><label asp-for="Name">Liste adı *</label><input asp-for="Name" required placeholder="Örn. A Blok doğramaları" /></div>
+      <div><label asp-for="CustomerId">Müşteri</label><select asp-for="CustomerId" asp-items="(SelectList)ViewBag.Customers"><option value="">-</option></select></div>
+      <div>
+        <label asp-for="ColorHex">Yeni çizimlerin rengi</label>
+        <input asp-for="ColorHex" type="color" style="height:34px;padding:2px" />
+        <partial name="_ColorPicker" />
+      </div>
+    </div>
+  </section>
+  <section class="doc-card">
+    <h2>Yeni satırlar</h2>
+    <p class="admin-muted">Yeni eklenen satırlar burada seçili tür, tip ve markayı alır.</p>
+    <div class="doc-grid">
+      <div><label for="dl-category">Tür</label><select id="dl-category">
+        @foreach (var category in ProductCategories.All) { <option value="@category" selected="@(category == selected)">@ProductCategories.Label(category)</option> }
+      </select></div>
+      <div><label for="dl-type">Tip</label><select id="dl-type"></select></div>
+      <div><label for="dl-brand">Marka</label><select id="dl-brand"></select></div>
+    </div>
+    <p class="admin-muted" style="margin:12px 0 4px">Excel'den yapıştırın veya her satıra bir çizim yazın: <code>ad genişlik yükseklik adet</code>. Ad ve adet yazılmayabilir.</p>
+    <textarea id="dl-paste" rows="3" aria-label="Çizim ölçüleri" placeholder="Salon 150 140 2&#10;Mutfak 90x120&#10;180 210"></textarea>
+    <div class="doc-row"><label for="dl-paste-unit" style="margin:0">Bu ölçülerin birimi</label><select id="dl-paste-unit" style="flex:0 0 auto;width:auto!important"><option value="mm">mm</option><option value="cm">cm</option><option value="m">m</option></select><button type="button" class="doc-btn" id="dl-paste-add">Listeye ekle</button><span id="dl-paste-note" class="admin-muted"></span></div>
+  </section>
+  <section class="doc-card">
+    <h2>Çizimler</h2>
+    <p class="admin-muted">Ad boş kalırsa "Poz 1, Poz 2" verilir. Açılım, kemer, panel sayısı gibi ayrıntılar için kaydettikten sonra satırdaki "Çizimi aç" bağlantısını kullanın.</p>
+    <div style="overflow-x:auto">
+      <table class="gl-table dl-table">
+        <thead><tr><th></th><th>Tür</th><th>Tip</th><th>Marka</th><th>Ad</th><th>Genişlik</th><th>Yükseklik</th><th>Adet</th><th></th></tr></thead>
+        <tbody id="dl-rows"></tbody>
+      </table>
+    </div>
+    <div class="doc-row"><button type="button" class="doc-btn" id="dl-add">+ Çizim ekle</button><strong id="dl-totals"></strong></div>
+  </section>
+  <section class="doc-card"><label asp-for="Notes">Notlar</label><textarea asp-for="Notes" rows="2"></textarea></section>
+  <div class="doc-actions"><button class="admin-btn" type="submit">Listeyi kaydet</button><a class="admin-btn" href="/yonetim/cizim">İptal</a></div>
+</form>
+<script type="application/json" id="dl-brands">@Html.Raw(JsonSerializer.Serialize(brands))</script>
+<script src="~/js/window-drawing.js" asp-append-version="true"></script>
+<script src="~/js/drawing-list.js" asp-append-version="true"></script>
