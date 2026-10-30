@@ -3,19 +3,29 @@
     var cats = (List<(string Key, string Name)>)ViewBag.Categories;
     var active = (string)(ViewBag.ActiveKey ?? "");
 }
-<div class="container py-4">
-  <h1 class="h3 mb-2">Galeri</h1>
-  <p class="text-muted mb-4">Uygulamalarımızdan seçtiğimiz kareler.</p>
+<section class="page-hero">
+    <div class="container">
+        <nav class="breadcrumbs" aria-label="İçerik yolu">
+            <a href="/">Ana Sayfa</a>
+            <span>/</span>
+            <span>Galeri</span>
+        </nav>
+        <span class="eyebrow">Galeri</span>
+        <h1>Uygulamalarımızdan seçtiğimiz kareler.</h1>
+        <div class="gallery-filters">
+            @foreach (var c in cats)
+            {
+                <a class="@(c.Key == active ? "is-active" : "")"
+                   href="@(c.Key.Length == 0 ? "/galeri" : "/galeri?k=" + c.Key)">@c.Name</a>
+            }
+        </div>
+    </div>
+</section>
 
-  <ul class="nav nav-pills flex-wrap gap-2 mb-4">
-    @foreach (var c in cats)
-    {
-      <li class="nav-item">
-        <a class="nav-link @(c.Key == active ? "active" : "")"
-           href="@(c.Key.Length == 0 ? "/galeri" : "/galeri?k=" + c.Key)">@c.Name</a>
-      </li>
-    }
-  </ul>
-
-  <partial name="_Gallery" model="Model" />
-</div>
+@if (Model.Count == 0)
+{
+    <section class="section">
+        <div class="container"><p>Bu kategoride henüz görsel yok.</p></div>
+    </section>
+}
+<partial name="_Gallery" model="Model" />

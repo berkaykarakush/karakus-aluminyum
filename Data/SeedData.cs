@@ -225,6 +225,9 @@ public static class SeedData
             }
         }
 
+        // Yeni eklenen hizmet/projeler galeri seed'inin sorgularında görünsün diye önce kaydedilir.
+        await db.SaveChangesAsync();
+
         // Galeri seed: mevcut wwwroot görselleriyle hizmet/proje galerilerini doldur.
         if (!await db.GalleryImages.AnyAsync())
         {

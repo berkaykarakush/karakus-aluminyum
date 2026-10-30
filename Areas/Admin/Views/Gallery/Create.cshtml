@@ -1,27 +1,26 @@
 @model KarakusAluminyum.Web.Models.GalleryUploadVm
 @{ ViewData["Title"] = "Görsel Yükle"; }
-<h1 class="h3 mb-3">Görsel Yükle</h1>
-<form asp-action="Create" method="post" enctype="multipart/form-data" class="row g-3" style="max-width:640px;">
-  <div class="col-12">
-    <label class="form-label">Dosya (jpg, png, webp — max 5 MB)</label>
-    <input type="file" name="file" class="form-control" accept=".jpg,.jpeg,.png,.webp" required />
-  </div>
-  <div class="col-md-6">
-    <label class="form-label">Hizmet</label>
-    <select asp-for="ServiceId" class="form-select" asp-items="(SelectList?)ViewBag.Services"><option value="">—</option></select>
-  </div>
-  <div class="col-md-6">
-    <label class="form-label">Proje</label>
-    <select asp-for="ProjectId" class="form-select" asp-items="(SelectList?)ViewBag.Projects"><option value="">—</option></select>
-  </div>
-  <div class="col-12"><label class="form-label">Başlık</label><input asp-for="Title" class="form-control" /></div>
-  <div class="col-12"><label class="form-label">Açıklama</label><input asp-for="Caption" class="form-control" /></div>
-  <div class="col-md-6"><label class="form-label">Sıra</label><input asp-for="SortOrder" class="form-control" type="number" /></div>
-  <div class="col-md-6 d-flex align-items-end">
-    <div class="form-check"><input asp-for="IsPublished" class="form-check-input" /><label asp-for="IsPublished" class="form-check-label">Yayında</label></div>
-  </div>
-  <div class="col-12">
-    <button class="btn btn-primary">Yükle</button>
-    <a class="btn btn-outline-secondary" asp-action="Index">Vazgeç</a>
-  </div>
-</form>
+<h1>Görsel Yükle</h1>
+<div class="admin-panel">
+  <form class="admin-form" method="post" enctype="multipart/form-data" action="/yonetim/galeri/ekle">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="All"></div>
+    <label>Dosya (JPG, PNG, WEBP · en fazla 5 MB)</label>
+    <input type="file" name="file" accept=".jpg,.jpeg,.png,.webp" required />
+    <label asp-for="ServiceId">Hizmet</label>
+    <select asp-for="ServiceId" asp-items="(SelectList?)ViewBag.Services"><option value="">—</option></select>
+    <label asp-for="ProjectId">Proje</label>
+    <select asp-for="ProjectId" asp-items="(SelectList?)ViewBag.Projects"><option value="">—</option></select>
+    <label asp-for="Title">Başlık</label>
+    <input asp-for="Title" />
+    <label asp-for="Caption">Açıklama</label>
+    <input asp-for="Caption" />
+    <label asp-for="SortOrder">Sıra</label>
+    <input asp-for="SortOrder" type="number" />
+    <label><input asp-for="IsPublished" /> Yayında</label>
+    <div class="admin-actions">
+      <button class="admin-btn">Yükle</button>
+      <a class="admin-btn" href="/yonetim/galeri">Vazgeç</a>
+    </div>
+  </form>
+</div>

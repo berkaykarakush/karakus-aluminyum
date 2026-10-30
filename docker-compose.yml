@@ -44,7 +44,9 @@ services:
       - "${WEB_PORT:-8080}:8080"
     volumes:
       - dataprotection_keys:/var/dpkeys
+      - uploads:/app/wwwroot/uploads
 
 volumes:
   postgres_data:
   dataprotection_keys:
+  uploads:

@@ -39,12 +39,14 @@ public class GalleryController : Controller
             .Select(p => new { p.Slug, p.Title })
             .ToListAsync();
 
-        var categories = new List<(string Key, string Name)> { ("", "Tümü"), ("genel", "Genel") };
+        var categories = new List<(string Key, string Name)> { ("", "Tümü") };
+        if (images.Any(i => i.ServiceId == null && i.ProjectId == null)) categories.Add(("genel", "Genel"));
         categories.AddRange(serviceCats.Select(s => ("hizmet-" + s.Slug, s.Name)));
         categories.AddRange(projectCats.Select(p => ("proje-" + p.Slug, p.Title)));
 
         var activeKey = k ?? "";
-        List<GalleryImage> list = images;
+        // Aynı görsel birden çok hizmet/projeye bağlı olabilir; "Tümü"nde tekrar etmesin.
+        List<GalleryImage> list = images.DistinctBy(i => i.ImagePath).ToList();
         if (activeKey == "genel")
         {
             list = images.Where(i => i.ServiceId == null && i.ProjectId == null).ToList();

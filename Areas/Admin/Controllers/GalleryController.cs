@@ -7,8 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace KarakusAluminyum.Web.Areas.Admin.Controllers;
 
-[Area("Admin")]
-[Authorize] // diğer admin controller'ların attribute'u farklıysa onunla değiştir
+[Area("Admin"), Authorize(Roles = "Admin,Editor"), Route("yonetim/galeri")]
 public class GalleryController : Controller
 {
     private readonly AppDbContext _db;
@@ -17,7 +16,9 @@ public class GalleryController : Controller
 
     private const long MaxFileBytes = 5 * 1024 * 1024;
     private static readonly string[] AllowedExtensions = [".jpg", ".jpeg", ".png", ".webp"];
+    private string WebRoot => _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
 
+    [HttpGet("")]
     public async Task<IActionResult> Index()
     {
         var images = await _db.GalleryImages.AsNoTracking()
@@ -26,14 +27,14 @@ public class GalleryController : Controller
         return View(images);
     }
 
-    [HttpGet]
+    [HttpGet("ekle")]
     public async Task<IActionResult> Create()
     {
         await FillBags();
         return View(new GalleryUploadVm());
     }
 
-    [HttpPost, ValidateAntiForgeryToken]
+    [HttpPost("ekle"), ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(GalleryUploadVm vm, IFormFile? file)
     {
         if (vm.ServiceId is not null && vm.ProjectId is not null)
@@ -60,7 +61,7 @@ public class GalleryController : Controller
         var sub = serviceSlug is not null ? "hizmet-" + serviceSlug
                 : projectSlug is not null ? "proje-" + projectSlug
                 : "genel";
-        var dir = Path.Combine(_env.WebRootPath, "uploads", "galeri", sub);
+        var dir = Path.Combine(WebRoot, "uploads", "galeri", sub);
         Directory.CreateDirectory(dir);
 
         var fileName = $"{Guid.NewGuid():N}{Path.GetExtension(file!.FileName).ToLowerInvariant()}";
@@ -81,7 +82,7 @@ public class GalleryController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    [HttpPost, ValidateAntiForgeryToken]
+    [HttpPost("sil/{id:int}"), ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id)
     {
         var img = await _db.GalleryImages.FindAsync(id);
@@ -90,7 +91,7 @@ public class GalleryController : Controller
         // Yalnızca admin'in yüklediği dosyaları diskten sil; /images/ altındaki seed görsellerine dokunma.
         if (img.ImagePath.StartsWith("/uploads/galeri/", StringComparison.OrdinalIgnoreCase))
         {
-            var path = Path.Combine(_env.WebRootPath, img.ImagePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+            var path = Path.Combine(WebRoot, img.ImagePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
             if (System.IO.File.Exists(path)) System.IO.File.Delete(path);
         }
         _db.GalleryImages.Remove(img);
