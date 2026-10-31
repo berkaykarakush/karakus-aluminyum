@@ -1,7 +1,6 @@
 @inject KarakusAluminyum.Web.Services.SiteSettingsProvider SettingsProvider
 @{
     var site = await SettingsProvider.GetAsync();
-    var trustItems = site.TrustItems.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     var services = (IReadOnlyList<KarakusAluminyum.Web.Models.ServiceContent>)ViewBag.Services;
     var projects = (IReadOnlyList<ProjectItem>)ViewBag.Projects;
 }
@@ -12,10 +11,6 @@
         <span class="eyebrow">Kurumsal</span>
         <h1>@site.AboutTitle</h1>
         <p class="page-intro">@site.AboutIntro</p>
-        @if (trustItems.Length > 0)
-        {
-            <div class="trust-row">@foreach (var item in trustItems) { <span>@item</span> }</div>
-        }
     </div>
 </section>
 

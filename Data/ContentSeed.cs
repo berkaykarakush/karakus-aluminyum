@@ -95,7 +95,6 @@ public static class ContentSeed
     private static readonly Dictionary<string, string> OldSettings = new()
     {
         ["HeroText"] = "Alüminyum doğrama, sürme sistemler, cephe ve tamamlayıcı mimari çözümler. Projenizin ihtiyaçlarını birlikte değerlendirelim.",
-        ["TrustItems"] = "Projeye özel çözümler\nModern mimari yaklaşım\nİzmir ve çevresi",
         ["ApproachTitle"] = "Detaylara önem veren, projeye odaklı yaklaşım.",
         ["ApproachText"] = "Her proje farklı ölçülerle ve farklı beklentilerle başlar. Açıklıktan donanıma, camdan montaj detayına kadar sistemi projenizin ihtiyaçlarına göre birlikte değerlendiriyoruz.",
         ["CtaText"] = "İhtiyacınızı anlatın, ekibimizle iletişime geçin.",

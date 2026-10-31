@@ -42,7 +42,6 @@ public sealed class SiteSettings
     public string HeroTitle { get; set; } = "";
     public string HeroTitleEmphasis { get; set; } = "";
     public string HeroText { get; set; } = "";
-    public string TrustItems { get; set; } = "";
     public string ApproachTitle { get; set; } = "";
     public string ApproachText { get; set; } = "";
     public string CtaTitle { get; set; } = "";
@@ -52,4 +51,8 @@ public sealed class SiteSettings
     public string AboutSectionTitle { get; set; } = "";
     public string AboutText { get; set; } = "";
     public string FooterText { get; set; } = "";
+
+    public const int FoundedYear = 1998;
+    // Sunucu saati UTC olabilir; yıl Türkiye saatine göre değişir.
+    public static string CopyrightYears => $"{FoundedYear}-{DateTime.UtcNow.AddHours(3).Year}";
 }

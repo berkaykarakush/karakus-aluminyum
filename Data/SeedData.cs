@@ -197,6 +197,9 @@ public static class SeedData
             if (existing is null) db.Projects.Add(project);
         }
 
+        // Kaldırılan ayar panelde "Diğer" altında kalmasın.
+        await db.SiteSettingRecords.Where(s => s.Key == "TrustItems").ExecuteDeleteAsync();
+
         // Eksik ayarları ekle. Yöneticinin değerine dokunma; yalnızca eski yer tutucular düzeltilir.
         var existingSettings = await db.SiteSettingRecords.ToListAsync();
         foreach (var definition in SiteSettingCatalog.All)

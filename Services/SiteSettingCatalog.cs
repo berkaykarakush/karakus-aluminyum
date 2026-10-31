@@ -67,7 +67,6 @@ public static class SiteSettingCatalog
         new("HeroTitle", HomeGroup, "Büyük başlık", "Mimariye değer katan"),
         new("HeroTitleEmphasis", HomeGroup, "Büyük başlık (vurgulu kısım)", "alüminyum çözümleri."),
         new("HeroText", HomeGroup, "Giriş metni", "Alüminyum ve PVC doğrama, cam balkon, giyotin ve sürme cam sistemleri ile otomatik kapı çözümleri sunuyoruz. Projenizi ölçüden uygulamaya birlikte planlıyoruz.", SettingKind.LongText),
-        new("TrustItems", HomeGroup, "Giriş altındaki maddeler", "Projeye özel sistem seçimi\nYerinde ölçü ve keşif\nİzmir ve çevresinde hizmet", SettingKind.LongText, "Her satıra bir madde."),
         new("ApproachTitle", HomeGroup, "Yaklaşım başlığı", "Doğru sistemi doğru detayla kuruyoruz."),
         new("ApproachText", HomeGroup, "Yaklaşım metni", "Her yapının ölçüsü, cephesi ve kullanım beklentisi farklıdır. Profil, cam, donanım ve montaj detaylarını projenizin koşullarına göre ele alıyor, seçenekleri açık biçimde paylaşıyoruz.", SettingKind.LongText),
         new("CtaTitle", HomeGroup, "Sayfa sonu çağrı başlığı", "Projeniz için doğru sistemi birlikte belirleyelim."),

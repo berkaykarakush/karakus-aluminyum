@@ -243,6 +243,31 @@ public sealed class ContentTests(PostgresFixture postgres)
     }
 
     [Fact]
+    public async Task Footer_ShowsFoundingToCurrentYear_AndTrustItemsAreGone()
+    {
+        await using (var first = postgres.CreateApp("content_footer"))
+        {
+            first.NewClient();
+            await first.WithDbAsync(db =>
+            {
+                db.SiteSettingRecords.Add(new SiteSettingRecord { Key = "TrustItems", Value = "Yerinde ölçü ve keşif" });
+                return db.SaveChangesAsync();
+            });
+        }
+
+        await using var app = postgres.CreateApp("content_footer");
+        var client = app.NewClient();
+        Assert.False(await app.WithDbAsync(db => db.SiteSettingRecords.AnyAsync(x => x.Key == "TrustItems")));
+        var year = DateTime.UtcNow.AddHours(3).Year;
+        foreach (var path in new[] { "/", "/kurumsal" })
+        {
+            var html = WebUtility.HtmlDecode(await client.GetStringAsync(path));
+            Assert.Contains($"© 1998-{year} ", html);
+            foreach (var text in new[] { "Projeye özel sistem seçimi", "Yerinde ölçü ve keşif", "İzmir ve çevresinde hizmet", "trust-row" }) Assert.DoesNotContain(text, html);
+        }
+    }
+
+    [Fact]
     public async Task ServiceDetail_SuggestsOtherServices_NotItself()
     {
         var html = await postgres.Shared.NewClient().GetStringAsync("/urunler/aluminyum-dograma");

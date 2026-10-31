@@ -2,7 +2,6 @@
 @inject KarakusAluminyum.Web.Services.SiteSettingsProvider SettingsProvider
 @{
     var site = await SettingsProvider.GetAsync();
-    var trustItems = site.TrustItems.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     var projects = (IReadOnlyList<ProjectItem>)ViewBag.Projects;
 }
 @section Head {
@@ -14,7 +13,6 @@
         <h1>@site.HeroTitle <em>@site.HeroTitleEmphasis</em></h1>
         <p>@site.HeroText</p>
         <div class="hero__actions"><a class="button button--silver" href="/iletisim">Projeniz için teklif alın <span aria-hidden="true">↗</span></a><a class="button button--outline" href="/projeler">Uygulamalarımızı inceleyin</a></div>
-        <div class="trust-row">@foreach (var item in trustItems) { <span>@item</span> }</div>
     </div>
 </section>
 @if (Model.Count > 0)

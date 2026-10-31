@@ -70,7 +70,7 @@
     </div>
   </header>
   <main class="admin-content">@if (TempData["Notice"] is string notice) { <p class="notice">@notice</p> }@RenderBody()</main>
-  <footer class="admin-footer">© @DateTime.UtcNow.Year Karakuş Alüminyum</footer>
+  <footer class="admin-footer">© @KarakusAluminyum.Web.Models.SiteSettings.CopyrightYears Karakuş Alüminyum</footer>
 </section>
 </div>
 <script>
