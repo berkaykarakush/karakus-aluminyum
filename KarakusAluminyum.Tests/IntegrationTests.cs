@@ -793,6 +793,61 @@ public sealed class AdminPanelTests(PostgresFixture postgres)
     }
 
     [Fact]
+    public void WeeklyChart_CountsWeeksBackFromRangeEnd_SoLatestBucketIsFull()
+    {
+        var range = ReportRange.Parse("30", null, null, new DateTime(2026, 10, 31, 9, 0, 0, DateTimeKind.Utc));
+        DateTime DaysBeforeEnd(int days) => range.ToUtc.AddDays(-days).AddHours(1);
+        var chart = ReportService.Chart(range, false, true, ("x", new[] { (DaysBeforeEnd(1), 1m), (DaysBeforeEnd(7), 2m), (DaysBeforeEnd(8), 4m), (DaysBeforeEnd(14), 8m), (DaysBeforeEnd(29), 16m), (DaysBeforeEnd(30), 32m) }));
+        var values = chart.Series[0].Values;
+        Assert.Equal(5, chart.Labels.Count);
+        Assert.Equal(3m, values[^1]); // son 7 gün tek dilimde
+        Assert.Equal(12m, values[^2]);
+        Assert.Equal(48m, values[0]); // eksik günler en eski dilimde
+        Assert.Equal(63m, values.Sum());
+    }
+
+    [Fact]
+    public async Task Dashboard_ShowsFinanceOnlyToAdmins_AndFollowsRange()
+    {
+        await using var app = postgres.CreateApp("dashboard_analysis");
+        var (admin, _) = await AdminAsync(app);
+        const string email = "pano-editor@test.local";
+        await app.WithServiceAsync<Microsoft.AspNetCore.Identity.UserManager<ApplicationUser>, bool>(async users =>
+        {
+            var user = new ApplicationUser { UserName = email, Email = email, EmailConfirmed = true };
+            Assert.True((await users.CreateAsync(user, AppFactory.Password)).Succeeded);
+            return (await users.AddToRoleAsync(user, "Editor")).Succeeded;
+        });
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(3));
+        await app.WithDbAsync(async db =>
+        {
+            var customer = new KarakusAluminyum.Web.Models.Crm.Customer { Name = "Pano Carisi" };
+            db.Customers.Add(customer);
+            await db.SaveChangesAsync();
+            db.Invoices.Add(new KarakusAluminyum.Web.Models.Accounting.Invoice { CustomerId = customer.Id, Kind = KarakusAluminyum.Web.Models.Accounting.InvoiceKind.Sale, Status = KarakusAluminyum.Web.Models.Accounting.InvoiceStatus.Approved, Number = "PANO-1", Date = today.AddDays(-2), DueDate = today.AddDays(-1), Net = 1000m, PayableTry = 1200m });
+            db.Invoices.Add(new KarakusAluminyum.Web.Models.Accounting.Invoice { CustomerId = customer.Id, Kind = KarakusAluminyum.Web.Models.Accounting.InvoiceKind.Sale, Status = KarakusAluminyum.Web.Models.Accounting.InvoiceStatus.Approved, Number = "PANO-2", Date = today.AddDays(-40), DueDate = today.AddDays(-39), Net = 5000m, PayableTry = 5000m });
+            return await db.SaveChangesAsync();
+        });
+
+        var html = WebUtility.HtmlDecode(await admin.GetStringAsync("/yonetim?aralik=7"));
+        Assert.Contains("id=\"finans\"", html);
+        Assert.Contains(KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Money(1000m), html); // yalnızca aralıktaki fatura gelire girer
+        Assert.DoesNotContain(KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Money(6000m), html);
+        Assert.Contains("Pano Carisi", html);
+        Assert.Contains("id=\"web\"", html);
+        Assert.Contains(KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Money(6000m), WebUtility.HtmlDecode(await admin.GetStringAsync("/yonetim?aralik=90")));
+        Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync($"/yonetim?aralik=ozel&bas={today.AddDays(-5):yyyy-MM-dd}&bit={today:yyyy-MM-dd}")).StatusCode);
+
+        var editor = app.NewClient();
+        await editor.LoginAsync(email);
+        var editorHtml = WebUtility.HtmlDecode(await editor.GetStringAsync("/yonetim?aralik=90"));
+        Assert.Contains("id=\"satis\"", editorHtml);
+        Assert.DoesNotContain("id=\"finans\"", editorHtml);
+        Assert.DoesNotContain("Pano Carisi", editorHtml);
+        Assert.DoesNotContain(KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Money(6000m), editorHtml);
+    }
+
+    [Fact]
     public async Task ReportPages_RenderWithAndWithoutData_AndCsvDownloads()
     {
         var (client, _) = await AdminAsync(postgres.Shared);

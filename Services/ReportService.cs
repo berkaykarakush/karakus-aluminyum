@@ -75,19 +75,29 @@ public sealed class ReportService
         return Math.Round(offered.Count(s => s is QuoteStatus.Accepted or QuoteStatus.Converted) * 100m / offered.Count, 1, MidpointRounding.AwayFromZero);
     }
 
-    private static TimeChart Chart(ReportRange range, bool money, bool columns, params (string Name, IEnumerable<(DateTime Utc, decimal Value)> Points)[] series)
+    public static TimeChart Chart(ReportRange range, bool money, bool columns, params (string Name, IEnumerable<(DateTime Utc, decimal Value)> Points)[] series)
     {
         var buckets = new List<DateTime>();
         var localStart = (range.FromUtc + ReportRange.Offset).Date;
         var localEnd = (range.ToUtc + ReportRange.Offset).Date;
-        for (var d = range.Monthly ? new DateTime(localStart.Year, localStart.Month, 1) : localStart; d < localEnd; d = range.Monthly ? d.AddMonths(1) : d.AddDays(range.Weekly ? 7 : 1))
-            buckets.Add(d);
+        // Haftalar dönem sonundan geriye sayılır: eksik gün kalırsa en eski dilimde kalır, son dilim sahte düşüş göstermez.
+        DateTime WeekStart(DateTime local)
+        {
+            var start = localEnd.AddDays(-7 * ((localEnd.AddDays(-1) - local).Days / 7 + 1));
+            return start < localStart ? localStart : start;
+        }
+        if (range.Weekly)
+            for (var d = localStart; d < localEnd; d = localEnd.AddDays(-7 * ((localEnd.AddDays(-1) - d).Days / 7)))
+                buckets.Add(d);
+        else
+            for (var d = range.Monthly ? new DateTime(localStart.Year, localStart.Month, 1) : localStart; d < localEnd; d = range.Monthly ? d.AddMonths(1) : d.AddDays(1))
+                buckets.Add(d);
 
         DateTime Bucket(DateTime utc)
         {
             var local = (utc + ReportRange.Offset).Date;
             if (range.Monthly) return new DateTime(local.Year, local.Month, 1);
-            return range.Weekly ? localStart.AddDays((local - localStart).Days / 7 * 7) : local;
+            return range.Weekly ? WeekStart(local) : local;
         }
 
         return new TimeChart(

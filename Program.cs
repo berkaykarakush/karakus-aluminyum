@@ -30,6 +30,7 @@ builder.Services.Configure<SiteSettings>(builder.Configuration.GetSection("SiteS
 builder.Services.AddScoped<SeoService>();
 builder.Services.AddScoped<LengthUnits>();
 builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<KarakusAluminyum.Web.Services.Accounting.AccountingService>();
 builder.Services.AddScoped<KarakusAluminyum.Web.Services.Accounting.AccountingQueries>();
 builder.Services.AddScoped<KarakusAluminyum.Web.Services.Seo.SiteContentIndex>();

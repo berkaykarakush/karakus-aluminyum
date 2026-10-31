@@ -1,22 +1,45 @@
 @model KarakusAluminyum.Web.Areas.Admin.Controllers.DashboardVm
+@using KarakusAluminyum.Web.Areas.Admin.Models
 @using KarakusAluminyum.Web.Services.Documents
 @{
     ViewData["Title"] = "Ana Sayfa";
-    var sales = Model.Report.Sales;
+    var r = Model.Report.Range;
+    var s = Model.Report.Sales; var p = Model.Report.Production; var c = Model.Report.Contact; var w = Model.Report.Web;
+    var f = Model.Finance;
+    var pipeline = Model.Pipeline;
     var open = Model.Tasks.Where(t => t.Count > 0).ToList();
-    var missing = Model.Setup.Where(s => !s.Done).ToList();
+    var missing = Model.Setup.Where(x => !x.Done).ToList();
+    var ranges = new[] { ("7", "Son 7 gün"), ("30", "Son 30 gün"), ("90", "Son 90 gün"), ("365", "Son 12 ay") };
+    string Percent(decimal? value) => value is null ? "-" : "%" + value.Value.ToString("0.#", TurkishNumbers.Culture);
+    string LocalDay(DateTime utc) => (utc + KarakusAluminyum.Web.Services.ReportRange.Offset).ToString("d MMM yyyy", TurkishNumbers.Culture);
+    var lastDay = r.ToUtc.AddDays(-1);
+    var pagesPerSession = w.Sessions == 0 ? "-" : ((decimal)w.PageViews / w.Sessions).ToString("0.0", TurkishNumbers.Culture);
 }
 <div class="admin-page-heading">
-  <div><h1>Hoş geldiniz</h1><div class="admin-muted">Son 30 günün özeti</div></div>
-  <div class="admin-actions"><a class="admin-btn" href="/yonetim/crm/teklifler/ekle">+ Yeni teklif</a><a class="admin-btn admin-btn--secondary" href="/yonetim/cizim/ekle">+ Yeni çizim listesi</a><a class="admin-btn admin-btn--secondary" href="/yonetim/raporlar">Raporlar</a></div>
+  <div><h1>Genel bakış</h1><div class="admin-muted">@LocalDay(r.FromUtc) - @LocalDay(lastDay). Değişimler bir önceki eşit dönemle karşılaştırılır.</div></div>
+  <div class="admin-actions"><a class="admin-btn" href="/yonetim/crm/teklifler/ekle">+ Yeni teklif</a><a class="admin-btn admin-btn--secondary" href="/yonetim/cizim/ekle">+ Yeni çizim listesi</a><a class="admin-btn admin-btn--secondary" href="/yonetim/raporlar?aralik=@r.Key&bas=@r.FromText&bit=@r.ToText">Ayrıntılı raporlar</a></div>
 </div>
+<form class="report-filter" method="get" action="/yonetim">
+  <nav aria-label="Tarih aralığı">
+    @foreach (var (key, text) in ranges) { <a class="@(r.Key == key ? "is-active" : "")" href="/yonetim?aralik=@key">@text</a> }
+  </nav>
+  <input type="hidden" name="aralik" value="ozel" />
+  <label>Başlangıç <input type="date" name="bas" value="@r.FromText" /></label>
+  <label>Bitiş <input type="date" name="bit" value="@r.ToText" /></label>
+  <button class="admin-btn admin-btn--secondary">Uygula</button>
+</form>
+<nav class="report-sections" aria-label="Pano bölümleri"><a href="#satis">Satış</a>@if (f is not null) { <a href="#finans">Finans</a> }<a href="#web">Web sitesi</a><a href="#talepler">Talepler</a><a href="#uretim">Çizim ve cam</a></nav>
+
 <section class="report-kpis">
-  <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KarakusAluminyum.Web.Areas.Admin.Models.KpiVm("Teklif tutarı", TurkishNumbers.Money(sales.QuoteTotal), sales.QuoteTotal, sales.PreviousQuoteTotal)' />
-  <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KarakusAluminyum.Web.Areas.Admin.Models.KpiVm("İmzalı sözleşme", TurkishNumbers.Money(sales.SignedTotal), sales.SignedTotal, sales.PreviousSignedTotal)' />
-  <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KarakusAluminyum.Web.Areas.Admin.Models.KpiVm("Yeni müşteri", sales.NewCustomers.ToString(), sales.NewCustomers, sales.PreviousNewCustomers)' />
-  <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KarakusAluminyum.Web.Areas.Admin.Models.KpiVm("Site oturumu", Model.Report.Web.Sessions.ToString(), Model.Report.Web.Sessions, Model.Report.Web.PreviousSessions)' />
+  <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("Teklif tutarı", TurkishNumbers.Money(s.QuoteTotal), s.QuoteTotal, s.PreviousQuoteTotal)' />
+  <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("İmzalı sözleşme", TurkishNumbers.Money(s.SignedTotal), s.SignedTotal, s.PreviousSignedTotal)' />
+  <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("Teklif kabul oranı", Percent(s.AcceptanceRate), s.AcceptanceRate ?? 0, s.AcceptanceRate is null ? null : s.PreviousAcceptanceRate, true)' />
+  <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("Yeni müşteri", s.NewCustomers.ToString(), s.NewCustomers, s.PreviousNewCustomers)' />
+  <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("Gelen mesaj", c.MessageCount.ToString(), c.MessageCount, c.PreviousMessageCount)' />
+  <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("Site oturumu", w.Sessions.ToString(), w.Sessions, w.PreviousSessions)' />
 </section>
-<div class="admin-columns">
+
+<div class="admin-columns dash-work">
   <section class="admin-panel">
     <h2>Yapılacaklar</h2>
     @if (open.Count == 0) { <p class="admin-muted">Bekleyen iş yok.</p> }
@@ -38,6 +61,107 @@
     <ul class="admin-list">@foreach (var x in Model.RecentQuotes) { <li><a href="@x.Url"><span>@x.Title</span><small>@x.Detail</small></a></li> }</ul>
   </section>
 </div>
+<section id="satis" class="report-section">
+  <div class="report-section__head"><h2>Satış</h2><a class="admin-btn admin-btn--secondary" href="/yonetim/crm/teklifler">Teklifler</a></div>
+  <div class="report-kpis">
+    <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("Açık teklif (güncel)", TurkishNumbers.Money(pipeline.OpenTotal), pipeline.OpenTotal, null)' />
+    <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("Açık teklif adedi (güncel)", pipeline.OpenCount.ToString(), pipeline.OpenCount, null)' />
+    <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("Dönemdeki teklif", s.QuoteCount.ToString(), s.QuoteCount, s.PreviousQuoteCount)' />
+    <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("Ortalama teklif", TurkishNumbers.Money(s.AverageQuote), s.AverageQuote, null)' />
+  </div>
+  <div class="admin-panel"><h3>Teklif ve imzalı sözleşme tutarı</h3><partial name="~/Areas/Admin/Views/Reports/_TimeChart.cshtml" model="s.Chart" /></div>
+  <div class="admin-columns dash-two">
+    <div class="admin-panel"><h3>Teklif hunisi</h3><p class="admin-hint dash-note">Dönemde oluşturulan tekliflerin bugün geldiği aşama.</p><partial name="~/Areas/Admin/Views/Reports/_BarList.cshtml" model="pipeline.Funnel" /></div>
+    <div class="admin-panel"><h3>Duruma göre teklifler</h3><partial name="~/Areas/Admin/Views/Reports/_BarList.cshtml" model="s.QuotesByStatus" /></div>
+    <div class="admin-panel"><h3>En yüksek teklif tutarlı müşteriler</h3><partial name="~/Areas/Admin/Views/Reports/_BarList.cshtml" model="s.TopCustomers" /></div>
+    <div class="admin-panel">
+      <h3>14 gün içinde süresi dolacak teklifler</h3>
+      @if (pipeline.Expiring.Count == 0) { <p class="admin-muted">Süresi yaklaşan teklif yok.</p> }
+      <ul class="admin-list">@foreach (var x in pipeline.Expiring) { <li><a href="/yonetim/crm/teklifler/detay/@x.Id"><span>@x.Title <small class="dash-sub">@x.Customer · @TurkishNumbers.Money(x.Total)</small></span><small>@LocalDay(x.ValidUntilUtc)</small></a></li> }</ul>
+    </div>
+  </div>
+</section>
+
+@if (f is not null)
+{
+  <section id="finans" class="report-section">
+    <div class="report-section__head"><h2>Finans</h2><a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe">Muhasebe</a></div>
+    <div class="report-kpis">
+      <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("Gelir", TurkishNumbers.Money(f.Revenue), f.Revenue, f.PreviousRevenue)' />
+      <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("Gider", TurkishNumbers.Money(f.Costs), f.Costs, f.PreviousCosts)' />
+      <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm(f.Profit < 0 ? "Zarar" : "Kâr", TurkishNumbers.Money(Math.Abs(f.Profit)), f.Profit, null)' />
+      <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("Kasa ve banka (TL)", TurkishNumbers.Money(f.Cash), f.Cash, null)' />
+      <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("Toplam alacak", TurkishNumbers.Money(f.Receivable), f.Receivable, null)' />
+      <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("Toplam borç", TurkishNumbers.Money(f.Payable), f.Payable, null)' />
+      <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm($"Vadesi geçmiş alacak ({f.OverdueCount} fatura)", TurkishNumbers.Money(f.OverdueTotal), f.OverdueTotal, null)' />
+      <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("Portföydeki alınan çek", TurkishNumbers.Money(f.ChequesIn), f.ChequesIn, null)' />
+      <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("Verilen çek", TurkishNumbers.Money(f.ChequesOut), f.ChequesOut, null)' />
+      <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("Kritik stoktaki ürün", f.CriticalStock.ToString(), f.CriticalStock, null)' />
+    </div>
+    <div class="admin-panel"><h3>Gelir ve gider</h3><p class="admin-hint dash-note">KDV hariç; iadeler düşülmüştür. Gider; alış, masraf ve maaş ödemelerini kapsar.</p><partial name="~/Areas/Admin/Views/Reports/_TimeChart.cshtml" model="f.Chart" /></div>
+    <div class="admin-columns">
+      <div class="admin-panel"><h3>Alacak yaşlandırma</h3><partial name="~/Areas/Admin/Views/Reports/_BarList.cshtml" model="f.Aging" /></div>
+      <div class="admin-panel"><h3>En yüksek bakiyeli borçlu cariler</h3><partial name="~/Areas/Admin/Views/Reports/_BarList.cshtml" model="f.TopDebtors" /></div>
+      <div class="admin-panel"><h3>Masraf kategorileri</h3><partial name="~/Areas/Admin/Views/Reports/_BarList.cshtml" model="f.ExpenseCategories" /></div>
+    </div>
+    <div class="admin-panel">
+      <h3>Önümüzdeki @KarakusAluminyum.Web.Services.DashboardService.DueWindowDays gün: @TurkishNumbers.Money(f.DueIn) tahsilat, @TurkishNumbers.Money(f.DueOut) ödeme</h3>
+      <p class="admin-hint dash-note">Vadesi geçenler bugüne yazılır.</p>
+      @if (f.Upcoming.Count == 0) { <p class="admin-muted">Yaklaşan vade yok.</p> }
+      else
+      {
+        <table class="admin-table">
+          <thead><tr><th>Tarih</th><th>İşlem</th><th>Cari</th><th>Tahsilat</th><th>Ödeme</th></tr></thead>
+          <tbody>
+            @foreach (var x in f.Upcoming)
+            {
+              <tr><td>@x.Date.ToString("d MMM yyyy", TurkishNumbers.Culture)</td><td>@if (x.Url is not null) { <a href="@x.Url">@x.Type @x.Document</a> } else { @x.Type }</td><td>@x.Party</td><td>@(x.In > 0 ? TurkishNumbers.Money(x.In) : "-")</td><td>@(x.Out > 0 ? TurkishNumbers.Money(x.Out) : "-")</td></tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+  </section>
+}
+
+<section id="web" class="report-section">
+  <div class="report-section__head"><h2>Web sitesi</h2></div>
+  <p class="admin-hint dash-note">Yalnızca çerez onayı veren ziyaretçiler sayılır.</p>
+  <div class="report-kpis">
+    <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("Sayfa görüntüleme", w.PageViews.ToString(), w.PageViews, null)' />
+    <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("Oturum başına sayfa", pagesPerSession, 0, null)' />
+    <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("Form gönderen oturum", w.Leads.ToString(), w.Leads, w.PreviousLeads)' />
+    <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("Dönüşüm oranı", Percent(w.ConversionRate), w.ConversionRate ?? 0, null)' />
+  </div>
+  <div class="admin-panel"><h3>Oturum ve sayfa görüntüleme</h3><partial name="~/Areas/Admin/Views/Reports/_TimeChart.cshtml" model="w.Chart" /></div>
+  <div class="admin-columns">
+    <div class="admin-panel"><h3>Trafik kaynakları</h3><partial name="~/Areas/Admin/Views/Reports/_BarList.cshtml" model="w.Sources" /></div>
+    <div class="admin-panel"><h3>En çok görüntülenen sayfalar</h3><partial name="~/Areas/Admin/Views/Reports/_BarList.cshtml" model="w.TopPages" /></div>
+    <div class="admin-panel"><h3>Cihazlar</h3><partial name="~/Areas/Admin/Views/Reports/_BarList.cshtml" model="w.Devices" /></div>
+    <div class="admin-panel"><h3>Ziyaretçi etkileşimleri</h3><partial name="~/Areas/Admin/Views/Reports/_BarList.cshtml" model="w.Events" /></div>
+    <div class="admin-panel"><h3>Form getiren kaynaklar</h3><partial name="~/Areas/Admin/Views/Reports/_BarList.cshtml" model="w.LeadsBySource" /></div>
+  </div>
+</section>
+
+<section id="talepler" class="report-section">
+  <div class="report-section__head"><h2>Talepler</h2><a class="admin-btn admin-btn--secondary" href="/yonetim/mesajlar">Mesajlar (@c.Unread okunmamış)</a></div>
+  <div class="admin-panel"><h3>Gelen mesajlar</h3><partial name="~/Areas/Admin/Views/Reports/_TimeChart.cshtml" model="c.Chart" /></div>
+  <div class="admin-panel"><h3>Hizmete göre talepler</h3><partial name="~/Areas/Admin/Views/Reports/_BarList.cshtml" model="c.ByService" /></div>
+</section>
+
+<section id="uretim" class="report-section">
+  <div class="report-section__head"><h2>Çizim ve cam</h2><a class="admin-btn admin-btn--secondary" href="/yonetim/cizim">Çizimler</a></div>
+  <div class="report-kpis">
+    <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("Çizim", p.DesignCount.ToString(), p.DesignCount, null)' />
+    <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("Çizilen adet", p.UnitCount.ToString(), p.UnitCount, null)' />
+    <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("Cam listesi", p.GlassListCount.ToString(), p.GlassListCount, null)' />
+    <partial name="~/Areas/Admin/Views/Reports/_Kpi.cshtml" model='new KpiVm("Cam alanı", p.GlassAreaM2.ToString("N2", TurkishNumbers.Culture) + " m²", p.GlassAreaM2, null)' />
+  </div>
+  <div class="admin-columns">
+    <div class="admin-panel"><h3>Ürün grubuna göre adet</h3><partial name="~/Areas/Admin/Views/Reports/_BarList.cshtml" model="p.UnitsByCategory" /></div>
+    <div class="admin-panel"><h3>Cam tipine göre alan</h3><partial name="~/Areas/Admin/Views/Reports/_BarList.cshtml" model="p.GlassByType" /></div>
+  </div>
+</section>
 @if (missing.Count > 0)
 {
   <section class="admin-panel">
@@ -46,3 +170,4 @@
     <ul class="admin-list">@foreach (var item in missing) { <li><a href="@item.Url"><span>@item.Text</span><small>Girin →</small></a></li> }</ul>
   </section>
 }
+<script src="~/js/reports.js" asp-append-version="true"></script>

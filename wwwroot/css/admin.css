@@ -96,7 +96,7 @@ body.admin{margin:0;background:var(--canvas);color:var(--ink);font-family:"Manro
 .report-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px}
 .report-kpi{padding:14px 16px;background:#fff;border:1px solid var(--line);border-radius:var(--radius)}
 .report-kpi__label{display:block;font-size:12px;color:var(--muted)}
-.report-kpi__value{display:block;margin:4px 0 2px;font-size:19px;font-weight:700;letter-spacing:-.02em;overflow-wrap:anywhere}
+.report-kpi__value{display:block;margin:4px 0 2px;font-size:clamp(16px,1.2vw,19px);font-weight:700;letter-spacing:-.02em;overflow-wrap:anywhere}
 .report-kpi__change{font-size:11px;color:var(--muted)}
 .report-filter{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 12px;margin-bottom:10px;background:#fff;border:1px solid var(--line);border-radius:var(--radius)}
 .report-filter nav{display:flex;flex-wrap:wrap;gap:4px;margin-right:auto}
@@ -144,6 +144,12 @@ body.admin{margin:0;background:var(--canvas);color:var(--ink);font-family:"Manro
 .report-table{margin-top:8px;font-size:13px}
 .report-table summary{font-size:12px;color:var(--blue);cursor:pointer}
 .report-table__scroll{max-height:320px;margin-top:8px;overflow:auto}
+.dash-work{margin-bottom:14px}
+.dash-two{grid-template-columns:repeat(auto-fit,minmax(min(420px,100%),1fr))}
+.dash-note{margin:-8px 0 12px}
+.report-section__head+.dash-note{margin:-6px 0 12px}
+.admin-list .dash-sub{display:block;max-width:none;font-size:12px;white-space:normal}
+.report-section>.admin-columns .admin-panel,.report-section>.admin-panel{margin-bottom:14px}
 
 @media(max-width:900px){
   .admin-app{grid-template-columns:minmax(0,1fr)}

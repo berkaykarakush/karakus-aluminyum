@@ -15,6 +15,8 @@ public sealed record RecentItem(string Title, string Detail, string Url);
 public sealed class DashboardVm
 {
     public required FullReport Report { get; init; }
+    public required DashboardPipeline Pipeline { get; init; }
+    public required DashboardFinance? Finance { get; init; }
     public required List<DashboardTask> Tasks { get; init; }
     public required List<SetupItem> Setup { get; init; }
     public required List<RecentItem> RecentMessages { get; init; }
@@ -27,10 +29,11 @@ public class DashboardController : Controller
     private readonly AppDbContext _db;
     private readonly ReportService _reports;
     private readonly SiteSettingsProvider _settings;
-    public DashboardController(AppDbContext db, ReportService reports, SiteSettingsProvider settings) { _db = db; _reports = reports; _settings = settings; }
+    private readonly DashboardService _dashboard;
+    public DashboardController(AppDbContext db, ReportService reports, SiteSettingsProvider settings, DashboardService dashboard) { _db = db; _reports = reports; _settings = settings; _dashboard = dashboard; }
 
     [HttpGet("")]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? aralik, string? bas, string? bit)
     {
         if (User.IsInRole("Accountant") && !User.IsInRole("Admin") && !User.IsInRole("Editor")) return Redirect("/yonetim/muhasebe");
         var now = DateTime.UtcNow;
@@ -59,9 +62,13 @@ public class DashboardController : Controller
 
         var messages = await _db.ContactMessages.AsNoTracking().OrderByDescending(x => x.CreatedUtc).Take(5).ToListAsync();
         var quotes = await _db.Quotes.AsNoTracking().Include(x => x.Customer).OrderByDescending(x => x.CreatedUtc).Take(5).ToListAsync();
+        var range = ReportRange.Parse(aralik, bas, bit, now);
         return View(new DashboardVm
         {
-            Report = await _reports.BuildAsync(ReportRange.Parse("30", null, null)),
+            Report = await _reports.BuildAsync(range),
+            Pipeline = await _dashboard.PipelineAsync(range, now),
+            // Muhasebe verisi editöre kapalıdır: bu rolde hesaplanmaz, sayfaya da girmez.
+            Finance = User.IsInRole("Admin") ? await _dashboard.FinanceAsync(range, DateOnly.FromDateTime(now + ReportRange.Offset)) : null,
             Tasks = tasks,
             Setup = setup,
             RecentMessages = messages.Select(x => new RecentItem(x.Name, x.Service ?? x.ContactInfo, $"/yonetim/mesajlar/{x.Id}")).ToList(),
