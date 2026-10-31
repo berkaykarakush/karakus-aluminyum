@@ -47,18 +47,4 @@
     </div>
 </section>
 
-@section Head {
-    <script type="application/ld+json">
-        @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, object?>
-        {
-            ["@context"] = "https://schema.org",
-            ["@type"] = "Service",
-            ["name"] = Model.Name,
-            ["description"] = Model.SeoDescription,
-            ["provider"] = new Dictionary<string, object?> { ["@type"] = "Organization", ["name"] = "Karakuş Alüminyum" },
-            ["areaServed"] = "İzmir, Türkiye"
-        }))
-    </script>
-}
-
 <partial name="_Gallery" model="(IReadOnlyList<KarakusAluminyum.Web.Models.GalleryImage>)ViewBag.Gallery" />

@@ -16,6 +16,8 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddRazorPages();
+// Türkçe harfler HTML'de kodlanmadan yazılır; ham kaynağı okuyan tarayıcı ve yapay zekâ metni doğrudan görür. < > & " yine kaçırılır.
+builder.Services.AddWebEncoders(options => options.TextEncoderSettings = new System.Text.Encodings.Web.TextEncoderSettings(System.Text.Unicode.UnicodeRanges.All));
 // Container yeniden başladığında kimlik doğrulama çerezlerinin geçerli kalması için anahtar deposu kalıcı tutulur.
 var dataProtectionPath = builder.Configuration["DataProtection:KeysPath"]
     ?? Path.Combine(builder.Environment.ContentRootPath, ".keys");
@@ -30,6 +32,10 @@ builder.Services.AddScoped<LengthUnits>();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<KarakusAluminyum.Web.Services.Accounting.AccountingService>();
 builder.Services.AddScoped<KarakusAluminyum.Web.Services.Accounting.AccountingQueries>();
+builder.Services.AddScoped<KarakusAluminyum.Web.Services.Seo.SiteContentIndex>();
+builder.Services.AddScoped<KarakusAluminyum.Web.Services.Seo.IndexNowPublisher>();
+builder.Services.AddHttpClient(KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.ClientName, client => client.Timeout = TimeSpan.FromSeconds(30));
+if (!builder.Environment.IsDevelopment()) builder.Services.AddHostedService<KarakusAluminyum.Web.Services.Seo.IndexNowBackgroundService>();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -100,7 +106,16 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+app.UseStatusCodePagesWithReExecute("/hata/{0}");
 app.UseHttpsRedirection();
+// Panel ve iç adresler bağlantı verilse de arama sonuçlarına girmez.
+app.Use((context, next) =>
+{
+    var path = context.Request.Path;
+    if (path.StartsWithSegments("/yonetim") || path.StartsWithSegments("/yonetim-giris") || path.StartsWithSegments("/t") || path.StartsWithSegments("/hata") || path.StartsWithSegments("/health"))
+        context.Response.Headers["X-Robots-Tag"] = "noindex, nofollow";
+    return next();
+});
 app.UseStaticFiles();
 app.UseRouting();
 app.UseRateLimiter();

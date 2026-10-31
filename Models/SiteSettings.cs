@@ -21,6 +21,9 @@ public sealed class SiteSettings
     public string GoogleSiteVerification { get; set; } = "";
     public string MetaDomainVerification { get; set; } = "";
     public string FirstPartyAnalyticsEnabled { get; set; } = "true";
+    public string SiteDescription { get; set; } = "İzmir'de mimari alüminyum doğrama ve sistem çözümleri.";
+    public string IndexNowEnabled { get; set; } = "true";
+    public string AiCrawlersAllowed { get; set; } = "true";
     public string ProductionDetailsEnabled { get; set; } = "false";
     public bool ProductionDetails => ProductionDetailsEnabled == "true";
     public string ConsentText { get; set; } = "";

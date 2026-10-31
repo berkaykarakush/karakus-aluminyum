@@ -19,7 +19,7 @@ public class ContactController : Controller
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        ViewData["Seo"] = new SeoViewModel { Title="İletişim ve Teklif | Karakuş Alüminyum", Description="Alüminyum doğrama ve mimari sistem projeniz için Karakuş Alüminyum ile iletişime geçin.", CanonicalPath="/iletisim" };
+        ViewData["Seo"] = new SeoViewModel { Title="İletişim ve Teklif | Karakuş Alüminyum", Description="Alüminyum doğrama ve mimari sistem projeniz için Karakuş Alüminyum ile iletişime geçin.", CanonicalPath="/iletisim", PageType="ContactPage", Breadcrumbs=new[]{("İletişim","/iletisim")} };
         ViewBag.Settings=await _settingsProvider.GetAsync(); ViewBag.Services=await _db.Services.AsNoTracking().Where(x=>x.IsPublished).OrderBy(x=>x.SortOrder).Select(x=>x.Name).ToListAsync(); return View(new ContactRequest());
     }
     [HttpPost("")]
@@ -27,7 +27,7 @@ public class ContactController : Controller
     [RequestSizeLimit(32000)]
     public async Task<IActionResult> Index(ContactRequest model)
     {
-        ViewData["Seo"] = new SeoViewModel { Title="İletişim ve Teklif | Karakuş Alüminyum", Description="Alüminyum doğrama ve mimari sistem projeniz için Karakuş Alüminyum ile iletişime geçin.", CanonicalPath="/iletisim" };
+        ViewData["Seo"] = new SeoViewModel { Title="İletişim ve Teklif | Karakuş Alüminyum", Description="Alüminyum doğrama ve mimari sistem projeniz için Karakuş Alüminyum ile iletişime geçin.", CanonicalPath="/iletisim", PageType="ContactPage", Breadcrumbs=new[]{("İletişim","/iletisim")} };
         ViewBag.Settings=await _settingsProvider.GetAsync();
         ViewBag.Services=await _db.Services.AsNoTracking().Where(x=>x.IsPublished).OrderBy(x=>x.SortOrder).Select(x=>x.Name).ToListAsync();
         if (!string.IsNullOrWhiteSpace(model.Website)) return RedirectToAction(nameof(Thanks));

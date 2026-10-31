@@ -35,6 +35,9 @@ public static class SiteSettingCatalog
 
         new("SiteName", SeoGroup, "Site adı", "Karakuş Alüminyum"),
         new("BaseUrl", SeoGroup, "Site adresi", "https://www.karakusaluminyum.com", Help: "Site haritası ve arama motoru bağlantıları bu adresi kullanır.", Pattern: UrlPattern, PatternError: UrlError),
+        new("SiteDescription", SeoGroup, "İşletme açıklaması", "İzmir'de alüminyum doğrama, sürme sistemler, kapı ve pencere, giydirme cephe, cam balkon ve otomatik kapı çözümleri sunan mimari alüminyum firması.", SettingKind.LongText, "Arama motoru şeması ve yapay zekâ özeti (llms.txt) bu metni kullanır."),
+        new("IndexNowEnabled", SeoGroup, "Yeni ve değişen sayfaları arama motorlarına otomatik bildir (Bing, Yandex)", "true", SettingKind.Toggle),
+        new("AiCrawlersAllowed", SeoGroup, "Yapay zekâ tarayıcılarının siteyi okumasına izin ver (ChatGPT, Claude, Perplexity, Gemini)", "true", SettingKind.Toggle),
         new("GoogleBusinessProfileUrl", SeoGroup, "Google İşletme Profili", "https://share.google/0QhP26b6Mp7BmGUGt", Pattern: UrlPattern, PatternError: UrlError),
         new("InstagramUrl", SeoGroup, "Instagram", "https://www.instagram.com/karakus-aluminyum", Pattern: UrlPattern, PatternError: UrlError),
         new("FacebookUrl", SeoGroup, "Facebook", "https://www.facebook.com/karakus-aluminyum", Pattern: UrlPattern, PatternError: UrlError),

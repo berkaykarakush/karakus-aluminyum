@@ -3,7 +3,6 @@
 @{
     var site = await SettingsProvider.GetAsync();
     var trustItems = site.TrustItems.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-    var schema = ViewData["BusinessSchema"];
     var projects = (IReadOnlyList<ProjectItem>)ViewBag.Projects;
 }
 @section Head {

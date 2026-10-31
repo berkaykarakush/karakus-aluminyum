@@ -2,6 +2,7 @@
 @using KarakusAluminyum.Web.Models
 @using KarakusAluminyum.Web.Services
 @inject SiteSettingsProvider SettingsProvider
+@inject SeoService Seo
 @inject KarakusAluminyum.Web.Data.AppDbContext Db
 @using Microsoft.EntityFrameworkCore
 @{
@@ -9,7 +10,8 @@
     var seo = ViewData["Seo"] as SeoViewModel ?? new SeoViewModel();
     var settings = await SettingsProvider.GetAsync();
     var canonical = settings.BaseUrl.TrimEnd('/') + (seo.CanonicalPath.StartsWith('/') ? seo.CanonicalPath : "/" + seo.CanonicalPath);
-    var imageUrl = string.IsNullOrWhiteSpace(seo.ImagePath) ? "" : settings.BaseUrl.TrimEnd('/') + seo.ImagePath;
+    var imagePath = string.IsNullOrWhiteSpace(seo.ImagePath) ? "/images/aluminyum-dograma.png" : seo.ImagePath;
+    var imageUrl = imagePath.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? imagePath : settings.BaseUrl.TrimEnd('/') + imagePath;
     // Yönetici oturumu ve aranmayan sayfalar (giriş, hata) ölçüme girmez.
     var firstParty = settings.FirstPartyAnalyticsEnabled == "true";
     // Teşekkür sayfası aranmaz ama dönüşümü ölçmek için izlenir.
@@ -26,7 +28,7 @@
     <meta name="description" content="@seo.Description" />
     <meta name="robots" content="@seo.Robots" />
     <link rel="canonical" href="@canonical" />
-    <link rel="icon" href="/favicon.ico" sizes="any" />
+    @if (seo.IsIndexable) { <link rel="alternate" type="text/markdown" href="@seo.MarkdownPath" title="Markdown" /> }
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -38,14 +40,17 @@
     <meta property="og:title" content="@seo.Title" />
     <meta property="og:description" content="@seo.Description" />
     <meta property="og:url" content="@canonical" />
-    @if (!string.IsNullOrWhiteSpace(imageUrl))
-    {
-        <meta property="og:image" content="@imageUrl" />
-    }
+    <meta property="og:image" content="@imageUrl" />
     <meta name="twitter:card" content="summary_large_image" />
-    @if (ViewData["BusinessSchema"] is object schema)
+    <meta name="twitter:title" content="@seo.Title" />
+    <meta name="twitter:description" content="@seo.Description" />
+    <meta name="twitter:image" content="@imageUrl" />
+    @if (seo.PublishedUtc is { } published) { <meta property="article:published_time" content="@DateTime.SpecifyKind(published, DateTimeKind.Utc).ToString("yyyy-MM-ddTHH:mm:ssZ")" /> }
+    @if (seo.ModifiedUtc is { } modifiedAt) { <meta property="article:modified_time" content="@DateTime.SpecifyKind(modifiedAt, DateTimeKind.Utc).ToString("yyyy-MM-ddTHH:mm:ssZ")" /> }
+    @if (seo.IsIndexable)
     {
-        <script type="application/ld+json">@Html.Raw(JsonSerializer.Serialize(schema))</script>
+        @* Kodlayıcı < ve > karakterlerini kaçırır, içerik script etiketini kapatamaz. "!" etiket yardımcısının + işaretini kodlamasını önler. *@
+        <!script type="application/ld+json">@Html.Raw(Seo.PageGraphJson(seo, settings))</!script>
     }
     @if (!string.IsNullOrWhiteSpace(settings.GoogleSiteVerification)) { <meta name="google-site-verification" content="@settings.GoogleSiteVerification" /> }
     @if (!string.IsNullOrWhiteSpace(settings.MetaDomainVerification)) { <meta name="facebook-domain-verification" content="@settings.MetaDomainVerification" /> }

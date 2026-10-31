@@ -1,6 +1,7 @@
 using KarakusAluminyum.Web.Data;
 using KarakusAluminyum.Web.Models;
 using KarakusAluminyum.Web.Services;
+using KarakusAluminyum.Web.Services.Seo;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,23 +10,24 @@ namespace KarakusAluminyum.Web.Controllers;
 public class GalleryController : Controller
 {
     private readonly AppDbContext _db;
-    private readonly SeoService _seo;
-    public GalleryController(AppDbContext db, SeoService seo) => (_db, _seo) = (db, seo);
+    public GalleryController(AppDbContext db) => _db = db;
 
     [Route("galeri")]
     public async Task<IActionResult> Index(string? k)
     {
-        ViewData["Seo"] = new SeoViewModel
-        {
-            Title = "Galeri | Karakuş Alüminyum",
-            Description = "Alüminyum doğrama, sürme sistemler, kapı-pencere, giydirme cephe ve cam balkon uygulamalarımızdan seçtiğimiz görüntüler.",
-            CanonicalPath = "/galeri"
-        };
-
         var images = await _db.GalleryImages.AsNoTracking()
             .Where(g => g.IsPublished)
             .OrderBy(g => g.SortOrder).ThenBy(g => g.Id)
             .ToListAsync();
+        ViewData["Seo"] = new SeoViewModel
+        {
+            Title = "Galeri | Karakuş Alüminyum",
+            Description = "Alüminyum doğrama, sürme sistemler, kapı-pencere, giydirme cephe ve cam balkon uygulamalarımızdan seçtiğimiz görüntüler.",
+            CanonicalPath = "/galeri",
+            PageType = "CollectionPage",
+            Breadcrumbs = new[] { ("Galeri", "/galeri") },
+            Schema = new[] { SchemaNodes.ImageGallery("/galeri", "Karakuş Alüminyum uygulama galerisi", images.DistinctBy(i => i.ImagePath)) }
+        };
 
         // Düz veriyi çek, demetleri bellekte kur (CS8143: expression tree'de demet literali olamaz).
         var serviceCats = await _db.Services.AsNoTracking()

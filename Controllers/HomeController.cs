@@ -2,30 +2,30 @@ using KarakusAluminyum.Web.Models;
 using KarakusAluminyum.Web.Data;
 using Microsoft.EntityFrameworkCore;
 using KarakusAluminyum.Web.Services;
+using KarakusAluminyum.Web.Services.Seo;
 using Microsoft.AspNetCore.Mvc;
 
 namespace KarakusAluminyum.Web.Controllers;
 
 public class HomeController : Controller
 {
-    private readonly SeoService _seo;
-    private readonly SiteSettingsProvider _settings;
     private readonly AppDbContext _db;
-    public HomeController(SeoService seo, AppDbContext db, SiteSettingsProvider settings) { _seo = seo; _db = db; _settings = settings; }
+    public HomeController(AppDbContext db) => _db = db;
 
     public async Task<IActionResult> Index()
     {
+        var faqs = await _db.FaqItems.AsNoTracking()
+            .Where(f => f.ServiceId == null && f.IsPublished)
+            .OrderBy(f => f.SortOrder).ThenBy(f => f.Id).ToListAsync();
         ViewData["Seo"] = new SeoViewModel
         {
             Title = "Karakuş Alüminyum | İzmir Mimari Alüminyum Sistemleri",
             Description = "Alüminyum doğrama, sürme sistemler, kapı ve pencere, giydirme cephe ve cam balkon çözümleri. Karakuş Alüminyum ile projenizi değerlendirin.",
             CanonicalPath = "/",
-            ImagePath = "/images/aluminyum-dograma.png"
+            ImagePath = "/images/aluminyum-dograma.png",
+            Schema = new[] { SchemaNodes.FaqPage("/", faqs) }
         };
-        ViewData["BusinessSchema"] = _seo.LocalBusinessSchema(await _settings.GetAsync());
-        ViewBag.Faqs = await _db.FaqItems.AsNoTracking()
-            .Where(f => f.ServiceId == null && f.IsPublished)
-            .OrderBy(f => f.SortOrder).ThenBy(f => f.Id).ToListAsync();
+        ViewBag.Faqs = faqs;
         ViewBag.Projects = await ProjectQueries.PublishedAsync(_db, take: 3);
         return View(await _db.Services.AsNoTracking().Where(s => s.IsPublished).OrderBy(s => s.SortOrder).ToListAsync());
     }
@@ -37,7 +37,9 @@ public class HomeController : Controller
         {
             Title = "Hakkımızda | Karakuş Alüminyum",
             Description = "Karakuş Alüminyum'un çalışma yaklaşımı, hizmet anlayışı ve mimari alüminyum çözümleri hakkında bilgi alın.",
-            CanonicalPath = "/kurumsal"
+            CanonicalPath = "/kurumsal",
+            PageType = "AboutPage",
+            Breadcrumbs = new[] { ("Hakkımızda", "/kurumsal") }
         };
         return View();
     }
@@ -68,29 +70,13 @@ public class HomeController : Controller
         return View("~/Views/Legal/Kvkk.cshtml");
     }
 
-    [Route("robots.txt")]
-    [ResponseCache(Duration = 3600)]
-    public async Task<ContentResult> Robots() =>
-        Content($"User-agent: *\nAllow: /\nDisallow: /yonetim/\nSitemap: {_seo.Canonical("/sitemap.xml", await _settings.GetAsync())}\n", "text/plain");
-
-    [Route("sitemap.xml")]
-    [ResponseCache(Duration = 3600)]
-    public async Task<ContentResult> Sitemap()
+    [Route("hata/{code:int}")]
+    public IActionResult ErrorPage(int code)
     {
-        var paths = new List<string> { "/", "/kurumsal", "/urunler", "/projeler", "/galeri", "/blog", "/iletisim" };
-        paths.AddRange(await _db.Services.AsNoTracking().Where(s => s.IsPublished).Select(s => "/urunler/" + s.Slug).ToListAsync());
-        paths.AddRange(await _db.Projects.AsNoTracking().Where(p => p.IsPublished).Select(p => "/projeler/" + p.Slug).ToListAsync());
-        paths.AddRange(await _db.BlogPosts.AsNoTracking().Where(p => p.IsPublished).Select(p => "/blog/" + p.Slug).ToListAsync());
-        var settings = await _settings.GetAsync();
-        var xml = new System.Text.StringBuilder();
-        xml.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
-        xml.AppendLine("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">");
-        foreach (var path in paths.Distinct())
-            xml.AppendLine($"  <url><loc>{System.Security.SecurityElement.Escape(_seo.Canonical(path, settings))}</loc></url>");
-        xml.AppendLine("</urlset>");
-        return Content(xml.ToString(), "application/xml; charset=utf-8");
+        // Durum kodu korunur: arama motoru var olmayan sayfayı 200 olarak görmez.
+        if (code == 404) return View("~/Views/Shared/NotFound.cshtml");
+        Response.StatusCode = code is >= 400 and < 600 ? code : 500;
+        ViewData["Seo"] = new SeoViewModel { Title = "Bir sorun oluştu | Karakuş Alüminyum", Description = "İsteğiniz tamamlanamadı.", CanonicalPath = "/hata/500", Robots = "noindex,nofollow" };
+        return View("~/Views/Shared/Error.cshtml");
     }
-
-    [Route("hata/404")]
-    public IActionResult NotFoundPage() => View("~/Views/Shared/NotFound.cshtml");
 }
