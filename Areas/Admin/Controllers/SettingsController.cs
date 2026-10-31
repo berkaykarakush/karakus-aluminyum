@@ -27,7 +27,7 @@ public class SettingsController : Controller
             // İşaretlenmeyen onay kutusu forma gelmez: kapalı demektir.
             var value = definition?.Kind == SettingKind.Toggle
                 ? (values.TryGetValue(row.Key, out var toggle) && toggle == "true" ? "true" : "false")
-                : values.TryGetValue(row.Key, out var posted) ? posted?.Trim() ?? "" : row.Value;
+                : values.TryGetValue(row.Key, out var posted) ? SiteSettingCatalog.Normalize(row.Key, posted?.Trim() ?? "") : row.Value;
             if (definition is not null && SiteSettingCatalog.Validate(definition, value) is { } error) ModelState.AddModelError(string.Empty, error);
             if (value.Length > 2000) ModelState.AddModelError(string.Empty, $"{definition?.Label ?? row.Key}: en fazla 2000 karakter olabilir.");
             row.Value = value;

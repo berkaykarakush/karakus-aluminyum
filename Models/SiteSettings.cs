@@ -12,6 +12,9 @@ public sealed class SiteSettings
     public string City { get; set; } = "İzmir";
     public string PrimaryServiceArea { get; set; } = "Bornova";
     public string GoogleMapsUrl { get; set; } = "";
+    // Çerçeve içinde açılmayan adresler (paylaşım bağlantısı vb.) boş kutu göstermesin diye harita olarak kullanılmaz.
+    public string? MapEmbedUrl => GoogleMapsUrl.StartsWith("https://www.google.com/maps/embed", StringComparison.Ordinal) ? GoogleMapsUrl : null;
+    public string MapDirectionsUrl => "https://www.google.com/maps/dir/?api=1&destination=" + Uri.EscapeDataString(Address);
     public string GoogleBusinessProfileUrl { get; set; } = "";
     public string InstagramUrl { get; set; } = "";
     public string FacebookUrl { get; set; } = "";

@@ -206,4 +206,42 @@ public sealed class ContentTests(PostgresFixture postgres)
         Assert.Contains("Proje kapsamı", html);
         Assert.Contains("uygulama gerçekleştirdik", html);
     }
+
+    [Fact]
+    public async Task ServiceDetail_SuggestsOtherServices_NotItself()
+    {
+        var html = await postgres.Shared.NewClient().GetStringAsync("/urunler/aluminyum-dograma");
+        var related = Regex.Matches(html, "<a class=\"service-card\" href=\"([^\"]+)\"").Select(x => x.Groups[1].Value).ToList();
+        Assert.Equal(3, related.Count);
+        Assert.DoesNotContain("/urunler/aluminyum-dograma", related);
+    }
+
+    [Fact]
+    public async Task About_ListsPublishedServices()
+    {
+        var client = postgres.Shared.NewClient();
+        var slugs = await postgres.Shared.WithDbAsync(db => db.Services.Where(x => x.IsPublished).Select(x => x.Slug).ToListAsync());
+        var html = await client.GetStringAsync("/kurumsal");
+        Assert.All(slugs, slug => Assert.Contains($"<a class=\"expertise-row\" href=\"/urunler/{slug}\"", html));
+    }
+
+    [Fact]
+    public async Task ProjectWithoutImageOrDetail_HasNoPlaceholderHero_AndShowsSummaryOnce()
+    {
+        await using var app = postgres.CreateApp("content_project_detail");
+        var client = app.NewClient();
+        const string summary = "Görselsiz proje için tek cümlelik özet metni.";
+        await app.WithDbAsync(db =>
+        {
+            db.Projects.Add(new PortfolioProject { Slug = "gorselsiz-proje", Title = "Görselsiz Proje", Type = "Konut Projesi", Summary = summary, Image = ProjectQueries.PlaceholderImage });
+            return db.SaveChangesAsync();
+        });
+
+        var html = WebUtility.HtmlDecode(await client.GetStringAsync("/projeler/gorselsiz-proje"));
+        var body = html[html.IndexOf("<section class=\"page-hero", StringComparison.Ordinal)..html.IndexOf("<footer", StringComparison.Ordinal)];
+
+        Assert.DoesNotContain("page-hero__media", body);
+        Assert.Single(Regex.Matches(body, Regex.Escape(summary)));
+        Assert.Contains("class=\"next-project\"", body);
+    }
 }

@@ -629,6 +629,32 @@ public sealed class AdminPanelTests(PostgresFixture postgres)
     }
 
     [Fact]
+    public async Task ContactMap_WaitsForVisitorChoice_AndFollowsSetting()
+    {
+        const string embed = "https://www.google.com/maps/embed?pb=!1m2!2sTest";
+        await using var app = postgres.CreateApp("settings_map");
+        var (client, token) = await AdminAsync(app);
+        var visitor = app.NewClient();
+
+        var html = WebUtility.HtmlDecode(await visitor.GetStringAsync("/iletisim"));
+        Assert.Contains("data-map-src=\"https://www.google.com/maps/embed?", html);
+        Assert.DoesNotContain("<iframe", html); // Google'a onaysız istek gitmez
+        Assert.Contains("https://www.google.com/maps/dir/?api=1&destination=", html);
+
+        // Google'ın verdiği kodun tamamı yapıştırıldığında yalnızca adres saklanır.
+        await SaveSettingsAsync(client, token, ("GoogleMapsUrl", $"<iframe src=\"{embed}\" width=\"600\" height=\"450\" style=\"border:0;\" allowfullscreen=\"\" loading=\"lazy\"></iframe>"));
+        Assert.Equal(embed, await SettingAsync(app, "GoogleMapsUrl"));
+        Assert.Contains($"data-map-src=\"{embed}\"", WebUtility.HtmlDecode(await visitor.GetStringAsync("/iletisim")));
+
+        // Çerçeve içinde açılmayan adres kaydedilmez.
+        Assert.Equal(HttpStatusCode.OK, (await SaveSettingsAsync(client, token, ("GoogleMapsUrl", "https://maps.app.goo.gl/abc"))).StatusCode);
+        Assert.Equal(embed, await SettingAsync(app, "GoogleMapsUrl"));
+
+        await SaveSettingsAsync(client, token, ("GoogleMapsUrl", ""));
+        Assert.DoesNotContain("data-map-src", await visitor.GetStringAsync("/iletisim"));
+    }
+
+    [Fact]
     public async Task TrackingConfig_AppearsForVisitors_ButNotForAdmins_OrNoindexPages()
     {
         await using var app = postgres.CreateApp("settings_tracking");

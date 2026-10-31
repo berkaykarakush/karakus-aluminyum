@@ -31,8 +31,11 @@ public class HomeController : Controller
     }
 
     [Route("kurumsal")]
-    public IActionResult About()
+    public async Task<IActionResult> About()
     {
+        ViewBag.Services = await _db.Services.AsNoTracking().Where(s => s.IsPublished).OrderBy(s => s.SortOrder).ToListAsync();
+        // Görseli olmayan proje vitrinde yer almaz.
+        ViewBag.Projects = (await ProjectQueries.PublishedAsync(_db)).Where(p => p.Image != ProjectQueries.PlaceholderImage).Take(3).ToList();
         ViewData["Seo"] = new SeoViewModel
         {
             Title = "Hakkımızda | Karakuş Alüminyum",

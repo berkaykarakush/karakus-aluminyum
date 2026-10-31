@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.RegularExpressions;
 
 namespace KarakusAluminyum.Web.Services;
@@ -33,7 +34,7 @@ public static class SiteSettingCatalog
         new("Address", ContactGroup, "Adres", "Karacaoğlan Mah. 6252 Sk. No: 3, Bornova/İzmir"),
         new("City", ContactGroup, "Şehir", "İzmir"),
         new("PrimaryServiceArea", ContactGroup, "Ana hizmet bölgesi", "Bornova"),
-        new("GoogleMapsUrl", ContactGroup, "Google Haritalar gömme adresi", "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3125.168057091929!2d27.206807025382613!3d38.43758697370485!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14b962db502ab2f7%3A0xe5025465f1957d53!2zS2FyYWt1xZ8gQWzDvG1pbnl1bQ!5e0!3m2!1str!2str!4v1793255765258!5m2!1str!2str", Pattern: UrlPattern, PatternError: UrlError),
+        new("GoogleMapsUrl", ContactGroup, "Google Haritalar gömme adresi", "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3125.168057091929!2d27.206807025382613!3d38.43758697370485!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14b962db502ab2f7%3A0xe5025465f1957d53!2zS2FyYWt1xZ8gQWzDvG1pbnl1bQ!5e0!3m2!1str!2str!4v1793255765258!5m2!1str!2str", Help: "Google Haritalar'da Paylaş > Harita yerleştir ekranındaki kodu veya adresi yapıştırın. Boş bırakılırsa İletişim sayfasında harita gösterilmez.", Pattern: "^https://www\\.google\\.com/maps/embed[?/][^\\s\"'<>]*$", PatternError: "Paylaş > Harita yerleştir ekranındaki kodu veya https://www.google.com/maps/embed ile başlayan adresi yapıştırın."),
 
         new("SiteName", SeoGroup, "Site adı", "Karakuş Alüminyum"),
         new("BaseUrl", SeoGroup, "Site adresi", "https://www.karakusaluminyum.com", Help: "Site haritası ve arama motoru bağlantıları bu adresi kullanır.", Pattern: UrlPattern, PatternError: UrlError),
@@ -81,6 +82,14 @@ public static class SiteSettingCatalog
     };
 
     public static SettingDefinition? Find(string key) => All.FirstOrDefault(x => x.Key == key);
+
+    // Google'ın verdiği <iframe> kodunun tamamı yapıştırılırsa yalnızca adresi saklanır.
+    public static string Normalize(string key, string value)
+    {
+        if (key != "GoogleMapsUrl") return value;
+        var match = Regex.Match(value, "<iframe\\b[^>]*?\\ssrc\\s*=\\s*[\"']([^\"']+)[\"']", RegexOptions.IgnoreCase);
+        return match.Success ? WebUtility.HtmlDecode(match.Groups[1].Value).Trim() : value;
+    }
 
     // Boş değer geçerlidir (ör. Analytics henüz bağlanmamış olabilir).
     public static string? Validate(SettingDefinition definition, string? value)

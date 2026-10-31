@@ -1,5 +1,17 @@
 @model ProjectItem
-<section class="page-hero" style="--hero-image:url('@Model.Image')">
+@{
+    var content = ViewBag.Content as string;
+    var hasContent = !string.IsNullOrWhiteSpace(content);
+    // Ayrı detay yazılmamışsa özet aynı sayfada iki kez görünmesin diye yalnızca kapsam bölümünde yer alır.
+    var paragraphs = System.Text.RegularExpressions.Regex.Split((hasContent ? content! : Model.Summary).Trim(), @"\r?\n\s*\r?\n");
+    var hasImage = Model.Image != KarakusAluminyum.Web.Services.ProjectQueries.PlaceholderImage;
+    var next = ViewBag.Next as ProjectItem;
+}
+<section class="page-hero page-hero--feature">
+    @if (hasImage)
+    {
+        <img class="page-hero__media" src="@Model.Image" alt="@Model.Title - @Model.Type uygulaması" width="1536" height="1024" fetchpriority="high" />
+    }
     <div class="container">
         <nav class="breadcrumbs" aria-label="İçerik yolu">
             <a href="/">Ana Sayfa</a>
@@ -10,17 +22,61 @@
         </nav>
         <span class="eyebrow">@Model.Type · @Model.Location</span>
         <h1>@Model.Title</h1>
-        <p class="page-intro">@Model.Summary</p>
+        @if (hasContent)
+        {
+            <p class="page-intro">@Model.Summary</p>
+        }
     </div>
 </section>
 
 <section class="section">
-    <div class="container content-prose">
-        <img class="detail-image" src="@Model.Image" alt="@Model.Title - @Model.Type uygulaması" width="1200" height="850" />
-        <h2>Proje kapsamı</h2>
-        <p style="white-space:pre-wrap">@(ViewBag.Content as string ?? Model.Summary)</p>
-        <a class="button button--dark" href="/iletisim">Benzer projem için iletişime geçin ↗</a>
+    <div class="container detail-layout">
+        <div class="detail-layout__main">
+            <span class="eyebrow">Proje</span>
+            <h2>Proje kapsamı</h2>
+            <div class="content-prose content-prose--lead content-prose--plain">
+                @foreach (var paragraph in paragraphs)
+                {
+                    <p>@paragraph</p>
+                }
+            </div>
+        </div>
+        <aside class="side-card" aria-label="Proje künyesi">
+            <span class="eyebrow">Künye</span>
+            <dl class="fact-list">
+                <div><dt>Proje türü</dt><dd>@Model.Type</dd></div>
+                <div><dt>Konum</dt><dd>@Model.Location</dd></div>
+            </dl>
+            <a class="button button--silver" href="/iletisim">Benzer projem için iletişime geçin <span aria-hidden="true">↗</span></a>
+        </aside>
     </div>
 </section>
 
+@{ ViewData["GalleryTitle"] = "Uygulamadan kareler"; }
 <partial name="_Gallery" model="(IReadOnlyList<KarakusAluminyum.Web.Models.GalleryImage>)ViewBag.Gallery" />
+
+<section class="section">
+    <div class="container">
+        <div class="cta-band">
+            <div>
+                <h2>Benzer bir proje mi planlıyorsunuz?</h2>
+                <p>Ölçü, çizim ve ihtiyaçlarınızı paylaşarak ilk değerlendirmeyi başlatın.</p>
+            </div>
+            <a class="button button--silver" href="/iletisim">İletişime geçin ↗</a>
+        </div>
+    </div>
+</section>
+
+@if (next is not null)
+{
+    <a class="next-project" href="/projeler/@next.Slug">
+        @if (next.Image != KarakusAluminyum.Web.Services.ProjectQueries.PlaceholderImage)
+        {
+            <img src="@next.Image" alt="" loading="lazy" width="1536" height="1024" />
+        }
+        <div class="container">
+            <span class="eyebrow">Sıradaki proje</span>
+            <h2>@next.Title <span aria-hidden="true">↗</span></h2>
+        </div>
+    </a>
+}

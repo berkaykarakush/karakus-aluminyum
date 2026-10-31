@@ -34,6 +34,9 @@ public class ServicesController : Controller
         ViewBag.Faqs = await _db.FaqItems.AsNoTracking()
             .Where(f => f.ServiceId == row.Id && f.IsPublished)
             .OrderBy(f => f.SortOrder).ThenBy(f => f.Id).ToListAsync();
+        // Sıralamada bu hizmetten sonra gelenler önce gösterilir; liste sonunda başa döner.
+        var others = await _db.Services.AsNoTracking().Where(x=>x.IsPublished && x.Id!=row.Id).OrderBy(x=>x.SortOrder).ThenBy(x=>x.Id).ToListAsync();
+        ViewBag.Related = others.Where(x=>x.SortOrder>row.SortOrder).Concat(others.Where(x=>x.SortOrder<=row.SortOrder)).Take(3).Select(ToPage).ToList();
         var description = string.IsNullOrWhiteSpace(service.SeoDescription) ? service.ShortDescription : service.SeoDescription;
         var path = "/urunler/" + service.Slug;
         var site = await _settings.GetAsync();

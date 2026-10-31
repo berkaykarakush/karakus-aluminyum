@@ -7,7 +7,7 @@
         Model.Service = serviceValue.ToString();
 }
 <section class="page-hero"><div class="container"><nav class="breadcrumbs" aria-label="İçerik yolu"><a href="/">Ana Sayfa</a><span>/</span><span>İletişim</span></nav><span class="eyebrow">İletişim ve Teklif</span><h1>Projenizi konuşalım.</h1><p class="page-intro">Ölçü, çizim veya aklınızdaki fikri paylaşın. Talebinizi inceleyip size telefon veya e-posta ile dönüş yapalım.</p></div></section>
-<section class="section"><div class="container split"><div class="split__copy"><h2>Karakuş Alüminyum ile iletişime geçin.</h2><p>Telefon, e-posta veya teklif formu üzerinden bize ulaşabilirsiniz.</p><ul class="check-list"><li><strong>Telefon:</strong>&nbsp; <a href="tel:@settings.PhoneE164">@settings.PhoneDisplay</a></li><li><strong>E-posta:</strong>&nbsp; <a href="mailto:@settings.Email">@settings.Email</a></li><li><strong>Adres:</strong>&nbsp; @settings.Address</li></ul>@if (!string.IsNullOrWhiteSpace(settings.GoogleMapsUrl)) { <a class="text-link" href="@settings.GoogleMapsUrl" target="_blank" rel="noopener noreferrer">Haritada yol tarifi ↗</a> }</div>
+<section class="section"><div class="container split"><div class="split__copy"><h2>Karakuş Alüminyum ile iletişime geçin.</h2><p>Telefon, e-posta veya teklif formu üzerinden bize ulaşabilirsiniz.</p><ul class="check-list"><li><strong>Telefon:</strong>&nbsp; <a href="tel:@settings.PhoneE164">@settings.PhoneDisplay</a></li><li><strong>E-posta:</strong>&nbsp; <a href="mailto:@settings.Email">@settings.Email</a></li><li><strong>Adres:</strong>&nbsp; @settings.Address</li></ul></div>
 <div class="contact-panel">
 @if (TempData["ContactNotice"] is string notice) { <p class="notice">@notice</p> }
 <form method="post" action="/iletisim">
@@ -25,3 +25,18 @@
     </div>
 </form>
 </div></div></section>
+@if (settings.MapEmbedUrl is { } mapUrl)
+{
+    <section class="section section--soft">
+        <div class="container">
+            <div class="section-heading"><div><span class="eyebrow">Konum</span><h2>Bizi ziyaret edin.</h2></div><div class="map-address"><p>@settings.Address</p><a class="text-link" href="@settings.MapDirectionsUrl" target="_blank" rel="noopener noreferrer">Yol tarifi alın ↗</a></div></div>
+            @* Harita Google'a veri aktarır: çerez onayı varsa kendiliğinden, yoksa ziyaretçi isteyince yüklenir (site.js). *@
+            <div class="map-embed" data-map-src="@mapUrl" data-map-title="@settings.SiteName konum haritası">
+                <div class="map-embed__prompt">
+                    <p>Harita Google tarafından sunulur. Görüntülediğinizde IP adresiniz gibi bazı veriler Google'a aktarılabilir.</p>
+                    <button type="button" class="button button--silver">Haritayı göster</button>
+                </div>
+            </div>
+        </div>
+    </section>
+}

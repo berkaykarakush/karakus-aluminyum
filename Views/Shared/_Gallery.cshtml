@@ -13,22 +13,46 @@
     </div>
   </div>
 </section>
-<div id="gallery-lightbox" class="gallery-lightbox" hidden>
+<div id="gallery-lightbox" class="gallery-lightbox" role="dialog" aria-modal="true" aria-label="Görsel önizleme" hidden>
   <img id="gallery-lightbox-img" alt="" />
+  <button type="button" class="gallery-lightbox__close" aria-label="Kapat">×</button>
+  @if (Model.Count > 1)
+  {
+    <button type="button" class="gallery-lightbox__nav gallery-lightbox__nav--prev" data-step="-1" aria-label="Önceki görsel">←</button>
+    <button type="button" class="gallery-lightbox__nav gallery-lightbox__nav--next" data-step="1" aria-label="Sonraki görsel">→</button>
+    <span class="gallery-lightbox__count" id="gallery-lightbox-count" aria-live="polite"></span>
+  }
 </div>
 <script>
   (function () {
     var lb = document.getElementById('gallery-lightbox');
-    document.querySelectorAll('.gallery-item').forEach(function (a) {
+    var image = document.getElementById('gallery-lightbox-img');
+    var count = document.getElementById('gallery-lightbox-count');
+    var items = Array.prototype.slice.call(document.querySelectorAll('.gallery-item'));
+    var current = 0;
+    function show(index) {
+      current = (index + items.length) % items.length;
+      image.src = items[current].getAttribute('href');
+      image.alt = items[current].querySelector('img').alt;
+      if (count) count.textContent = (current + 1) + ' / ' + items.length;
+      lb.hidden = false;
+    }
+    items.forEach(function (a, index) {
       a.addEventListener('click', function (e) {
         e.preventDefault();
-        document.getElementById('gallery-lightbox-img').src = a.getAttribute('href');
-        lb.hidden = false;
+        show(index);
       });
     });
-    lb.addEventListener('click', function () { lb.hidden = true; });
+    lb.addEventListener('click', function (e) {
+      var step = e.target.getAttribute('data-step');
+      if (step) show(current + Number(step));
+      else lb.hidden = true;
+    });
     document.addEventListener('keydown', function (e) {
+      if (lb.hidden) return;
       if (e.key === 'Escape') lb.hidden = true;
+      if (items.length > 1 && e.key === 'ArrowLeft') show(current - 1);
+      if (items.length > 1 && e.key === 'ArrowRight') show(current + 1);
     });
   })();
 </script>
