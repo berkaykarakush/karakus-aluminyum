@@ -1566,6 +1566,7 @@ public sealed class DrawingListTests(PostgresFixture postgres)
         var row = await app.WithDbAsync(db => db.WindowDesigns.AsNoTracking().SingleAsync(d => d.Id == id));
         Assert.Equal((ProductCategories.Aluminum, "arch", 400, 3, "#3a4046".Length), (row.Category, row.Shape, row.ShapeParamMm, row.Quantity, row.ColorHex.Length));
         Assert.Contains("tiltLeft", row.LayoutJson);
+        Assert.Equal("{}", row.ParamsJson); // pencere satırına ürün seçimi yazılmaz
 
         var narrow = JsonSerializer.Serialize(new[] { new { id, name, widthMm = 700, heightMm = 1400, quantity = 3, layoutJson = "{\"opening\":\"fixed\"}" } });
         Assert.Equal(HttpStatusCode.OK, (await DrawingLists.PostToAsync(client, token, $"/yonetim/cizim/duzenle/{listId}", name, narrow)).StatusCode);
@@ -1761,6 +1762,10 @@ public sealed class BrandTests(PostgresFixture postgres)
         var id = await DrawingLists.DesignIdAsync(app, name);
         Task<HttpResponseMessage> Post(int brand) => client.PostFormAsync($"/yonetim/cizim/poz/{id}", token, ("Name", name), ("ColorHex", "#3a4046"), ("WidthMm", "1000"), ("HeightMm", "1000"), ("Shape", "rect"), ("Quantity", "1"), ("LayoutJson", DrawingLists.Layout), ("BrandId", brand.ToString()));
         Assert.Equal(HttpStatusCode.OK, (await Post(pvc)).StatusCode);
+        var other = await NewBrandAsync(app, Tag());
+        Assert.Equal(HttpStatusCode.Redirect, (await Post(other)).StatusCode);
+        Assert.Equal(other, await app.WithDbAsync(db => db.WindowDesigns.Where(d => d.Id == id).Select(d => d.BrandId).SingleAsync()));
+        Assert.Equal(HttpStatusCode.Redirect, (await Post(aluminum)).StatusCode);
         Assert.Equal(aluminum, await app.WithDbAsync(db => db.WindowDesigns.Where(d => d.Id == id).Select(d => d.BrandId).SingleAsync()));
     }
 

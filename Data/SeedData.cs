@@ -1,3 +1,4 @@
+using KarakusAluminyum.Web.Models.Accounting;
 using System.Text.Json;
 using KarakusAluminyum.Web.Models;
 using KarakusAluminyum.Web.Models.Drawing;
@@ -82,6 +83,7 @@ public static class SeedData
     public const string ClausesSeededKey = "ClausesSeeded";
     public const string ProductSystemsSeededKey = "ProductSystemsSeeded";
     public const string BrandsSeededKey = "BrandsSeeded";
+    public const string AccountingSeededKey = "AccountingSeeded";
     private const string BrandSeedVersion = "2";
 
     // Listeye marka eklenince BrandSeedVersion artırılır.
@@ -101,7 +103,7 @@ public static class SeedData
 
 
     // Tek seferlik seed'lerin işaretçileri; site ayarları ekranında gösterilmez.
-    public static readonly string[] InternalSettingKeys = { GallerySeededKey, HomeFaqsSeededKey, DrawingSeededKey, ClausesSeededKey, ProductSystemsSeededKey, BrandsSeededKey };
+    public static readonly string[] InternalSettingKeys = { GallerySeededKey, HomeFaqsSeededKey, DrawingSeededKey, ClausesSeededKey, ProductSystemsSeededKey, BrandsSeededKey, AccountingSeededKey };
 
     public static async Task InitializeAsync(IServiceProvider services, IConfiguration config)
     {
@@ -109,7 +111,7 @@ public static class SeedData
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
 
-        foreach (var role in new[] { "Admin", "Editor" })
+        foreach (var role in new[] { "Admin", "Editor", "Accountant" })
         {
             if (!await roleManager.RoleExistsAsync(role))
             {
@@ -286,6 +288,15 @@ public static class SeedData
             for (var i = 0; i < Brands.Length; i++)
                 if (!existingBrands.Contains(Brands[i]))
                     db.Brands.Add(new Brand { Name = Brands[i].Name, Category = Brands[i].Category, SortOrder = i + 1 });
+        }
+
+        // Muhasebe başlangıcı: merkez kasa ve yaygın gider kategorileri.
+        if (!await db.SiteSettingRecords.AnyAsync(s => s.Key == AccountingSeededKey))
+        {
+            db.SiteSettingRecords.Add(new SiteSettingRecord { Key = AccountingSeededKey, Value = "true", Description = "Muhasebe başlangıç kayıtları eklendi" });
+            db.FinanceAccounts.Add(new FinanceAccount { Name = "Merkez Kasa", Kind = FinanceAccountKind.Cash });
+            foreach (var name in new[] { "Kira", "Elektrik, su, doğalgaz", "Telefon ve internet", "Yakıt ve ulaşım", "Araç giderleri", "Ofis ve kırtasiye", "Vergi ve harçlar", "SGK", "Banka masrafları", "Muhasebe ve danışmanlık", "Reklam", "Yemek", "Bakım ve onarım", "Diğer" })
+                db.ExpenseCategories.Add(new ExpenseCategory { Name = name });
         }
 
         // Belge şablonları her zaman vardır; hazır maddeler yalnızca bir kez eklenir.

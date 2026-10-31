@@ -1,0 +1,13 @@
+@{ ViewData["Title"] = "Veri aktarımı"; }
+<div class="admin-actions"><h1>Veri aktarımı</h1></div>
+<div class="admin-panel">
+  <p class="admin-muted">Kolaybi'den veya Excel'den tabloyu başlık satırıyla kopyalayıp yapıştırın. Sütun sırası önemli değildir, başlıklardan tanınır. Hatalı satır varsa hiçbir kayıt eklenmez; adı veya vergi numarası kayıtlı olanlar atlanır.</p>
+  <p class="admin-muted"><strong>Cari:</strong> Ad / Unvan, Vergi No, Vergi Dairesi, Telefon, E-posta, Adres, İl, İlçe, Tür, Bakiye (artı: bize borçlu, eksi: biz borçluyuz)<br /><strong>Ürün:</strong> Ürün Adı, Kod, Tür (Hizmet yazılırsa stok tutulmaz), Birim, Alış Fiyatı, Satış Fiyatı, KDV, Stok</p>
+  <form class="admin-form" method="post" action="/yonetim/muhasebe/aktar">@Html.AntiForgeryToken()
+    <div asp-validation-summary="All" class="validation-summary-errors"></div>
+    <label for="tip">Aktarılacak veri</label><select id="tip" name="tip"><option value="cari">Cariler</option><option value="urun">Ürün ve hizmetler</option></select>
+    <label for="openingDate">Açılış tarihi (bakiye ve stok için)</label><input id="openingDate" type="date" name="openingDate" value="@DateOnly.FromDateTime(DateTime.UtcNow.AddHours(3)).ToString("yyyy-MM-dd")" />
+    <label for="text">Tablo</label><textarea id="text" name="text" rows="14" required></textarea>
+    <div class="admin-actions"><button class="admin-btn">Aktar</button></div>
+  </form>
+</div>

@@ -1,3 +1,4 @@
+using KarakusAluminyum.Web.Models.Accounting;
 using KarakusAluminyum.Web.Models;
 using KarakusAluminyum.Web.Models.Analytics;
 using KarakusAluminyum.Web.Models.Crm;
@@ -27,6 +28,19 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<WindowDesign> WindowDesigns => Set<WindowDesign>();
     public DbSet<DrawingList> DrawingLists => Set<DrawingList>();
     public DbSet<Brand> Brands => Set<Brand>();
+    public DbSet<Product> Products => Set<Product>();
+    public DbSet<StockMovement> StockMovements => Set<StockMovement>();
+    public DbSet<Invoice> Invoices => Set<Invoice>();
+    public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
+    public DbSet<FinanceAccount> FinanceAccounts => Set<FinanceAccount>();
+    public DbSet<CashTransaction> CashTransactions => Set<CashTransaction>();
+    public DbSet<PaymentAllocation> PaymentAllocations => Set<PaymentAllocation>();
+    public DbSet<Cheque> Cheques => Set<Cheque>();
+    public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
+    public DbSet<Expense> Expenses => Set<Expense>();
+    public DbSet<Employee> Employees => Set<Employee>();
+    public DbSet<CariAdjustment> CariAdjustments => Set<CariAdjustment>();
+    public DbSet<AccountingSequence> AccountingSequences => Set<AccountingSequence>();
     public DbSet<AnalyticsEvent> AnalyticsEvents => Set<AnalyticsEvent>();
     public DbSet<GlassList> GlassLists => Set<GlassList>();
     public DbSet<GlassListItem> GlassListItems => Set<GlassListItem>();
@@ -82,6 +96,31 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<WindowDesign>().HasOne(x => x.ProfileSystem).WithMany()
             .HasForeignKey(x => x.ProfileSystemId).OnDelete(DeleteBehavior.Restrict);
+        // Muhasebe kayıtlarına bağlı cari, ürün ve hesap silinemez.
+        builder.Entity<Invoice>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<Invoice>().HasOne(x => x.Quote).WithMany().HasForeignKey(x => x.QuoteId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<Invoice>().HasIndex(x => new { x.Kind, x.CustomerId, x.Number });
+        builder.Entity<Invoice>().HasIndex(x => new { x.Status, x.DueDate });
+        builder.Entity<InvoiceLine>().HasOne(x => x.Invoice).WithMany(x => x.Lines).HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<InvoiceLine>().HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<StockMovement>().HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<StockMovement>().HasOne(x => x.Invoice).WithMany().HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<Product>().HasIndex(x => x.Code);
+        builder.Entity<CashTransaction>().HasOne(x => x.Account).WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<CashTransaction>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<CashTransaction>().HasOne(x => x.Employee).WithMany().HasForeignKey(x => x.EmployeeId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<CashTransaction>().HasIndex(x => new { x.AccountId, x.Date });
+        builder.Entity<PaymentAllocation>().HasOne(x => x.Invoice).WithMany(x => x.Allocations).HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<PaymentAllocation>().HasOne(x => x.CashTransaction).WithMany().HasForeignKey(x => x.CashTransactionId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<PaymentAllocation>().HasOne(x => x.Cheque).WithMany().HasForeignKey(x => x.ChequeId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<Cheque>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<Cheque>().HasOne(x => x.EndorsedToCustomer).WithMany().HasForeignKey(x => x.EndorsedToCustomerId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<Cheque>().HasOne(x => x.Account).WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<Cheque>().HasIndex(x => new { x.Status, x.DueDate });
+        builder.Entity<Expense>().HasOne(x => x.Category).WithMany().HasForeignKey(x => x.CategoryId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<Expense>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<Expense>().HasOne(x => x.Account).WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<CariAdjustment>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<WindowDesign>().HasOne(x => x.DrawingList).WithMany(x => x.Items).HasForeignKey(x => x.DrawingListId).OnDelete(DeleteBehavior.Cascade);
         builder.Entity<WindowDesign>().HasOne(x => x.Brand).WithMany().HasForeignKey(x => x.BrandId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<DrawingList>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.SetNull);

@@ -1,0 +1,23 @@
+@model List<KarakusAluminyum.Web.Models.Accounting.Employee>
+@using KarakusAluminyum.Web.Models.Accounting
+@using KarakusAluminyum.Web.Services.Accounting
+@using KarakusAluminyum.Web.Services.Documents
+@{ ViewData["Title"] = "Personel"; var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(3)).ToString("yyyy-MM-dd"); var active = Model.Where(x => x.IsActive).ToList(); }
+<div class="admin-actions"><h1>Personel</h1><a class="admin-btn" href="/yonetim/muhasebe/personel/ekle">+ Personel</a></div>
+<div class="admin-panel" style="overflow-x:auto"><table class="admin-table"><thead><tr><th>Ad</th><th>Görev</th><th>Telefon</th><th>IBAN</th><th>Net maaş</th><th>Durum</th><th></th></tr></thead><tbody>
+@foreach (var x in Model) { <tr><td>@x.Name</td><td>@x.Position</td><td>@x.Phone</td><td>@x.Iban</td><td>@TurkishNumbers.Money(x.NetSalary)</td><td>@(x.IsActive ? "Aktif" : "Pasif")</td><td><a class="admin-btn" href="/yonetim/muhasebe/personel/duzenle/@x.Id">Düzenle</a></td></tr> }
+</tbody></table></div>
+@if (active.Count > 0)
+{
+  <div class="admin-panel"><h2>Maaş / avans öde</h2><form class="admin-actions" method="post" action="/yonetim/muhasebe/personel/odeme">@Html.AntiForgeryToken()
+    <select name="employeeId" aria-label="Personel">@foreach (var x in active) { <option value="@x.Id">@x.Name</option> }</select>
+    <select name="accountId" aria-label="Hesap" asp-items="(SelectList)ViewBag.Accounts"></select>
+    <input type="date" name="date" value="@today" aria-label="Tarih" required />
+    <input type="number" name="amount" step="0.01" min="0.01" placeholder="Tutar" aria-label="Tutar" required />
+    <input name="description" placeholder="Açıklama (ör. Ekim maaşı)" aria-label="Açıklama" />
+    <button class="admin-btn">Öde</button>
+  </form></div>
+}
+<div class="admin-panel" style="overflow-x:auto"><h2>Son ödemeler</h2><table class="admin-table"><thead><tr><th>Tarih</th><th>Personel</th><th>Hesap</th><th>Açıklama</th><th>Tutar</th></tr></thead><tbody>
+@foreach (var x in (List<CashTransaction>)ViewBag.Payments) { <tr style="@(x.IsCancelled ? "opacity:.55;text-decoration:line-through" : "")"><td>@x.Date.ToString("dd.MM.yyyy")</td><td>@x.Employee?.Name</td><td><a href="/yonetim/muhasebe/kasa-banka/hareketler/@x.AccountId">@x.Account?.Name</a></td><td>@x.Description</td><td>@TurkishNumbers.Money(x.AmountTry)</td></tr> }
+</tbody></table></div>

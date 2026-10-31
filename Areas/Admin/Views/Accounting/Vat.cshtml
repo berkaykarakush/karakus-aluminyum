@@ -1,0 +1,13 @@
+@model List<KarakusAluminyum.Web.Services.Accounting.VatRow>
+@using KarakusAluminyum.Web.Models.Accounting
+@using KarakusAluminyum.Web.Services.Accounting
+@using KarakusAluminyum.Web.Services.Documents
+@{ int year = ViewBag.Year; ViewData["Title"] = $"KDV raporu {year}"; string M(decimal v) => v.ToString("N2", TurkishNumbers.Culture); }
+<link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
+<div class="admin-actions"><h1>@ViewData["Title"]</h1></div>
+<partial name="_ReportNav" />
+<form class="admin-panel admin-actions" method="get"><input type="number" name="yil" value="@year" min="2000" max="2100" aria-label="Yıl" /><button class="admin-btn">Göster</button><button class="admin-btn admin-btn--secondary" name="csv" value="true">CSV</button></form>
+<div class="admin-panel" style="overflow-x:auto"><table class="admin-table"><thead><tr><th>Dönem</th><th>Satış matrahı</th><th>Hesaplanan KDV</th><th>Satış tevkifatı</th><th>Alış matrahı</th><th>Alış KDV</th><th>Alış tevkifatı</th><th>Gider KDV</th><th>İndirilecek</th><th>Ödenecek / devreden</th></tr></thead><tbody>
+@foreach (var x in Model) { <tr><td>@x.Period</td><td>@M(x.SaleNet)</td><td>@M(x.SaleVat)</td><td>@M(x.SaleWithholding)</td><td>@M(x.PurchaseNet)</td><td>@M(x.PurchaseVat)</td><td>@M(x.PurchaseWithholding)</td><td>@M(x.ExpenseVat)</td><td>@M(x.Deductible)</td><td><strong>@M(x.Payable)</strong></td></tr> }
+</tbody><tfoot><tr><th>Toplam</th><th>@M(Model.Sum(x => x.SaleNet))</th><th>@M(Model.Sum(x => x.SaleVat))</th><th>@M(Model.Sum(x => x.SaleWithholding))</th><th>@M(Model.Sum(x => x.PurchaseNet))</th><th>@M(Model.Sum(x => x.PurchaseVat))</th><th>@M(Model.Sum(x => x.PurchaseWithholding))</th><th>@M(Model.Sum(x => x.ExpenseVat))</th><th>@M(Model.Sum(x => x.Deductible))</th><th>@M(Model.Sum(x => x.Payable))</th></tr></tfoot></table>
+<p class="admin-muted">Beyanname yerine geçmez. Alış tevkifatı tabloda indirilecek KDV'den düşülmüş, yani 1 ve 2 No.lu beyanların net toplamı olarak gösterilir. Önceki dönem devreden KDV ve özel durumlar için mali müşavirinizle kontrol edin.</p></div>

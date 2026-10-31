@@ -7,7 +7,7 @@ using KarakusAluminyum.Web.Services;
 
 namespace KarakusAluminyum.Web.Areas.Admin.Controllers;
 
-[Area("Admin"), Authorize(Roles = "Admin,Editor"), Route("yonetim/crm/musteriler")]
+[Area("Admin"), Authorize(Roles = "Admin,Editor,Accountant"), Route("yonetim/crm/musteriler")]
 public sealed class CustomersController : Controller
 {
     private readonly AppDbContext _db;
@@ -52,7 +52,7 @@ public sealed class CustomersController : Controller
         if (!ModelState.IsValid) return View(input);
         var model = await _db.Customers.FindAsync(id);
         if (model is null) return NotFound();
-        model.Name = input.Name; model.Kind = input.Kind; model.Status = input.Status;
+        model.Name = input.Name; model.Kind = input.Kind; model.Status = input.Status; model.PartyType = input.PartyType;
         model.ContactPerson = input.ContactPerson; model.Email = input.Email; model.Phone = input.Phone;
         model.TaxNumber = input.TaxNumber; model.TaxOffice = input.TaxOffice; model.Address = input.Address;
         model.City = input.City; model.District = input.District; model.Source = input.Source; model.Notes = input.Notes;
@@ -69,7 +69,10 @@ public sealed class CustomersController : Controller
         var model = await _db.Customers.Include(x => x.Quotes).FirstOrDefaultAsync(x => x.Id == id);
         if (model is not null)
         {
-            if (model.Quotes.Count > 0) TempData["Notice"] = "Bu müşteriye bağlı teklifler var. Silmek yerine pasif duruma alın.";
+            var hasAccounting = await _db.Invoices.AnyAsync(x => x.CustomerId == id) || await _db.CashTransactions.AnyAsync(x => x.CustomerId == id) || await _db.Cheques.AnyAsync(x => x.CustomerId == id || x.EndorsedToCustomerId == id)
+                || await _db.Expenses.AnyAsync(x => x.CustomerId == id) || await _db.CariAdjustments.AnyAsync(x => x.CustomerId == id);
+            if (hasAccounting) TempData["Notice"] = "Bu cariye bağlı muhasebe kayıtları var. Silmek yerine pasif duruma alın.";
+            else if (model.Quotes.Count > 0) TempData["Notice"] = "Bu müşteriye bağlı teklifler var. Silmek yerine pasif duruma alın.";
             else { var deletedName = model.Name; _db.Customers.Remove(model); await _db.SaveChangesAsync(); await _audit.RecordAsync("delete", "Customer", id.ToString(), deletedName); TempData["Notice"] = "Müşteri silindi."; }
         }
         return RedirectToAction(nameof(Index));

@@ -28,6 +28,8 @@ builder.Services.Configure<SiteSettings>(builder.Configuration.GetSection("SiteS
 builder.Services.AddScoped<SeoService>();
 builder.Services.AddScoped<LengthUnits>();
 builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<KarakusAluminyum.Web.Services.Accounting.AccountingService>();
+builder.Services.AddScoped<KarakusAluminyum.Web.Services.Accounting.AccountingQueries>();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;

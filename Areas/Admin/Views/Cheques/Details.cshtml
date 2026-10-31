@@ -1,0 +1,31 @@
+@model KarakusAluminyum.Web.Models.Accounting.Cheque
+@using KarakusAluminyum.Web.Models.Accounting
+@using KarakusAluminyum.Web.Services.Accounting
+@using KarakusAluminyum.Web.Services.Documents
+@{
+    ViewData["Title"] = $"{AccountingLabels.Label(Model.Kind)} {Model.Number}";
+    var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(3)).ToString("yyyy-MM-dd");
+    var next = Enum.GetValues<ChequeStatus>().Where(s => InvoiceRules.CanTransition(Model.Direction, Model.Status, s)).ToList();
+}
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/muhasebe/cek-senet">Çek ve senet</a><a class="admin-btn" href="/yonetim/muhasebe/cariler/@Model.CustomerId">Cari ekstre</a></div>
+<div class="admin-panel"><div class="admin-grid">
+  <div><span class="admin-muted">Yön</span><br />@(Model.Direction == ChequeDirection.Received ? "Alınan" : "Verilen")</div>
+  <div><span class="admin-muted">Durum</span><br /><strong>@AccountingLabels.Label(Model.Status)</strong></div>
+  <div><span class="admin-muted">Cari</span><br />@Model.Customer?.Name</div>
+  <div><span class="admin-muted">Tutar</span><br /><strong>@TurkishNumbers.Money(Model.Amount)</strong></div>
+  <div><span class="admin-muted">Düzenleme / vade</span><br />@Model.IssueDate.ToString("dd.MM.yyyy") / @Model.DueDate.ToString("dd.MM.yyyy")</div>
+  <div><span class="admin-muted">Banka / keşideci</span><br />@Model.BankName @Model.Drawer</div>
+  @if (Model.Account is not null) { <div><span class="admin-muted">Hesap</span><br />@Model.Account.Name</div> }
+  @if (Model.EndorsedToCustomer is not null) { <div><span class="admin-muted">Ciro edilen</span><br />@Model.EndorsedToCustomer.Name</div> }
+</div>@if (!string.IsNullOrWhiteSpace(Model.Notes)) { <p>@Model.Notes</p> }</div>
+@if (next.Count > 0)
+{
+  <div class="admin-panel"><h2>Durumu değiştir</h2>
+  <form class="admin-form" method="post" action="/yonetim/muhasebe/cek-senet/durum/@Model.Id">@Html.AntiForgeryToken()
+    <label for="status">Yeni durum</label><select id="status" name="status">@foreach (var s in next) { <option value="@s">@AccountingLabels.Label(s)</option> }</select>
+    <label for="date">Tarih</label><input id="date" type="date" name="date" value="@today" required />
+    <label for="accountId">Banka / kasa (tahsil, ödeme ve tahsile verirken)</label><select id="accountId" name="accountId" asp-items="(SelectList)ViewBag.Accounts"><option value="">-</option></select>
+    @if (next.Contains(ChequeStatus.Endorsed)) { <label for="endorsedTo">Ciro edilecek cari</label><select id="endorsedTo" name="endorsedTo" asp-items="(SelectList)ViewBag.Customers"><option value="">-</option></select> }
+    <div class="admin-actions"><button class="admin-btn">Uygula</button></div>
+  </form></div>
+}

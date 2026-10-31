@@ -11,7 +11,16 @@
         ("content", "Site içeriği", new() { ("Hizmetler", "/yonetim/hizmetler", "/hizmetler", 0), ("Projeler", "/yonetim/projeler", "/projeler", 0), ("Galeri", "/yonetim/galeri", "/galeri", 0), ("Sık sorulan sorular", "/yonetim/sss", "/sss", 0), ("Blog yazıları", "/yonetim/yazilar", "/yazilar", 0) })
     };
     if (isAdmin) groups.Add(("admin", "Yönetim", new() { ("Site ayarları", "/yonetim/ayarlar", "/ayarlar", 0), ("Belge şablonları", "/yonetim/sablonlar", "/sablonlar", 0), ("Kullanıcılar", "/yonetim/kullanicilar", "/kullanicilar", 0), ("Denetim kaydı", "/yonetim/denetim-kaydi", "/denetim-kaydi", 0) }));
-    bool Active(string match) => currentPath.StartsWith("/yonetim" + match);
+    var seesAccounting = isAdmin || User.IsInRole("Accountant");
+    var accountantOnly = User.IsInRole("Accountant") && !isAdmin && !User.IsInRole("Editor");
+    if (accountantOnly) groups.Clear();
+    if (seesAccounting) groups.Insert(accountantOnly ? 0 : 1, ("accounting", "Ön muhasebe", new()
+    {
+        ("Genel bakış", "/yonetim/muhasebe", "/muhasebe$", 0), ("Faturalar", "/yonetim/muhasebe/faturalar", "/muhasebe/faturalar", 0), ("Cari hesaplar", "/yonetim/muhasebe/cariler", "/muhasebe/cariler", 0),
+        ("Kasa ve banka", "/yonetim/muhasebe/kasa-banka", "/muhasebe/kasa-banka", 0), ("Çek ve senet", "/yonetim/muhasebe/cek-senet", "/muhasebe/cek-senet", 0), ("Giderler", "/yonetim/muhasebe/giderler", "/muhasebe/giderler", 0),
+        ("Ürün ve stok", "/yonetim/muhasebe/urunler", "/muhasebe/urunler", 0), ("Personel", "/yonetim/muhasebe/personel", "/muhasebe/personel", 0), ("Raporlar", "/yonetim/muhasebe/raporlar/kar-zarar", "/muhasebe/raporlar", 0), ("Veri aktarımı", "/yonetim/muhasebe/aktar", "/muhasebe/aktar", 0)
+    }));
+    bool Active(string match) => match.EndsWith('$') ? currentPath == "/yonetim" + match.TrimEnd('$') : currentPath.StartsWith("/yonetim" + match);
 }
 <!DOCTYPE html>
 <html lang="tr">
@@ -32,7 +41,7 @@
 <aside class="admin-sidebar" aria-label="Yönetim menüsü">
   <a class="admin-brand" href="/yonetim"><img src="/images/transparent.png" alt="Karakuş Alüminyum" width="190" height="58"/></a>
   <a class="admin-nav-home @(currentPath == "/yonetim" ? "active" : "")" href="/yonetim">Ana Sayfa</a>
-  <a class="admin-nav-home @(Active("/raporlar") ? "active" : "")" style="margin-top:0" href="/yonetim/raporlar">Raporlar</a>
+  @if (!accountantOnly) { <a class="admin-nav-home @(Active("/raporlar") ? "active" : "")" style="margin-top:0" href="/yonetim/raporlar">Raporlar</a> }
   @foreach (var group in groups)
   {
     var open = group.Links.Any(l => Active(l.Match));
@@ -53,7 +62,7 @@
 <section class="admin-main">
   <header class="admin-topbar">
     <button class="admin-mobile-toggle" type="button" onclick="document.getElementById('adminApp').classList.toggle('sidebar-open')" aria-label="Menüyü aç">☰</button>
-    <form class="admin-search" method="get" action="/yonetim/ara" role="search"><input type="search" name="q" value="@Context.Request.Query["q"]" placeholder="Müşteri, teklif, sözleşme, çizim ara..." aria-label="Panelde ara"/></form>
+    @if (!accountantOnly) { <form class="admin-search" method="get" action="/yonetim/ara" role="search"><input type="search" name="q" value="@Context.Request.Query["q"]" placeholder="Müşteri, teklif, sözleşme, çizim ara..." aria-label="Panelde ara"/></form> }
     <div class="admin-top-right">
       <label class="unit-global">Ölçü birimi <select id="unit-global" aria-label="Genel ölçü birimi"><option value="mm">mm</option><option value="cm">cm</option><option value="m">m</option></select></label>
       <span class="admin-avatar" title="@User.Identity?.Name">@(User.Identity?.Name?.FirstOrDefault().ToString().ToUpperInvariant() ?? "Y")</span>

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using KarakusAluminyum.Web.Models.Accounting;
 
 namespace KarakusAluminyum.Web.Models.Crm;
 
@@ -11,6 +12,7 @@ public sealed class Customer
     [Required, StringLength(160)] public string Name { get; set; } = "";
     public CustomerKind Kind { get; set; } = CustomerKind.Company;
     public CustomerStatus Status { get; set; } = CustomerStatus.Lead;
+    public PartyType PartyType { get; set; } = PartyType.Customer;
     [StringLength(120)] public string? ContactPerson { get; set; }
     [EmailAddress, StringLength(180)] public string? Email { get; set; }
     [StringLength(40)] public string? Phone { get; set; }

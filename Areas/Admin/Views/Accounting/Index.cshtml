@@ -1,0 +1,23 @@
+@model KarakusAluminyum.Web.Areas.Admin.Controllers.AccountingDashboardVm
+@using KarakusAluminyum.Web.Models.Accounting
+@using KarakusAluminyum.Web.Services.Accounting
+@using KarakusAluminyum.Web.Services.Documents
+@{ ViewData["Title"] = "Ön muhasebe"; }
+<div class="admin-actions"><h1>Ön muhasebe</h1><a class="admin-btn" href="/yonetim/muhasebe/faturalar/ekle?tur=Sale">+ Satış faturası</a><a class="admin-btn" href="/yonetim/muhasebe/faturalar/ekle?tur=Purchase">+ Alış faturası</a><a class="admin-btn" href="/yonetim/muhasebe/kasa-banka/yeni?tur=tahsilat">+ Tahsilat</a><a class="admin-btn" href="/yonetim/muhasebe/kasa-banka/yeni?tur=odeme">+ Ödeme</a><a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/giderler/ekle">+ Gider</a></div>
+<div class="report-kpis">
+  <div class="report-kpi"><span class="report-kpi__label">Kasa ve banka (TL)</span><strong class="report-kpi__value">@TurkishNumbers.Money(Model.CashTotal)</strong></div>
+  <div class="report-kpi"><span class="report-kpi__label">Toplam alacak</span><strong class="report-kpi__value">@TurkishNumbers.Money(Model.Receivable)</strong></div>
+  <div class="report-kpi"><span class="report-kpi__label">Toplam borç</span><strong class="report-kpi__value">@TurkishNumbers.Money(Model.Payable)</strong></div>
+  <div class="report-kpi"><span class="report-kpi__label">Vadesi geçmiş alacak (@Model.OverdueCount)</span><strong class="report-kpi__value">@TurkishNumbers.Money(Model.Overdue)</strong></div>
+  <div class="report-kpi"><span class="report-kpi__label">Bu ay gelir (KDV hariç)</span><strong class="report-kpi__value">@TurkishNumbers.Money(Model.MonthSales)</strong></div>
+  <div class="report-kpi"><span class="report-kpi__label">Bu ay gider ve alış</span><strong class="report-kpi__value">@TurkishNumbers.Money(Model.MonthCosts)</strong></div>
+  <div class="report-kpi"><span class="report-kpi__label">Portföy çek/senet</span><strong class="report-kpi__value">@TurkishNumbers.Money(Model.ChequesIn)</strong></div>
+  <div class="report-kpi"><span class="report-kpi__label">Verilen çek/senet</span><strong class="report-kpi__value">@TurkishNumbers.Money(Model.ChequesOut)</strong></div>
+  <div class="report-kpi"><span class="report-kpi__label">Kritik stok</span><strong class="report-kpi__value"><a href="/yonetim/muhasebe/urunler?kritik=true">@Model.CriticalStock ürün</a></strong></div>
+</div>
+<div class="admin-panel" style="overflow-x:auto"><h2>Önümüzdeki 30 gün</h2><table class="admin-table"><thead><tr><th>Tarih</th><th>Tür</th><th>Belge</th><th>Cari</th><th>Giriş</th><th>Çıkış</th></tr></thead><tbody>
+@foreach (var x in Model.Upcoming) { <tr><td>@x.Date.ToString("dd.MM.yyyy")</td><td>@x.Type</td><td><a href="@x.Url">@x.Document</a></td><td>@x.Party</td><td>@(x.In > 0 ? TurkishNumbers.Money(x.In) : "")</td><td>@(x.Out > 0 ? TurkishNumbers.Money(x.Out) : "")</td></tr> }
+</tbody></table>@if (Model.Upcoming.Count == 0) { <p class="admin-muted">Yaklaşan vade yok.</p> }</div>
+<div class="admin-panel" style="overflow-x:auto"><h2>Hesaplar</h2><table class="admin-table"><tbody>
+@foreach (var x in Model.Accounts) { <tr><td><a href="/yonetim/muhasebe/kasa-banka/hareketler/@x.Account.Id">@x.Account.Name</a></td><td>@AccountingLabels.Label(x.Account.Kind)</td><td><strong>@x.Balance.ToString("N2", TurkishNumbers.Culture) @x.Account.Currency</strong></td></tr> }
+</tbody></table></div>

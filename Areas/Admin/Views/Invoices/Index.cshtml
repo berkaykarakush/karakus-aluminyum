@@ -1,0 +1,35 @@
+@model List<KarakusAluminyum.Web.Models.Accounting.Invoice>
+@using KarakusAluminyum.Web.Models.Accounting
+@using KarakusAluminyum.Web.Services.Accounting
+@using KarakusAluminyum.Web.Services.Documents
+@{ ViewData["Title"] = "Faturalar"; var kind = ViewBag.Kind as InvoiceKind?; var status = ViewBag.Status as InvoiceStatus?; }
+<div class="admin-actions"><h1>Faturalar</h1><a class="admin-btn" href="/yonetim/muhasebe/faturalar/ekle?tur=Sale">+ Satış faturası</a><a class="admin-btn" href="/yonetim/muhasebe/faturalar/ekle?tur=Purchase">+ Alış faturası</a><a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/faturalar/ekle?tur=SaleReturn">Satış iadesi</a><a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/faturalar/ekle?tur=PurchaseReturn">Alış iadesi</a></div>
+<form class="admin-panel admin-actions" method="get">
+  <input type="search" name="q" value="@ViewBag.Query" placeholder="Cari veya numara" aria-label="Ara" />
+  <select name="tur" aria-label="Tür"><option value="">Tüm türler</option>@foreach (var k in Enum.GetValues<InvoiceKind>()) { <option value="@k" selected="@(k == kind)">@AccountingLabels.Label(k)</option> }</select>
+  <select name="durum" aria-label="Durum"><option value="">Tüm durumlar</option>@foreach (var s in Enum.GetValues<InvoiceStatus>()) { <option value="@s" selected="@(s == status)">@AccountingLabels.Label(s)</option> }</select>
+  <label class="admin-check"><input type="checkbox" name="acik" value="true" checked="@((bool)ViewBag.Open)" /> Yalnız açık</label>
+  <button class="admin-btn">Filtrele</button>
+</form>
+<div class="admin-panel" style="overflow-x:auto">
+  <table class="admin-table">
+    <thead><tr><th>Tarih</th><th>Numara</th><th>Tür</th><th>Cari</th><th>Vade</th><th>Tutar (TL)</th><th>Kalan (TL)</th><th>Durum</th></tr></thead>
+    <tbody>
+    @foreach (var x in Model)
+    {
+      var left = x.PayableTry - x.Allocations.Sum(a => a.Amount);
+      <tr>
+        <td>@x.Date.ToString("dd.MM.yyyy")</td>
+        <td><a href="/yonetim/muhasebe/faturalar/detay/@x.Id">@(x.Number ?? "Taslak")</a></td>
+        <td>@AccountingLabels.Label(x.Kind)</td>
+        <td>@x.Customer?.Name</td>
+        <td>@x.DueDate.ToString("dd.MM.yyyy")</td>
+        <td>@TurkishNumbers.Money(x.PayableTry)</td>
+        <td>@(x.Status == InvoiceStatus.Approved ? TurkishNumbers.Money(left) : "-")</td>
+        <td>@AccountingLabels.Label(x.Status)</td>
+      </tr>
+    }
+    </tbody>
+  </table>
+  @if (Model.Count == 0) { <p class="admin-muted">Kayıt yok.</p> }
+</div>

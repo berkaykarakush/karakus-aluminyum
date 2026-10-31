@@ -1,0 +1,15 @@
+@model List<KarakusAluminyum.Web.Services.Accounting.StockRow>
+@using KarakusAluminyum.Web.Models.Accounting
+@using KarakusAluminyum.Web.Services.Accounting
+@using KarakusAluminyum.Web.Services.Documents
+@{ ViewData["Title"] = "Ürün ve stok"; }
+<div class="admin-actions"><h1>Ürün ve stok</h1><a class="admin-btn" href="/yonetim/muhasebe/urunler/ekle">+ Ürün / hizmet</a><a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/aktar">İçe aktar</a></div>
+<form class="admin-panel admin-actions" method="get"><input type="search" name="q" value="@ViewBag.Query" placeholder="Ad veya kod" aria-label="Ara" /><label class="admin-check"><input type="checkbox" name="kritik" value="true" checked="@((bool)ViewBag.Critical)" /> Kritik stok</label><button class="admin-btn">Filtrele</button></form>
+<div class="report-kpis"><div class="report-kpi"><span class="report-kpi__label">Stok değeri (alış fiyatıyla)</span><strong class="report-kpi__value">@TurkishNumbers.Money(Model.Where(x => x.Product.Kind == ProductKind.Stock).Sum(x => x.Value))</strong></div></div>
+<div class="admin-panel" style="overflow-x:auto"><table class="admin-table"><thead><tr><th>Kod</th><th>Ad</th><th>Tür</th><th>Stok</th><th>Alış</th><th>Satış</th><th>KDV</th><th>Durum</th></tr></thead><tbody>
+@foreach (var x in Model)
+{
+  var low = x.Product.Kind == ProductKind.Stock && x.Quantity <= x.Product.CriticalStock;
+  <tr><td>@x.Product.Code</td><td><a href="/yonetim/muhasebe/urunler/duzenle/@x.Product.Id">@x.Product.Name</a></td><td>@(x.Product.Kind == ProductKind.Stock ? "Stoklu" : "Hizmet")</td><td style="@(low ? "color:#b42318;font-weight:700" : "")">@(x.Product.Kind == ProductKind.Stock ? x.Quantity.ToString("0.###", TurkishNumbers.Culture) + " " + x.Product.Unit : "-")</td><td>@x.Product.PurchasePrice.ToString("N2", TurkishNumbers.Culture)</td><td>@x.Product.SalePrice.ToString("N2", TurkishNumbers.Culture)</td><td>%@x.Product.VatRate.ToString("0.##")</td><td>@(x.Product.IsActive ? "Aktif" : "Pasif")</td></tr>
+}
+</tbody></table>@if (Model.Count == 0) { <p class="admin-muted">Kayıt yok.</p> }</div>

@@ -1,0 +1,25 @@
+@model KarakusAluminyum.Web.Models.Accounting.Product
+@using KarakusAluminyum.Web.Models.Accounting
+@using KarakusAluminyum.Web.Services.Accounting
+@using KarakusAluminyum.Web.Services.Documents
+@{ var editing = Model.Id != 0; ViewData["Title"] = editing ? "Ürünü düzenle" : "Yeni ürün / hizmet"; var action = editing ? $"/yonetim/muhasebe/urunler/duzenle/{Model.Id}" : "/yonetim/muhasebe/urunler/ekle"; var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(3)).ToString("yyyy-MM-dd"); var movements = ViewBag.Movements as List<StockMovement> ?? new(); }
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/muhasebe/urunler">Ürün ve stok</a>@if (editing) { <form method="post" action="/yonetim/muhasebe/urunler/sil/@Model.Id" onsubmit="return confirm('Ürün silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form> }</div>
+<div class="admin-panel"><form class="admin-form" method="post" action="@action">@Html.AntiForgeryToken()
+  <div asp-validation-summary="All"></div>
+  <label asp-for="Name">Ad</label><input asp-for="Name" required />
+  <label asp-for="Code">Kod</label><input asp-for="Code" />
+  <label asp-for="Kind">Tür</label><select asp-for="Kind"><option value="Stock">Stoklu ürün</option><option value="Service">Hizmet</option></select>
+  <label asp-for="Unit">Birim</label><input asp-for="Unit" required />
+  <label asp-for="PurchasePrice">Alış fiyatı (KDV hariç)</label><input asp-for="PurchasePrice" type="number" step="0.01" min="0" />
+  <label asp-for="SalePrice">Satış fiyatı (KDV hariç)</label><input asp-for="SalePrice" type="number" step="0.01" min="0" />
+  <label asp-for="VatRate">KDV %</label><select asp-for="VatRate">@foreach (var v in AccountingLabels.VatRates) { <option value="@v">%@v.ToString("0")</option> }</select>
+  <label asp-for="CriticalStock">Kritik stok seviyesi</label><input asp-for="CriticalStock" type="number" step="any" min="0" />
+  <p><label><input asp-for="IsActive" /> Aktif</label></p>
+  <div class="admin-actions"><button class="admin-btn">Kaydet</button></div>
+</form></div>
+@if (editing && Model.Kind == ProductKind.Stock)
+{
+  <div class="admin-panel"><h2>Stok düzeltme</h2><p class="admin-muted">Açılış veya sayım farkı. Giriş için artı, çıkış için eksi yazın.</p>
+  <form class="admin-actions" method="post" action="/yonetim/muhasebe/urunler/stok/@Model.Id">@Html.AntiForgeryToken()<input type="number" name="quantity" step="any" required placeholder="Miktar" aria-label="Miktar" /><input type="date" name="date" value="@today" required aria-label="Tarih" /><input name="note" placeholder="Not" aria-label="Not" /><button class="admin-btn">Uygula</button></form></div>
+  <div class="admin-panel" style="overflow-x:auto"><h2>Stok hareketleri</h2><table class="admin-table"><thead><tr><th>Tarih</th><th>Miktar</th><th>Not</th></tr></thead><tbody>@foreach (var m in movements) { <tr><td>@m.Date.ToString("dd.MM.yyyy")</td><td>@m.Quantity.ToString("0.###", TurkishNumbers.Culture)</td><td>@if (m.InvoiceId is not null) { <a href="/yonetim/muhasebe/faturalar/detay/@m.InvoiceId">@m.Note</a> } else { @m.Note }</td></tr> }</tbody></table></div>
+}

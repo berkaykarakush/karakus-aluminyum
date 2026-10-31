@@ -32,7 +32,7 @@ public sealed class UsersController : Controller
     [HttpPost("ekle"), ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(UserAdminInput input)
     {
-        if (input.Role is not ("Admin" or "Editor")) ModelState.AddModelError(nameof(input.Role), "Geçersiz rol.");
+        if (input.Role is not ("Admin" or "Editor" or "Accountant")) ModelState.AddModelError(nameof(input.Role), "Geçersiz rol.");
         if (!await _roles.RoleExistsAsync(input.Role)) ModelState.AddModelError(nameof(input.Role), "Rol bulunamadı.");
         if (!ModelState.IsValid) return View(input);
         var user = new ApplicationUser { UserName = input.Email.Trim(), Email = input.Email.Trim(), EmailConfirmed = false };

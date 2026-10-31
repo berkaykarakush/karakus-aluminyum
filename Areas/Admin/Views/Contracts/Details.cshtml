@@ -9,6 +9,7 @@
 <div class="admin-actions">
   <h1>Sözleşme @Model.ContractNumber</h1>
   <a class="admin-btn" href="/yonetim/sozlesmeler">Sözleşme listesi</a>
+  @if ((User.IsInRole("Admin") || User.IsInRole("Accountant")) && !isDraft && Model.Status != ContractStatus.Cancelled) { <a class="admin-btn" href="/yonetim/muhasebe/faturalar/ekle?sozlesme=@Model.Id">Faturaya dönüştür</a> }
   <a class="admin-btn" href="/yonetim/sozlesmeler/yazdir/@Model.Id" target="_blank" rel="noopener">Görüntüle / PDF</a>
   @if (isDraft) { <a class="admin-btn" href="/yonetim/sozlesmeler/duzenle/@Model.Id">Düzenle</a> }
 </div>

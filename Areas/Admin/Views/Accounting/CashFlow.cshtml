@@ -1,0 +1,13 @@
+@model List<KarakusAluminyum.Web.Services.Accounting.CashFlowRow>
+@using KarakusAluminyum.Web.Models.Accounting
+@using KarakusAluminyum.Web.Services.Accounting
+@using KarakusAluminyum.Web.Services.Documents
+@{ ViewData["Title"] = "Nakit akışı"; decimal running = ViewBag.Cash; int days = ViewBag.Days; }
+<link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
+<div class="admin-actions"><h1>Nakit akışı</h1></div>
+<partial name="_ReportNav" />
+<form class="admin-panel admin-actions" method="get"><input type="number" name="gun" value="@days" min="1" max="730" aria-label="Gün" /><button class="admin-btn">Göster</button><button class="admin-btn admin-btn--secondary" name="csv" value="true">CSV</button></form>
+<div class="report-kpis"><div class="report-kpi"><span class="report-kpi__label">Bugünkü kasa ve banka (TL)</span><strong class="report-kpi__value">@TurkishNumbers.Money(running)</strong></div><div class="report-kpi"><span class="report-kpi__label">Beklenen giriş</span><strong class="report-kpi__value">@TurkishNumbers.Money(Model.Sum(x => x.In))</strong></div><div class="report-kpi"><span class="report-kpi__label">Beklenen çıkış</span><strong class="report-kpi__value">@TurkishNumbers.Money(Model.Sum(x => x.Out))</strong></div></div>
+<div class="admin-panel" style="overflow-x:auto"><table class="admin-table"><thead><tr><th>Tarih</th><th>Tür</th><th>Belge</th><th>Cari</th><th>Giriş</th><th>Çıkış</th><th>Tahmini bakiye</th></tr></thead><tbody>
+@foreach (var x in Model) { running += x.In - x.Out; <tr><td>@x.Date.ToString("dd.MM.yyyy")</td><td>@x.Type</td><td><a href="@x.Url">@x.Document</a></td><td>@x.Party</td><td>@(x.In > 0 ? TurkishNumbers.Money(x.In) : "")</td><td>@(x.Out > 0 ? TurkishNumbers.Money(x.Out) : "")</td><td>@TurkishNumbers.Money(running)</td></tr> }
+</tbody></table><p class="admin-muted">Vadesi geçmiş kayıtlar bugüne yazılır. Tahmindir; yalnız açık fatura ve çek/senetleri içerir.</p></div>

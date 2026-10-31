@@ -1,0 +1,17 @@
+@model List<KarakusAluminyum.Web.Models.Accounting.CashTransaction>
+@using KarakusAluminyum.Web.Models.Accounting
+@using KarakusAluminyum.Web.Services.Accounting
+@using KarakusAluminyum.Web.Services.Documents
+@{ var account = (FinanceAccount)ViewBag.Account; ViewData["Title"] = account.Name; var balance = account.OpeningBalance; var rows = new List<(CashTransaction Row, decimal Balance)>(); foreach (var x in Model) { if (!x.IsCancelled) balance += x.IsIn ? x.Amount : -x.Amount; rows.Add((x, balance)); } rows.Reverse(); }
+<div class="admin-actions"><h1>@account.Name</h1><a class="admin-btn" href="/yonetim/muhasebe/kasa-banka">Kasa ve banka</a></div>
+<div class="report-kpis"><div class="report-kpi"><span class="report-kpi__label">Açılış</span><strong class="report-kpi__value">@account.OpeningBalance.ToString("N2", TurkishNumbers.Culture) @account.Currency</strong></div><div class="report-kpi"><span class="report-kpi__label">Bakiye</span><strong class="report-kpi__value">@balance.ToString("N2", TurkishNumbers.Culture) @account.Currency</strong></div></div>
+<div class="admin-panel" style="overflow-x:auto"><table class="admin-table"><thead><tr><th>Tarih</th><th>İşlem</th><th>Taraf</th><th>Açıklama</th><th>Giriş</th><th>Çıkış</th><th>Bakiye</th><th></th></tr></thead><tbody>
+@foreach (var (x, running) in rows)
+{
+  <tr style="@(x.IsCancelled ? "opacity:.55;text-decoration:line-through" : "")">
+    <td>@x.Date.ToString("dd.MM.yyyy")</td><td>@AccountingLabels.Label(x.Kind)</td><td>@(x.Customer?.Name ?? x.Employee?.Name)</td><td>@x.Description</td>
+    <td>@(x.IsIn ? x.Amount.ToString("N2", TurkishNumbers.Culture) : "")</td><td>@(x.IsIn ? "" : x.Amount.ToString("N2", TurkishNumbers.Culture))</td><td>@running.ToString("N2", TurkishNumbers.Culture)</td>
+    <td>@if (!x.IsCancelled && x.Kind is not (CashKind.Expense or CashKind.ChequeCollected or CashKind.ChequePaid)) { <form class="admin-actions" method="post" action="/yonetim/muhasebe/kasa-banka/iptal/@x.Id">@Html.AntiForgeryToken()<input name="reason" required placeholder="Gerekçe" aria-label="İptal gerekçesi" /><button class="admin-btn admin-btn--danger">İptal</button></form> }</td>
+  </tr>
+}
+</tbody></table>@if (Model.Count == 0) { <p class="admin-muted">Hareket yok.</p> }</div>

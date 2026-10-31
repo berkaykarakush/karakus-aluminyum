@@ -64,6 +64,14 @@ public sealed class AppFactory : WebApplicationFactory<Program>
 
     public HttpClient NewClient() => CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
+    public async Task<T> WithServiceAsync<TService, T>(Func<TService, Task<T>> action) where TService : notnull
+    {
+        await using var scope = Services.CreateAsyncScope();
+        return await action(scope.ServiceProvider.GetRequiredService<TService>());
+    }
+
+    public Task<T> WithServiceAsync<T>(Func<KarakusAluminyum.Web.Services.Accounting.AccountingQueries, Task<T>> action) => WithServiceAsync<KarakusAluminyum.Web.Services.Accounting.AccountingQueries, T>(action);
+
     public async Task<T> WithDbAsync<T>(Func<AppDbContext, Task<T>> action)
     {
         await using var scope = Services.CreateAsyncScope();

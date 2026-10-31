@@ -1,0 +1,12 @@
+@model List<KarakusAluminyum.Web.Services.Accounting.AccountBalance>
+@using KarakusAluminyum.Web.Models.Accounting
+@using KarakusAluminyum.Web.Services.Accounting
+@using KarakusAluminyum.Web.Services.Documents
+@{ ViewData["Title"] = "Kasa ve banka"; }
+<div class="admin-actions"><h1>Kasa ve banka</h1><a class="admin-btn" href="/yonetim/muhasebe/kasa-banka/yeni?tur=tahsilat">+ Tahsilat</a><a class="admin-btn" href="/yonetim/muhasebe/kasa-banka/yeni?tur=odeme">+ Ödeme</a><a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/kasa-banka/yeni?tur=virman">Virman</a><a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/kasa-banka/yeni?tur=giris">Diğer giriş</a><a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/kasa-banka/yeni?tur=cikis">Diğer çıkış</a><a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/kasa-banka/hesap/ekle">+ Hesap</a></div>
+<div class="admin-panel" style="overflow-x:auto"><table class="admin-table"><thead><tr><th>Hesap</th><th>Tür</th><th>Birim</th><th>IBAN</th><th>Bakiye</th><th>Durum</th><th>İşlem</th></tr></thead><tbody>
+@foreach (var x in Model)
+{
+  <tr><td><a href="/yonetim/muhasebe/kasa-banka/hareketler/@x.Account.Id">@x.Account.Name</a></td><td>@AccountingLabels.Label(x.Account.Kind)</td><td>@x.Account.Currency</td><td>@x.Account.Iban</td><td><strong>@x.Balance.ToString("N2", TurkishNumbers.Culture)</strong></td><td>@(x.Account.IsActive ? "Aktif" : "Pasif")</td><td><a class="admin-btn" href="/yonetim/muhasebe/kasa-banka/hesap/duzenle/@x.Account.Id">Düzenle</a></td></tr>
+}
+</tbody></table></div>

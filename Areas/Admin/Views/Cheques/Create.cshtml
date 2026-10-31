@@ -1,0 +1,19 @@
+@model KarakusAluminyum.Web.Models.Accounting.Cheque
+@using KarakusAluminyum.Web.Models.Accounting
+@{ ViewData["Title"] = Model.Direction == ChequeDirection.Received ? "Alınan çek / senet" : "Verilen çek / senet"; }
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/muhasebe/cek-senet">Çek ve senet</a></div>
+<div class="admin-panel"><form class="admin-form" method="post" action="/yonetim/muhasebe/cek-senet/ekle">@Html.AntiForgeryToken()
+  <input type="hidden" asp-for="Direction" />
+  <div asp-validation-summary="All" class="wd-errors"></div>
+  <label asp-for="Kind">Belge türü</label><select asp-for="Kind"><option value="Cheque">Çek</option><option value="PromissoryNote">Senet</option></select>
+  <label asp-for="Number">Belge numarası</label><input asp-for="Number" required />
+  <label asp-for="CustomerId">Cari</label><select asp-for="CustomerId" asp-items="(SelectList)ViewBag.Customers" required><option value="">Seçin</option></select>
+  <label asp-for="BankName">Banka</label><input asp-for="BankName" />
+  <label asp-for="Drawer">Keşideci</label><input asp-for="Drawer" />
+  <label for="IssueDate">Düzenleme tarihi</label><input id="IssueDate" type="date" name="IssueDate" value="@Model.IssueDate.ToString("yyyy-MM-dd")" required />
+  <label for="DueDate">Vade</label><input id="DueDate" type="date" name="DueDate" value="@Model.DueDate.ToString("yyyy-MM-dd")" required />
+  <label asp-for="Amount">Tutar (TL)</label><input asp-for="Amount" type="number" step="0.01" min="0.01" required />
+  @if (Model.Direction == ChequeDirection.Given) { <label asp-for="AccountId">Ödenecek banka</label><select asp-for="AccountId" asp-items="(SelectList)ViewBag.Accounts"><option value="">-</option></select> }
+  <label asp-for="Notes">Not</label><input asp-for="Notes" />
+  <div class="admin-actions"><button class="admin-btn">Kaydet</button></div>
+</form></div>

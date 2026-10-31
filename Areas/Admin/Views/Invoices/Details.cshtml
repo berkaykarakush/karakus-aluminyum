@@ -1,0 +1,82 @@
+@model KarakusAluminyum.Web.Models.Accounting.Invoice
+@using KarakusAluminyum.Web.Models.Accounting
+@using KarakusAluminyum.Web.Services.Accounting
+@using KarakusAluminyum.Web.Services.Documents
+@{
+    ViewData["Title"] = AccountingLabels.Label(Model.Kind);
+    var paid = Model.Allocations.Sum(x => x.Amount);
+    var left = Model.PayableTry - paid;
+    var mode = AccountingLabels.CariSign(Model.Kind) > 0 ? "tahsilat" : "odeme";
+}
+<div class="admin-actions">
+  <h1>@AccountingLabels.Label(Model.Kind) @(Model.Number ?? "(taslak)")</h1>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/faturalar">Faturalar</a>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/cariler/@Model.CustomerId">Cari ekstre</a>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/faturalar/yazdir/@Model.Id" target="_blank" rel="noopener">Yazdır</a>
+  @if (Model.Status == InvoiceStatus.Draft)
+  {
+    <a class="admin-btn" href="/yonetim/muhasebe/faturalar/duzenle/@Model.Id">Düzenle</a>
+    <form method="post" action="/yonetim/muhasebe/faturalar/onayla/@Model.Id" onsubmit="return confirm('Onaylanan fatura değiştirilemez. Devam edilsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn">Onayla</button></form>
+    <form method="post" action="/yonetim/muhasebe/faturalar/sil/@Model.Id" onsubmit="return confirm('Taslak silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form>
+  }
+  @if (Model.Status == InvoiceStatus.Approved && left > 0) { <a class="admin-btn" href="/yonetim/muhasebe/kasa-banka/yeni?tur=@mode&cari=@Model.CustomerId&fatura=@Model.Id">@(mode == "tahsilat" ? "Tahsilat al" : "Ödeme yap")</a> }
+</div>
+<div class="admin-panel">
+  <div class="admin-grid">
+    <div><span class="admin-muted">Cari</span><br /><a href="/yonetim/muhasebe/cariler/@Model.CustomerId">@Model.Customer?.Name</a></div>
+    <div><span class="admin-muted">Durum</span><br /><strong>@AccountingLabels.Label(Model.Status)</strong></div>
+    <div><span class="admin-muted">Tarih / vade</span><br />@Model.Date.ToString("dd.MM.yyyy") / @Model.DueDate.ToString("dd.MM.yyyy")</div>
+    <div><span class="admin-muted">Para birimi</span><br />@Model.Currency@(Model.Currency == "TRY" ? "" : " · kur " + Model.ExchangeRate.ToString("0.####", TurkishNumbers.Culture))</div>
+  </div>
+  @if (Model.Status == InvoiceStatus.Cancelled) { <p class="wd-errors" style="margin-top:12px">İptal gerekçesi: @Model.CancelReason</p> }
+  @if (!string.IsNullOrWhiteSpace(Model.Notes)) { <p style="white-space:pre-wrap;margin-top:12px">@Model.Notes</p> }
+</div>
+<div class="admin-panel" style="overflow-x:auto">
+  <table class="admin-table">
+    <thead><tr><th>Açıklama</th><th>Miktar</th><th>Birim fiyat</th><th>İsk.</th><th>Net</th><th>KDV</th><th>Tevkifat</th></tr></thead>
+    <tbody>
+    @foreach (var x in Model.Lines.OrderBy(l => l.SortOrder))
+    {
+      <tr><td>@x.Description</td><td>@x.Quantity.ToString("0.###", TurkishNumbers.Culture) @x.Unit</td><td>@x.UnitPrice.ToString("N2", TurkishNumbers.Culture)</td><td>%@x.DiscountRate.ToString("0.##")</td><td>@x.Net.ToString("N2", TurkishNumbers.Culture)</td><td>@x.Vat.ToString("N2", TurkishNumbers.Culture) (%@x.VatRate.ToString("0.##"))</td><td>@x.Withholding.ToString("N2", TurkishNumbers.Culture)</td></tr>
+    }
+    </tbody>
+  </table>
+  <dl class="inv-totals">
+    <dt>İskonto</dt><dd>@Model.DiscountTotal.ToString("N2", TurkishNumbers.Culture) @Model.Currency</dd>
+    <dt>Matrah</dt><dd>@Model.Net.ToString("N2", TurkishNumbers.Culture) @Model.Currency</dd>
+    <dt>KDV</dt><dd>@Model.VatTotal.ToString("N2", TurkishNumbers.Culture) @Model.Currency</dd>
+    @if (Model.WithholdingTotal > 0) { <dt>Tevkifat</dt><dd>-@Model.WithholdingTotal.ToString("N2", TurkishNumbers.Culture) @Model.Currency</dd> }
+    <dt>Ödenecek</dt><dd><strong>@Model.Payable.ToString("N2", TurkishNumbers.Culture) @Model.Currency</strong></dd>
+    @if (Model.Currency != "TRY") { <dt>TL karşılığı</dt><dd>@TurkishNumbers.Money(Model.PayableTry)</dd> }
+    @if (Model.Status == InvoiceStatus.Approved) { <dt>Kapanan</dt><dd>@TurkishNumbers.Money(paid)</dd><dt>Kalan</dt><dd><strong>@TurkishNumbers.Money(left)</strong></dd> }
+  </dl>
+</div>
+@if (Model.Allocations.Count > 0)
+{
+  <div class="admin-panel">
+    <h2>Tahsilat ve ödemeler</h2>
+    <table class="admin-table"><thead><tr><th>Tarih</th><th>Kaynak</th><th>Tutar</th></tr></thead><tbody>
+    @foreach (var a in Model.Allocations)
+    {
+      <tr>
+        <td>@(a.CashTransaction?.Date.ToString("dd.MM.yyyy") ?? a.Cheque?.IssueDate.ToString("dd.MM.yyyy"))</td>
+        <td>@if (a.Cheque is not null) { <a href="/yonetim/muhasebe/cek-senet/detay/@a.ChequeId">@AccountingLabels.Label(a.Cheque.Kind) @a.Cheque.Number</a> } else { @a.CashTransaction?.Account?.Name }</td>
+        <td>@TurkishNumbers.Money(a.Amount)</td>
+      </tr>
+    }
+    </tbody></table>
+  </div>
+}
+@if (Model.Status == InvoiceStatus.Approved)
+{
+  <div class="admin-panel">
+    <h2>e-Belge</h2>
+    <p class="admin-muted">Bu kayıt iç muhasebe içindir. Resmi e-Fatura veya e-Arşiv entegratörünüzde kesilir; numarasını buraya yazabilirsiniz.</p>
+    <form class="admin-actions" method="post" action="/yonetim/muhasebe/faturalar/e-belge/@Model.Id">@Html.AntiForgeryToken()<input name="number" value="@Model.EDocumentNumber" aria-label="e-Belge numarası" placeholder="e-Belge numarası" /><button class="admin-btn">Kaydet</button></form>
+  </div>
+  <div class="admin-panel">
+    <h2>İptal</h2>
+    @if (Model.Allocations.Count > 0) { <p class="admin-muted">Bağlı tahsilat veya ödeme varken iptal edilemez; önce onları iptal edin.</p> }
+    else { <form class="admin-actions" method="post" action="/yonetim/muhasebe/faturalar/iptal/@Model.Id" onsubmit="return confirm('Fatura iptal edilsin mi?')">@Html.AntiForgeryToken()<input name="reason" required placeholder="İptal gerekçesi" aria-label="İptal gerekçesi" /><button class="admin-btn admin-btn--danger">Faturayı iptal et</button></form> }
+  </div>
+}

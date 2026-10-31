@@ -1,0 +1,17 @@
+@model KarakusAluminyum.Web.Models.Accounting.Expense
+@using KarakusAluminyum.Web.Models.Accounting
+@{ ViewData["Title"] = "Yeni gider"; }
+<div class="admin-actions"><h1>Yeni gider</h1><a class="admin-btn" href="/yonetim/muhasebe/giderler">Giderler</a></div>
+<div class="admin-panel"><form class="admin-form" method="post" action="/yonetim/muhasebe/giderler/ekle">@Html.AntiForgeryToken()
+  <div asp-validation-summary="All" class="wd-errors"></div>
+  <label asp-for="CategoryId">Kategori</label><select asp-for="CategoryId" asp-items="(SelectList)ViewBag.Categories" required></select>
+  <label asp-for="Description">Açıklama</label><input asp-for="Description" required />
+  <label asp-for="DocumentNumber">Belge numarası</label><input asp-for="DocumentNumber" />
+  <label for="Date">Tarih</label><input id="Date" type="date" name="Date" value="@Model.Date.ToString("yyyy-MM-dd")" required />
+  <label for="DueDate">Vade</label><input id="DueDate" type="date" name="DueDate" value="@Model.DueDate.ToString("yyyy-MM-dd")" required />
+  <label asp-for="Net">KDV hariç tutar (TL)</label><input asp-for="Net" type="number" step="0.01" min="0.01" required />
+  <label asp-for="VatRate">KDV %</label><select asp-for="VatRate">@foreach (var v in AccountingLabels.VatRates) { <option value="@v">%@v.ToString("0")</option> }</select>
+  <label asp-for="AccountId">Ödenen hesap (peşin)</label><select asp-for="AccountId" asp-items="(SelectList)ViewBag.Accounts"><option value="">Ödenmedi</option></select>
+  <label asp-for="CustomerId">Tedarikçi (veresiye veya bilgi)</label><select asp-for="CustomerId" asp-items="(SelectList)ViewBag.Customers"><option value="">-</option></select>
+  <div class="admin-actions"><button class="admin-btn">Kaydet</button></div>
+</form></div>

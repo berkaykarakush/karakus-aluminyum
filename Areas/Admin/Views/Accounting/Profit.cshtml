@@ -1,0 +1,16 @@
+@model KarakusAluminyum.Web.Services.Accounting.ProfitRow
+@using KarakusAluminyum.Web.Models.Accounting
+@using KarakusAluminyum.Web.Services.Accounting
+@using KarakusAluminyum.Web.Services.Documents
+@{ ViewData["Title"] = "Kâr / zarar"; DateOnly from = ViewBag.From; DateOnly to = ViewBag.To; }
+<link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
+<div class="admin-actions"><h1>Kâr / zarar</h1></div>
+<partial name="_ReportNav" />
+<form class="admin-panel admin-actions" method="get"><input type="date" name="bas" value="@from.ToString("yyyy-MM-dd")" aria-label="Başlangıç" /><input type="date" name="bit" value="@to.ToString("yyyy-MM-dd")" aria-label="Bitiş" /><button class="admin-btn">Göster</button></form>
+<div class="report-kpis"><div class="report-kpi"><span class="report-kpi__label">Gelir</span><strong class="report-kpi__value">@TurkishNumbers.Money(Model.Revenue)</strong></div><div class="report-kpi"><span class="report-kpi__label">Maliyet ve gider</span><strong class="report-kpi__value">@TurkishNumbers.Money(Model.Costs)</strong></div><div class="report-kpi"><span class="report-kpi__label">Kâr / zarar</span><strong class="report-kpi__value">@TurkishNumbers.Money(Model.Profit)</strong></div></div>
+<div class="admin-panel"><table class="admin-table"><tbody>
+<tr><td>Satışlar</td><td>@TurkishNumbers.Money(Model.Sales)</td></tr><tr><td>Satış iadeleri</td><td>-@TurkishNumbers.Money(Model.SaleReturns)</td></tr>
+<tr><td>Alışlar</td><td>@TurkishNumbers.Money(Model.Purchases)</td></tr><tr><td>Alış iadeleri</td><td>-@TurkishNumbers.Money(Model.PurchaseReturns)</td></tr>
+<tr><td>Giderler</td><td>@TurkishNumbers.Money(Model.Expenses)</td></tr><tr><td>Maaş ve avans</td><td>@TurkishNumbers.Money(Model.Salaries)</td></tr>
+@foreach (var (name, amount) in Model.ByCategory) { <tr><td style="padding-left:28px">@name</td><td>@TurkishNumbers.Money(amount)</td></tr> }
+</tbody></table><p class="admin-muted">Tutarlar KDV hariçtir. Alışlar satılan malın maliyeti değil, dönem alışıdır; resmi bilanço yerine geçmez.</p></div>

@@ -1,0 +1,31 @@
+@model KarakusAluminyum.Web.Areas.Admin.Controllers.CashFormVm
+@using KarakusAluminyum.Web.Models.Accounting
+@using KarakusAluminyum.Web.Services.Accounting
+@using KarakusAluminyum.Web.Services.Documents
+@{
+    var titles = new Dictionary<string, string> { ["tahsilat"] = "Tahsilat al", ["odeme"] = "Ödeme yap", ["virman"] = "Virman", ["giris"] = "Diğer giriş", ["cikis"] = "Diğer çıkış" };
+    ViewData["Title"] = titles[Model.Mode];
+    var accounts = (List<FinanceAccount>)ViewBag.Accounts;
+    var open = (List<OpenInvoice>)ViewBag.OpenInvoices;
+    var withCari = Model.Mode is "tahsilat" or "odeme";
+    var wanted = Model.Mode == "tahsilat" ? new[] { InvoiceKind.Sale, InvoiceKind.PurchaseReturn } : new[] { InvoiceKind.Purchase, InvoiceKind.SaleReturn };
+    var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(3)).ToString("yyyy-MM-dd");
+}
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/muhasebe/kasa-banka">Kasa ve banka</a></div>
+<div class="admin-panel"><form class="admin-form" method="post" action="/yonetim/muhasebe/kasa-banka/yeni">@Html.AntiForgeryToken()
+  <input type="hidden" name="tur" value="@Model.Mode" />
+  <div asp-validation-summary="All" class="wd-errors"></div>
+  @if (withCari)
+  {
+    <label for="customerId">Cari</label><select id="customerId" name="customerId" required asp-items="(SelectList)ViewBag.Customers" onchange="location.href='/yonetim/muhasebe/kasa-banka/yeni?tur=@Model.Mode&cari='+this.value"><option value="">Seçin</option></select>
+    <label for="invoiceId">Kapatılacak fatura</label>
+    <select id="invoiceId" name="invoiceId"><option value="">Otomatik: vadesi en eski açık faturalar</option>@foreach (var x in open.Where(x => wanted.Contains(x.Kind))) { <option value="@x.Id" selected="@(x.Id == Model.InvoiceId)">@x.Number · vade @x.DueDate.ToString("dd.MM.yyyy") · kalan @TurkishNumbers.Money(x.Open)</option> }</select>
+  }
+  <label for="accountId">@(Model.Mode == "virman" ? "Kaynak hesap" : "Hesap")</label><select id="accountId" name="accountId" required>@foreach (var a in accounts) { <option value="@a.Id">@a.Name (@a.Currency)</option> }</select>
+  @if (Model.Mode == "virman") { <label for="toAccountId">Hedef hesap</label><select id="toAccountId" name="toAccountId" required>@foreach (var a in accounts) { <option value="@a.Id">@a.Name (@a.Currency)</option> }</select> }
+  <label for="date">Tarih</label><input id="date" type="date" name="date" value="@today" required />
+  <label for="amount">Tutar (hesabın para biriminde)</label><input id="amount" type="number" name="amount" step="0.01" min="0.01" required />
+  <label for="exchangeRate">Kur (TL hesapta 1)</label><input id="exchangeRate" type="number" name="exchangeRate" step="0.0001" min="0" value="1" />
+  <label for="description">Açıklama</label><input id="description" name="description" maxlength="500" />
+  <div class="admin-actions"><button class="admin-btn">Kaydet</button></div>
+</form></div>

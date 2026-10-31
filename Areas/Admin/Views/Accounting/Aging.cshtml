@@ -1,0 +1,11 @@
+@model List<KarakusAluminyum.Web.Services.Accounting.AgingRow>
+@using KarakusAluminyum.Web.Models.Accounting
+@using KarakusAluminyum.Web.Services.Accounting
+@using KarakusAluminyum.Web.Services.Documents
+@{ bool receivable = ViewBag.Receivable; ViewData["Title"] = receivable ? "Alacak yaşlandırma" : "Borç yaşlandırma"; string M(decimal v) => v.ToString("N2", TurkishNumbers.Culture); }
+<link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn admin-btn--secondary" href="?tur=@(receivable ? "alacak" : "borc")&csv=true">CSV</a></div>
+<partial name="_ReportNav" />
+<div class="admin-panel" style="overflow-x:auto"><table class="admin-table"><thead><tr><th>Cari</th><th>Vadesi gelmemiş</th><th>1-30 gün</th><th>31-60 gün</th><th>61-90 gün</th><th>90+ gün</th><th>Toplam</th></tr></thead><tbody>
+@foreach (var x in Model) { <tr><td><a href="/yonetim/muhasebe/cariler/@x.CustomerId">@x.Name</a></td><td>@M(x.Current)</td><td>@M(x.Days30)</td><td>@M(x.Days60)</td><td>@M(x.Days90)</td><td>@M(x.Older)</td><td><strong>@M(x.Total)</strong></td></tr> }
+</tbody><tfoot><tr><th>Toplam</th><th>@M(Model.Sum(x => x.Current))</th><th>@M(Model.Sum(x => x.Days30))</th><th>@M(Model.Sum(x => x.Days60))</th><th>@M(Model.Sum(x => x.Days90))</th><th>@M(Model.Sum(x => x.Older))</th><th>@M(Model.Sum(x => x.Total))</th></tr></tfoot></table>@if (Model.Count == 0) { <p class="admin-muted">Açık fatura yok.</p> }</div>

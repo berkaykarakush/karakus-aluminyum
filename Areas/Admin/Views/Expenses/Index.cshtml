@@ -1,0 +1,17 @@
+@model List<KarakusAluminyum.Web.Models.Accounting.Expense>
+@using KarakusAluminyum.Web.Models.Accounting
+@using KarakusAluminyum.Web.Services.Accounting
+@using KarakusAluminyum.Web.Services.Documents
+@{ ViewData["Title"] = "Giderler"; var selected = ViewBag.CategoryId as int?; }
+<div class="admin-actions"><h1>Giderler</h1><a class="admin-btn" href="/yonetim/muhasebe/giderler/ekle">+ Yeni gider</a></div>
+<div class="admin-panel admin-actions">
+  <form class="admin-actions" method="get"><select name="kategori" aria-label="Kategori"><option value="">Tüm kategoriler</option>@foreach (var c in (List<ExpenseCategory>)ViewBag.Categories) { <option value="@c.Id" selected="@(c.Id == selected)">@c.Name</option> }</select><button class="admin-btn">Filtrele</button></form>
+  <form class="admin-actions" method="post" action="/yonetim/muhasebe/giderler/kategori">@Html.AntiForgeryToken()<input name="name" placeholder="Yeni kategori" aria-label="Yeni kategori" /><button class="admin-btn admin-btn--secondary">Kategori ekle</button></form>
+</div>
+<div class="admin-panel" style="overflow-x:auto"><table class="admin-table"><thead><tr><th>Tarih</th><th>Kategori</th><th>Açıklama</th><th>Ödeme</th><th>Net</th><th>KDV</th><th>Toplam</th><th></th></tr></thead><tbody>
+@foreach (var x in Model)
+{
+  <tr style="@(x.IsCancelled ? "opacity:.55;text-decoration:line-through" : "")"><td>@x.Date.ToString("dd.MM.yyyy")</td><td>@x.Category?.Name</td><td>@x.Description</td><td>@(x.Account?.Name ?? ("Veresiye: " + x.Customer?.Name))</td><td>@x.Net.ToString("N2", TurkishNumbers.Culture)</td><td>@x.Vat.ToString("N2", TurkishNumbers.Culture)</td><td>@TurkishNumbers.Money(x.Total)</td>
+  <td>@if (!x.IsCancelled) { <form class="admin-actions" method="post" action="/yonetim/muhasebe/giderler/iptal/@x.Id">@Html.AntiForgeryToken()<input name="reason" required placeholder="Gerekçe" aria-label="İptal gerekçesi" /><button class="admin-btn admin-btn--danger">İptal</button></form> }</td></tr>
+}
+</tbody></table>@if (Model.Count == 0) { <p class="admin-muted">Gider yok.</p> }</div>

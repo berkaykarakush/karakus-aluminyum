@@ -1,0 +1,18 @@
+@model List<KarakusAluminyum.Web.Areas.Admin.Controllers.CariRow>
+@using KarakusAluminyum.Web.Models.Accounting
+@using KarakusAluminyum.Web.Services.Accounting
+@using KarakusAluminyum.Web.Services.Documents
+@{ ViewData["Title"] = "Cari hesaplar"; string? balance = ViewBag.Balance; var type = ViewBag.Type as PartyType?; }
+<div class="admin-actions"><h1>Cari hesaplar</h1><a class="admin-btn" href="/yonetim/crm/musteriler/ekle">+ Yeni cari</a><a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/aktar">İçe aktar</a></div>
+<form class="admin-panel admin-actions" method="get">
+  <input type="search" name="q" value="@ViewBag.Query" placeholder="Ad veya vergi no" aria-label="Ara" />
+  <select name="tur" aria-label="Tür"><option value="">Tüm cariler</option><option value="Customer" selected="@(type == PartyType.Customer)">Müşteri</option><option value="Supplier" selected="@(type == PartyType.Supplier)">Tedarikçi</option></select>
+  <select name="bakiye" aria-label="Bakiye"><option value="">Tüm bakiyeler</option><option value="borclu" selected="@(balance == "borclu")">Bize borçlu</option><option value="alacakli" selected="@(balance == "alacakli")">Bizden alacaklı</option></select>
+  <button class="admin-btn">Filtrele</button>
+</form>
+<div class="admin-panel" style="overflow-x:auto"><table class="admin-table"><thead><tr><th>Cari</th><th>Tür</th><th>Vergi no</th><th>Telefon</th><th>Bakiye</th></tr></thead><tbody>
+@foreach (var x in Model)
+{
+  <tr><td><a href="/yonetim/muhasebe/cariler/@x.Customer.Id">@x.Customer.Name</a></td><td>@AccountingLabels.Label(x.Customer.PartyType)</td><td>@x.Customer.TaxNumber</td><td>@x.Customer.Phone</td><td><strong>@TurkishNumbers.Money(Math.Abs(x.Balance))</strong> @(x.Balance > 0 ? "borçlu" : x.Balance < 0 ? "alacaklı" : "")</td></tr>
+}
+</tbody></table>@if (Model.Count == 0) { <p class="admin-muted">Kayıt yok.</p> }</div>

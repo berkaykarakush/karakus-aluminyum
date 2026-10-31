@@ -1,0 +1,44 @@
+@model KarakusAluminyum.Web.Models.Accounting.InvoiceInputVm
+@using System.Text.Json
+@using KarakusAluminyum.Web.Models.Accounting
+@{
+    var editing = Model.Id != 0;
+    ViewData["Title"] = (editing ? "Düzenle: " : "Yeni: ") + AccountingLabels.Label(Model.Kind);
+    var action = editing ? $"/yonetim/muhasebe/faturalar/duzenle/{Model.Id}" : "/yonetim/muhasebe/faturalar/ekle";
+    var isPurchaseSide = !AccountingLabels.IsSaleSide(Model.Kind);
+}
+<link rel="stylesheet" href="~/css/document-editor.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/muhasebe/faturalar">Faturalar</a></div>
+<form id="inv-form" class="doc-editor" method="post" action="@action">
+  @Html.AntiForgeryToken()
+  <input type="hidden" asp-for="Kind" /><input type="hidden" asp-for="LinesJson" /><input type="hidden" asp-for="QuoteId" /><input type="hidden" asp-for="ContractId" />
+  <div asp-validation-summary="All" class="doc-errors"></div>
+  <section class="doc-card">
+    <div class="doc-grid">
+      <div><label asp-for="CustomerId">Cari *</label><select asp-for="CustomerId" asp-items="(SelectList)ViewBag.Customers" required><option value="">Seçin</option></select></div>
+      <div><label asp-for="Date">Fatura tarihi</label><input type="date" name="Date" id="Date" value="@Model.Date.ToString("yyyy-MM-dd")" required /></div>
+      <div><label asp-for="DueDate">Vade tarihi</label><input type="date" name="DueDate" id="DueDate" value="@Model.DueDate.ToString("yyyy-MM-dd")" required /></div>
+      <div><label asp-for="Currency">Para birimi</label><select asp-for="Currency">@foreach (var c in AccountingLabels.Currencies) { <option value="@c">@c</option> }</select></div>
+      <div id="inv-rate-row"><label asp-for="ExchangeRate">Kur (1 birim = TL)</label><input asp-for="ExchangeRate" type="number" step="0.0001" min="0" /></div>
+      @if (isPurchaseSide) { <div><label asp-for="Number">Belge numarası *</label><input asp-for="Number" /></div> }
+      <div><label asp-for="EDocumentNumber">e-Belge numarası</label><input asp-for="EDocumentNumber" /></div>
+    </div>
+  </section>
+  <section class="doc-card">
+    <h2>Satırlar</h2>
+    <div style="overflow-x:auto">
+      <table class="gl-table inv-table">
+        <thead><tr><th>Ürün / hizmet</th><th>Açıklama</th><th>Miktar</th><th>Birim</th><th>Birim fiyat</th><th>İsk. %</th><th>KDV %</th><th>Tevkifat</th><th>Net</th><th></th></tr></thead>
+        <tbody id="inv-rows"></tbody>
+      </table>
+    </div>
+    <div class="doc-row"><button type="button" class="doc-btn" id="inv-add">+ Satır ekle</button></div>
+    <dl class="inv-totals" id="inv-totals"></dl>
+    <p class="admin-muted">Tutarlar kaydederken sunucuda yeniden hesaplanır. Fiyatlar KDV hariç yazılır.</p>
+  </section>
+  <section class="doc-card"><label asp-for="Notes">Notlar</label><textarea asp-for="Notes" rows="2"></textarea></section>
+  <div class="doc-actions"><button class="admin-btn" type="submit">Taslak olarak kaydet</button><a class="admin-btn" href="/yonetim/muhasebe/faturalar">İptal</a></div>
+</form>
+<script type="application/json" id="inv-products">@Html.Raw(JsonSerializer.Serialize(ViewBag.Products))</script>
+<script src="~/js/invoice-editor.js" asp-append-version="true"></script>

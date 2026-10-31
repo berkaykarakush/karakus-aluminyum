@@ -21,7 +21,7 @@ public sealed class DashboardVm
     public required List<RecentItem> RecentQuotes { get; init; }
 }
 
-[Area("Admin"), Authorize(Roles = "Admin,Editor"), Route("yonetim")]
+[Area("Admin"), Authorize(Roles = "Admin,Editor,Accountant"), Route("yonetim")]
 public class DashboardController : Controller
 {
     private readonly AppDbContext _db;
@@ -32,6 +32,7 @@ public class DashboardController : Controller
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
+        if (User.IsInRole("Accountant") && !User.IsInRole("Admin") && !User.IsInRole("Editor")) return Redirect("/yonetim/muhasebe");
         var now = DateTime.UtcNow;
         var settings = await _settings.GetAsync();
         var contractTemplate = await _db.DocumentTemplates.AsNoTracking().FirstAsync(t => t.Kind == DocumentKinds.Contract);

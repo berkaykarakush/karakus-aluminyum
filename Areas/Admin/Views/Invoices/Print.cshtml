@@ -1,0 +1,27 @@
+@model KarakusAluminyum.Web.Models.Accounting.Invoice
+@using KarakusAluminyum.Web.Models.Accounting
+@using KarakusAluminyum.Web.Services.Accounting
+@using KarakusAluminyum.Web.Services.Documents
+@inject KarakusAluminyum.Web.Services.SiteSettingsProvider SiteSettings
+@{ Layout = null; var site = await SiteSettings.GetAsync(); }
+<!DOCTYPE html>
+<html lang="tr"><head><meta charset="utf-8" /><meta name="robots" content="noindex" /><title>@(Model.Number ?? "Taslak")</title>
+<style>body{font:13px Arial,Helvetica,sans-serif;color:#111;max-width:800px;margin:24px auto;padding:0 16px}table{width:100%;border-collapse:collapse;margin:16px 0}th,td{border:1px solid #bbb;padding:6px;text-align:left}.num{text-align:right}.head{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap}.totals{margin-left:auto;width:320px}.note{margin-top:24px;padding:10px;border:1px solid #bbb;font-size:12px}@@media print{.noprint{display:none}}</style></head>
+<body>
+<button class="noprint" onclick="window.print()">Yazdır</button>
+<div class="head">
+  <div><strong>@site.SiteName</strong><br />@site.Address<br />@site.PhoneDisplay</div>
+  <div><strong>@AccountingLabels.Label(Model.Kind)</strong><br />No: @(Model.Number ?? "Taslak")<br />Tarih: @Model.Date.ToString("dd.MM.yyyy")<br />Vade: @Model.DueDate.ToString("dd.MM.yyyy")@if (!string.IsNullOrEmpty(Model.EDocumentNumber)) { <br /><text>e-Belge: @Model.EDocumentNumber</text> }</div>
+</div>
+<p><strong>@Model.Customer?.Name</strong><br />@Model.Customer?.Address<br />@(Model.Customer?.TaxOffice) @(Model.Customer?.TaxNumber)</p>
+<table><thead><tr><th>Açıklama</th><th class="num">Miktar</th><th class="num">Birim fiyat</th><th class="num">İsk. %</th><th class="num">KDV %</th><th class="num">Net</th></tr></thead><tbody>
+@foreach (var x in Model.Lines.OrderBy(l => l.SortOrder)) { <tr><td>@x.Description</td><td class="num">@x.Quantity.ToString("0.###", TurkishNumbers.Culture) @x.Unit</td><td class="num">@x.UnitPrice.ToString("N2", TurkishNumbers.Culture)</td><td class="num">@x.DiscountRate.ToString("0.##")</td><td class="num">@x.VatRate.ToString("0.##")</td><td class="num">@x.Net.ToString("N2", TurkishNumbers.Culture)</td></tr> }
+</tbody></table>
+<table class="totals"><tbody>
+<tr><td>Matrah</td><td class="num">@Model.Net.ToString("N2", TurkishNumbers.Culture) @Model.Currency</td></tr>
+<tr><td>KDV</td><td class="num">@Model.VatTotal.ToString("N2", TurkishNumbers.Culture) @Model.Currency</td></tr>
+@if (Model.WithholdingTotal > 0) { <tr><td>Tevkifat</td><td class="num">-@Model.WithholdingTotal.ToString("N2", TurkishNumbers.Culture) @Model.Currency</td></tr> }
+<tr><td><strong>Ödenecek</strong></td><td class="num"><strong>@Model.Payable.ToString("N2", TurkishNumbers.Culture) @Model.Currency</strong></td></tr>
+</tbody></table>
+<div class="note">Bu çıktı iç takip içindir, resmi fatura yerine geçmez.</div>
+</body></html>

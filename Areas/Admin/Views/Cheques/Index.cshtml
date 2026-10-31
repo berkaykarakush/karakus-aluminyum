@@ -1,0 +1,17 @@
+@model List<KarakusAluminyum.Web.Models.Accounting.Cheque>
+@using KarakusAluminyum.Web.Models.Accounting
+@using KarakusAluminyum.Web.Services.Accounting
+@using KarakusAluminyum.Web.Services.Documents
+@{ ViewData["Title"] = "Çek ve senet"; var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(3)); var status = ViewBag.Status as ChequeStatus?; var direction = ViewBag.Direction as ChequeDirection?; }
+<div class="admin-actions"><h1>Çek ve senet</h1><a class="admin-btn" href="/yonetim/muhasebe/cek-senet/ekle?yon=Received">+ Alınan</a><a class="admin-btn" href="/yonetim/muhasebe/cek-senet/ekle?yon=Given">+ Verilen</a></div>
+<form class="admin-panel admin-actions" method="get">
+  <select name="yon" aria-label="Yön"><option value="">Alınan ve verilen</option><option value="Received" selected="@(direction == ChequeDirection.Received)">Alınan</option><option value="Given" selected="@(direction == ChequeDirection.Given)">Verilen</option></select>
+  <select name="durum" aria-label="Durum"><option value="">Tüm durumlar</option>@foreach (var s in Enum.GetValues<ChequeStatus>()) { <option value="@s" selected="@(s == status)">@AccountingLabels.Label(s)</option> }</select>
+  <button class="admin-btn">Filtrele</button>
+</form>
+<div class="admin-panel" style="overflow-x:auto"><table class="admin-table"><thead><tr><th>Vade</th><th>Belge</th><th>Yön</th><th>Cari</th><th>Banka</th><th>Tutar</th><th>Durum</th></tr></thead><tbody>
+@foreach (var x in Model)
+{
+  <tr><td style="@(x.DueDate < today && x.Status is ChequeStatus.Portfolio or ChequeStatus.Deposited ? "color:#b42318;font-weight:700" : "")">@x.DueDate.ToString("dd.MM.yyyy")</td><td><a href="/yonetim/muhasebe/cek-senet/detay/@x.Id">@AccountingLabels.Label(x.Kind) @x.Number</a></td><td>@(x.Direction == ChequeDirection.Received ? "Alınan" : "Verilen")</td><td>@x.Customer?.Name</td><td>@x.BankName</td><td>@TurkishNumbers.Money(x.Amount)</td><td>@AccountingLabels.Label(x.Status)</td></tr>
+}
+</tbody></table>@if (Model.Count == 0) { <p class="admin-muted">Kayıt yok.</p> }</div>
