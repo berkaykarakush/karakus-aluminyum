@@ -10,7 +10,7 @@
         ("production", "Çizim ve cam", new() { ("Çizim listeleri", "/yonetim/cizim", "/cizim", 0), ("Cam listeleri", "/yonetim/camlar", "/camlar", 0), ("Markalar", "/yonetim/markalar", "/markalar", 0) }),
         ("content", "Site içeriği", new() { ("Hizmetler", "/yonetim/hizmetler", "/hizmetler", 0), ("Projeler", "/yonetim/projeler", "/projeler", 0), ("Galeri", "/yonetim/galeri", "/galeri", 0), ("Sık sorulan sorular", "/yonetim/sss", "/sss", 0), ("Blog yazıları", "/yonetim/yazilar", "/yazilar", 0) })
     };
-    if (isAdmin) groups.Add(("admin", "Yönetim", new() { ("Site ayarları", "/yonetim/ayarlar", "/ayarlar", 0), ("Belge şablonları", "/yonetim/sablonlar", "/sablonlar", 0), ("Kullanıcılar", "/yonetim/kullanicilar", "/kullanicilar", 0), ("Denetim kaydı", "/yonetim/denetim-kaydi", "/denetim-kaydi", 0) }));
+    if (isAdmin) groups.Add(("admin", "Yönetim", new() { ("Site ayarları", "/yonetim/ayarlar", "/ayarlar", 0), ("Bildirimler", "/yonetim/bildirimler", "/bildirimler", 0), ("Belge şablonları", "/yonetim/sablonlar", "/sablonlar", 0), ("Kullanıcılar", "/yonetim/kullanicilar", "/kullanicilar", 0), ("Denetim kaydı", "/yonetim/denetim-kaydi", "/denetim-kaydi", 0) }));
     var seesAccounting = isAdmin || User.IsInRole("Accountant");
     var accountantOnly = User.IsInRole("Accountant") && !isAdmin && !User.IsInRole("Editor");
     if (accountantOnly) groups.Clear();

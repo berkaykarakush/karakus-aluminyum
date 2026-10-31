@@ -35,6 +35,8 @@ services:
       Notifications__Smtp__Username: ${SMTP_USERNAME:-}
       Notifications__Smtp__Password: ${SMTP_PASSWORD:-}
       Notifications__Smtp__From: ${SMTP_FROM:-}
+      Notifications__Smtp__FromName: ${SMTP_FROM_NAME:-Karakuş Alüminyum}
+      Notifications__Smtp__Security: ${SMTP_SECURITY:-auto}
       Notifications__Smtp__To: ${NOTIFICATION_EMAIL_TO:-}
       Notifications__WhatsApp__AccessToken: ${WHATSAPP_ACCESS_TOKEN:-}
       Notifications__WhatsApp__PhoneNumberId: ${WHATSAPP_PHONE_NUMBER_ID:-}

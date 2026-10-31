@@ -45,8 +45,13 @@ builder.Services.AddRateLimiter(options =>
 });
 builder.Services.AddScoped<SiteSettingsProvider>();
 builder.Services.Configure<NotificationOptions>(builder.Configuration.GetSection(NotificationOptions.SectionName));
-builder.Services.AddHttpClient(nameof(ContactNotificationService), client => client.Timeout = TimeSpan.FromSeconds(15));
-builder.Services.AddScoped<IContactNotificationService, ContactNotificationService>();
+builder.Services.AddHttpClient(KarakusAluminyum.Web.Services.Notifications.WhatsAppCloudSender.ClientName, client => client.Timeout = TimeSpan.FromSeconds(20));
+builder.Services.AddSingleton<KarakusAluminyum.Web.Services.Notifications.NotificationSignal>();
+builder.Services.AddScoped<KarakusAluminyum.Web.Services.Notifications.IEmailSender, KarakusAluminyum.Web.Services.Notifications.SmtpEmailSender>();
+builder.Services.AddScoped<KarakusAluminyum.Web.Services.Notifications.IWhatsAppSender, KarakusAluminyum.Web.Services.Notifications.WhatsAppCloudSender>();
+builder.Services.AddScoped<KarakusAluminyum.Web.Services.Notifications.NotificationQueue>();
+builder.Services.AddScoped<KarakusAluminyum.Web.Services.Notifications.NotificationDispatcher>();
+if (builder.Configuration.GetValue("Notifications:WorkerEnabled", true)) builder.Services.AddHostedService<KarakusAluminyum.Web.Services.Notifications.NotificationWorker>();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"), npgsql => npgsql.EnableRetryOnFailure(3)));
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>

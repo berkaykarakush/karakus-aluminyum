@@ -58,24 +58,19 @@ public static class SeedData
         new("Endüstriyel ve Garaj Kapı Sistemleri", 
             "endustriyel-ve-garaj-kapi-sistemleri", 
             "Endüstriyel alanlar ve garajlar için kapı sistemi çözümleri.",
-            "/images/otomatik-kapi-ve-diger-sistemler.png"),
+            "/images/endustriyel-ve-garaj-kapi-sistemleri.png"),
         new("Rampa ve Körük Sistemleri", 
             "rampa-ve-koruk-sistemleri", 
             "Yükleme alanlarında kullanılmak üzere rampa ve körük sistemi çözümleri.",
-            "/images/otomatik-kapi-ve-diger-sistemler.png"),
+            "/images/rampa-ve-koruk-sistemleri.png"),
         new("Bahçe Kapısı ve Bariyer Sistemleri", 
             "bahce-kapisi-ve-bariyer-sistemleri", 
             "Araç ve yaya girişleri için bahçe kapısı ve bariyer sistemleri.",
-            "/images/otomatik-kapi-ve-diger-sistemler.png"),
+            "/images/bahce-kapisi-ve-bariyer-sistemleri.png"),
     };
 
-    // Önceki seed sürümünün kaydettiği, wwwroot'ta hiç bulunmayan görsel yolları.
-    private static readonly string[] MissingServiceImages =
-    {
-        "/images/endustriyel-ve-garaj-kapi-sistemleri.png",
-        "/images/rampa-ve-koruk-sistemleri.png",
-        "/images/bahce-kapisi-ve-bariyer-sistemleri.png"
-    };
+    // Görselleri sonradan eklenen hizmetler: genel görselde kalmışsa kendi görseline geçer.
+    private static readonly string[] DedicatedImageSlugs = { "endustriyel-ve-garaj-kapi-sistemleri", "rampa-ve-koruk-sistemleri", "bahce-kapisi-ve-bariyer-sistemleri" };
 
     public static string? OriginalDescription(string slug) => Services.FirstOrDefault(x => x.Slug == slug)?.Description;
 
@@ -178,7 +173,7 @@ public static class SeedData
             }
             else if (string.IsNullOrWhiteSpace(existing.Image)
                 || existing.Image.Contains("image-placeholder", StringComparison.OrdinalIgnoreCase)
-                || MissingServiceImages.Contains(existing.Image))
+                || (DedicatedImageSlugs.Contains(seed.Slug) && existing.Image == "/images/otomatik-kapi-ve-diger-sistemler.png"))
             {
                 // Önceki seed sürümü tüm hizmetlere placeholder atıyordu; bu hatalı yolu düzelt.
                 existing.Image = seed.ImageUrl;
@@ -343,11 +338,11 @@ public static class SeedData
             if (serviceIds.TryGetValue("ofis-bolme-sistemleri", out id))
                 AddImages(id, null, "/images/ofis-bolme-sistemleri.png");
             if (serviceIds.TryGetValue("endustriyel-ve-garaj-kapi-sistemleri", out id))
-                AddImages(id, null, "/images/otomatik-kapi-ve-diger-sistemler.png");
+                AddImages(id, null, "/images/endustriyel-ve-garaj-kapi-sistemleri.png");
             if (serviceIds.TryGetValue("rampa-ve-koruk-sistemleri", out id))
-                AddImages(id, null, "/images/otomatik-kapi-ve-diger-sistemler.png");
+                AddImages(id, null, "/images/rampa-ve-koruk-sistemleri.png");
             if (serviceIds.TryGetValue("bahce-kapisi-ve-bariyer-sistemleri", out id))
-                AddImages(id, null, "/images/otomatik-kapi-ve-diger-sistemler.png");
+                AddImages(id, null, "/images/bahce-kapisi-ve-bariyer-sistemleri.png");
 
             // Proje galerileri
             if (projectIds.TryGetValue("nisu-insaat-a-evleri", out var pid))

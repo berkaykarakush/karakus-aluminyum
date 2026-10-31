@@ -16,8 +16,9 @@ public static class SiteSettingCatalog
     public const string AboutGroup = "Kurumsal sayfa metinleri";
     public const string FooterGroup = "Alt bilgi";
     public const string DrawingGroup = "Çizim ve üretim";
+    public const string NotificationGroup = "Teklif bildirimleri";
 
-    public static readonly string[] Groups = { ContactGroup, SeoGroup, AnalyticsGroup, HomeGroup, AboutGroup, FooterGroup, DrawingGroup };
+    public static readonly string[] Groups = { ContactGroup, SeoGroup, AnalyticsGroup, HomeGroup, AboutGroup, FooterGroup, NotificationGroup, DrawingGroup };
 
     private const string UrlPattern = "^https?://[^\\s\"'<>]+$";
     private const string UrlError = "http:// veya https:// ile başlayan geçerli bir adres yazın.";
@@ -50,6 +51,14 @@ public static class SiteSettingCatalog
         new("MetaDomainVerification", AnalyticsGroup, "Meta alan adı doğrulama kodu", "", Help: "Yalnızca content değeri.", Pattern: "^[A-Za-z0-9_\\-]{10,120}$", PatternError: "Yalnızca kodun kendisini yazın."),
         new("FirstPartyAnalyticsEnabled", AnalyticsGroup, "Panel raporları için site ziyaretlerini kaydet", "true", SettingKind.Toggle, "Yalnızca çerez onayı veren ziyaretçiler için, IP adresi olmadan kaydedilir."),
         new("ConsentText", AnalyticsGroup, "Çerez bildirimi metni", "Sitemizi geliştirmek ve reklamlarımızı ölçmek için analiz çerezleri kullanıyoruz. Google ve Meta hizmetleri nedeniyle veriler yurt dışına aktarılabilir. Onay vermezseniz bu çerezler yüklenmez.", SettingKind.LongText),
+
+        new("NotifyEmailEnabled", NotificationGroup, "Yeni talepte ekibe e-posta gönder", "true", SettingKind.Toggle),
+        new("NotifyEmailTo", NotificationGroup, "Bildirim e-postası alıcıları", "", Help: "Virgülle ayırarak birden çok adres yazabilirsiniz.", Pattern: "^[^@\\s,;]+@[^@\\s,;]+\\.[^@\\s,;]+(\\s*,\\s*[^@\\s,;]+@[^@\\s,;]+\\.[^@\\s,;]+)*$", PatternError: "Geçerli e-posta adreslerini virgülle ayırarak yazın."),
+        new("NotifyCustomerEmailEnabled", NotificationGroup, "E-posta bırakan müşteriye onay e-postası gönder", "true", SettingKind.Toggle),
+        new("NotifyWhatsAppEnabled", NotificationGroup, "Yeni talepte ekibe WhatsApp bildirimi gönder", "true", SettingKind.Toggle),
+        new("NotifyWhatsAppTo", NotificationGroup, "WhatsApp bildirim numaraları", "", Help: "Ülke koduyla, örn. 905xxxxxxxxx. Virgülle ayırarak birden çok numara yazabilirsiniz.", Pattern: "^\\+?[0-9]{10,15}(\\s*,\\s*\\+?[0-9]{10,15})*$", PatternError: "Numaraları ülke koduyla, virgülle ayırarak yazın."),
+        new("WhatsAppTemplateName", NotificationGroup, "WhatsApp şablon adı", "", Help: "Meta'da onaylanan şablonun adı. Kurulum için Bildirimler sayfasına bakın.", Pattern: "^[a-z0-9_]{1,512}$", PatternError: "Yalnızca küçük harf, rakam ve alt çizgi kullanın."),
+        new("WhatsAppTemplateLanguage", NotificationGroup, "WhatsApp şablon dili", "tr", Pattern: "^[a-z]{2}(_[A-Z]{2})?$", PatternError: "Örn. tr"),
 
         new("ProductionDetailsEnabled", DrawingGroup, "Üretim detaylarını göster", "false", SettingKind.Toggle),
 

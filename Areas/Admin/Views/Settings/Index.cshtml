@@ -17,6 +17,10 @@
       {
         <p class="admin-muted">Kimlikleri girdiğinizde kodlar siteye otomatik eklenir. Yalnızca çerez bildiriminde onay veren ziyaretçilerde yüklenir; yönetici girişi yapmış kullanıcılar sayılmaz.</p>
       }
+      @if (group == SiteSettingCatalog.NotificationGroup)
+      {
+        <p class="admin-muted" id="bildirimler">Alıcı yazılmazsa sunucu ayarındaki adres kullanılır. SMTP parolası ve WhatsApp anahtarı güvenlik için sunucu ortam değişkenlerinde tutulur. Gönderim durumunu <a href="/yonetim/bildirimler">Bildirimler</a> sayfasından izleyebilirsiniz.</p>
+      }
       @if (group == SiteSettingCatalog.DrawingGroup)
       {
         <p class="admin-muted">Açıkken kesim listesi, profil sistemleri, boy optimizasyonu, maliyet hesabı, imalat föyü ve cam plaka yerleşimi görünür. Kapalıyken çizimler yalnızca ölçülü şekildir. Kapatmak veri silmez.</p>

@@ -44,7 +44,8 @@ public class DashboardController : Controller
             new("Yanıt bekleyen teklif", await _db.Quotes.CountAsync(x => x.Status == QuoteStatus.Sent), "/yonetim/crm/teklifler?status=1"),
             new("Süresi geçmiş gönderilmiş teklif", await _db.Quotes.CountAsync(x => x.Status == QuoteStatus.Sent && x.ValidUntilUtc != null && x.ValidUntilUtc < now), "/yonetim/crm/teklifler?status=1"),
             new("Sözleşmeye dönüşmeyi bekleyen kabul", await _db.Quotes.CountAsync(x => x.Status == QuoteStatus.Accepted), "/yonetim/crm/teklifler?status=2"),
-            new("Taslak sözleşme", await _db.Contracts.CountAsync(x => x.Status == ContractStatus.Draft), "/yonetim/sozlesmeler")
+            new("Taslak sözleşme", await _db.Contracts.CountAsync(x => x.Status == ContractStatus.Draft), "/yonetim/sozlesmeler"),
+            new("Gönderilemeyen bildirim", await _db.NotificationJobs.CountAsync(x => x.Status == KarakusAluminyum.Web.Models.NotificationStatus.Failed), "/yonetim/bildirimler?durum=Failed")
         };
 
         var setup = new List<SetupItem>

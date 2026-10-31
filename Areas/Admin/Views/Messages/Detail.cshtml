@@ -1,2 +1,10 @@
 @model KarakusAluminyum.Web.Models.ContactMessage
-@{ViewData["Title"]="Mesaj detayı";}<h1>Mesaj detayı</h1><div class="admin-panel"><p><strong>Gönderen:</strong> @Model.Name</p><p><strong>İletişim:</strong> @Model.ContactInfo</p><p><strong>Proje konumu:</strong> @Model.ProjectLocation</p><p><strong>Hizmet:</strong> @Model.Service</p><p><strong>Tarih:</strong> @Model.CreatedUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</p><hr/><p style="white-space:pre-wrap">@Model.Message</p><a class="admin-btn" href="/yonetim/mesajlar">Geri</a></div>
+@using KarakusAluminyum.Web.Models
+@using KarakusAluminyum.Web.Services.Notifications
+@{ViewData["Title"]="Mesaj detayı"; var jobs = ViewBag.Jobs as List<NotificationJob> ?? new(); var email = NotificationComposer.IsEmail(Model.ContactInfo); var phone = NotificationComposer.PhoneDigits(Model.ContactInfo);}<h1>Mesaj detayı</h1><div class="admin-panel"><p><strong>Gönderen:</strong> @Model.Name</p><p><strong>İletişim:</strong> @Model.ContactInfo</p><p><strong>Proje konumu:</strong> @Model.ProjectLocation</p><p><strong>Hizmet:</strong> @Model.Service</p><p><strong>Tarih:</strong> @Model.CreatedUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</p><hr/><p style="white-space:pre-wrap">@Model.Message</p><div class="admin-actions" style="margin-top:14px"><a class="admin-btn" href="/yonetim/mesajlar">Geri</a>@if (email) { <a class="admin-btn" href="mailto:@Model.ContactInfo?subject=@Uri.EscapeDataString("Teklif talebiniz hakkında")">E-posta ile yanıtla</a> }@if (phone is not null) { <a class="admin-btn" href="tel:+@phone">Ara</a><a class="admin-btn" href="https://wa.me/@phone?text=@Uri.EscapeDataString($"Merhaba {Model.Name}, Karakuş Alüminyum'dan yazıyoruz. Teklif talebiniz için iletişime geçiyoruz.")" target="_blank" rel="noopener">WhatsApp ile yanıtla</a> }</div></div>
+@if (jobs.Count > 0)
+{
+  <div class="admin-panel" style="overflow-x:auto"><h2>Bildirimler</h2><table class="admin-table"><thead><tr><th>Kanal</th><th>Alıcı</th><th>Durum</th><th>Ayrıntı</th></tr></thead><tbody>
+  @foreach (var j in jobs) { <tr><td>@NotificationLabels.Label(j.Channel)</td><td>@j.Recipient</td><td>@NotificationLabels.Label(j.Status)</td><td>@j.LastError</td></tr> }
+  </tbody></table></div>
+}

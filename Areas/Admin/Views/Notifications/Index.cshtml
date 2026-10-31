@@ -1,0 +1,51 @@
+@model List<KarakusAluminyum.Web.Models.NotificationJob>
+@using KarakusAluminyum.Web.Models
+@{
+    ViewData["Title"] = "Bildirimler";
+    var site = (SiteSettings)ViewBag.Settings;
+    var status = ViewBag.Status as NotificationStatus?;
+    bool emailReady = ViewBag.EmailReady; bool whatsAppReady = ViewBag.WhatsAppReady; int failed = ViewBag.FailedCount;
+    var template = string.IsNullOrWhiteSpace(site.WhatsAppTemplateName);
+}
+<div class="admin-actions"><h1>Bildirimler</h1><a class="admin-btn admin-btn--secondary" href="/yonetim/ayarlar#bildirimler">Bildirim ayarları</a></div>
+@if (failed > 0) { <div class="wd-errors" style="margin-bottom:12px">@failed bildirim gönderilemedi. Aşağıdan nedenini görüp yeniden deneyebilirsiniz.</div> }
+<div class="report-kpis">
+  <div class="report-kpi"><span class="report-kpi__label">E-posta (SMTP)</span><strong class="report-kpi__value">@(emailReady ? "Bağlı" : "Ayar eksik")</strong></div>
+  <div class="report-kpi"><span class="report-kpi__label">WhatsApp Cloud API</span><strong class="report-kpi__value">@(whatsAppReady ? "Bağlı" : "Ayar eksik")</strong></div>
+  <div class="report-kpi"><span class="report-kpi__label">WhatsApp şablonu</span><strong class="report-kpi__value">@(template ? "Tanımlı değil" : site.WhatsAppTemplateName)</strong></div>
+</div>
+@if (template && whatsAppReady) { <div class="wd-warnings" style="margin-bottom:12px">Şablon tanımlı değil. Meta, serbest metni yalnızca alıcı son 24 saatte size yazdıysa iletir; bildirimler için onaylı şablon gerekir.</div> }
+<div class="admin-panel">
+  <h2>Deneme gönderimi</h2>
+  <p class="admin-muted">SMTP ve WhatsApp bilgileri sunucu ortam değişkenlerinden okunur ve burada gösterilmez.</p>
+  <form class="admin-actions" method="post" action="/yonetim/bildirimler/test">@Html.AntiForgeryToken()
+    <select name="kanal" aria-label="Kanal"><option value="email">E-posta</option><option value="whatsapp">WhatsApp</option></select>
+    <input name="alici" required placeholder="E-posta veya 905xxxxxxxxx" aria-label="Alıcı" />
+    <button class="admin-btn">Deneme gönder</button>
+  </form>
+</div>
+<form class="admin-panel admin-actions" method="get"><select name="durum" aria-label="Durum"><option value="">Tüm durumlar</option>@foreach (var s in Enum.GetValues<NotificationStatus>()) { <option value="@s" selected="@(s == status)">@NotificationLabels.Label(s)</option> }</select><button class="admin-btn">Filtrele</button></form>
+<div class="admin-panel" style="overflow-x:auto"><table class="admin-table"><thead><tr><th>Tarih</th><th>Talep</th><th>Kanal</th><th>Alıcı</th><th>Durum</th><th>Deneme</th><th>Ayrıntı</th><th></th></tr></thead><tbody>
+@foreach (var x in Model)
+{
+  <tr>
+    <td>@x.CreatedUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+    <td><a href="/yonetim/mesajlar/@x.ContactMessageId">@x.ContactMessage?.Name</a></td>
+    <td>@NotificationLabels.Label(x.Channel)</td>
+    <td>@x.Recipient</td>
+    <td><strong>@NotificationLabels.Label(x.Status)</strong></td>
+    <td>@x.Attempts</td>
+    <td>@x.LastError @if (x.Status == NotificationStatus.Pending && x.Attempts > 0) { <span class="admin-muted">Sonraki deneme: @x.NextAttemptUtc.ToLocalTime().ToString("HH:mm")</span> }</td>
+    <td>@if (x.Status is NotificationStatus.Failed or NotificationStatus.Skipped) { <form method="post" action="/yonetim/bildirimler/yeniden/@x.Id">@Html.AntiForgeryToken()<button class="admin-btn">Yeniden dene</button></form> }</td>
+  </tr>
+}
+</tbody></table>@if (Model.Count == 0) { <p class="admin-muted">Kayıt yok.</p> }</div>
+<div class="admin-panel">
+  <h2>WhatsApp şablonu kurulumu</h2>
+  <p class="admin-muted">Meta Business Manager'da "Yardımcı" (Utility) kategorisinde, Türkçe bir şablon oluşturup onaylatın ve adını Site ayarlarına yazın. Önerilen gövde metni:</p>
+  <pre style="white-space:pre-wrap;background:#f3f5f6;padding:12px;border-radius:8px">Web sitesinden yeni bir teklif talebi geldi.
+Ad Soyad: {{1}}
+İletişim: {{2}}
+Hizmet: {{3}}
+Konum: {{4}}</pre>
+</div>

@@ -3,6 +3,7 @@ namespace KarakusAluminyum.Web.Services;
 public sealed class NotificationOptions
 {
     public const string SectionName = "Notifications";
+    public bool WorkerEnabled { get; set; } = true;
     public SmtpOptions Smtp { get; set; } = new();
     public WhatsAppOptions WhatsApp { get; set; } = new();
 }
@@ -13,6 +14,9 @@ public sealed class SmtpOptions
     public string? Username { get; set; }
     public string? Password { get; set; }
     public string? From { get; set; }
+    public string FromName { get; set; } = "Karakuş Alüminyum";
+    // auto: 465 için SSL, diğerlerinde STARTTLS. ssl, starttls veya none yazılabilir.
+    public string Security { get; set; } = "auto";
     public string? To { get; set; }
 }
 public sealed class WhatsAppOptions

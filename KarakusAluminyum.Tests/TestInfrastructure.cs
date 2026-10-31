@@ -60,6 +60,7 @@ public sealed class AppFactory : WebApplicationFactory<Program>
         builder.UseSetting("DataProtection:KeysPath", Path.Combine(_tempRoot, "keys"));
         builder.UseSetting("AdminSeed:Email", AdminEmail);
         builder.UseSetting("AdminSeed:Password", Password);
+        builder.UseSetting("Notifications:WorkerEnabled", "false");
     }
 
     public HttpClient NewClient() => CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });

@@ -3,18 +3,21 @@ using Microsoft.EntityFrameworkCore;
 using KarakusAluminyum.Web.Models;
 using Microsoft.AspNetCore.Mvc;
 using KarakusAluminyum.Web.Services;
+using KarakusAluminyum.Web.Services.Notifications;
 namespace KarakusAluminyum.Web.Controllers;
 [Route("iletisim")]
 public class ContactController : Controller
 {
     private readonly SiteSettingsProvider _settingsProvider;
     private readonly AppDbContext _db;
-    private readonly IContactNotificationService _notifications;
-    public ContactController(SiteSettingsProvider settingsProvider, AppDbContext db, IContactNotificationService notifications)
+    private readonly NotificationQueue _notifications;
+    private readonly NotificationSignal _signal;
+    public ContactController(SiteSettingsProvider settingsProvider, AppDbContext db, NotificationQueue notifications, NotificationSignal signal)
     {
         _settingsProvider = settingsProvider;
         _db = db;
         _notifications = notifications;
+        _signal = signal;
     }
     [HttpGet("")]
     public async Task<IActionResult> Index()
@@ -32,9 +35,18 @@ public class ContactController : Controller
         ViewBag.Services=await _db.Services.AsNoTracking().Where(x=>x.IsPublished).OrderBy(x=>x.SortOrder).Select(x=>x.Name).ToListAsync();
         if (!string.IsNullOrWhiteSpace(model.Website)) return RedirectToAction(nameof(Thanks));
         if (!ModelState.IsValid) return View(model);
-        _db.ContactMessages.Add(new ContactMessage { Name=model.Name.Trim(), ContactInfo=model.ContactInfo.Trim(), ProjectLocation=model.ProjectLocation?.Trim(), Service=model.Service?.Trim(), Message=model.Message.Trim(), PrivacyAccepted=model.PrivacyAccepted });
-        await _db.SaveChangesAsync();
-        await _notifications.NotifyAsync(model);
+        var contact = model.ContactInfo.Trim();
+        var text = model.Message.Trim();
+        var windowStart = DateTime.UtcNow.AddMinutes(-10);
+        // Çift tıklama ve sayfa yenileme aynı talebi ikinci kez kaydetmez, bildirim de göndermez.
+        if (!await _db.ContactMessages.AnyAsync(x => x.ContactInfo == contact && x.Message == text && x.CreatedUtc > windowStart))
+        {
+            var message = new ContactMessage { Name=model.Name.Trim(), ContactInfo=model.ContactInfo.Trim(), ProjectLocation=model.ProjectLocation?.Trim(), Service=model.Service?.Trim(), Message=model.Message.Trim(), PrivacyAccepted=model.PrivacyAccepted };
+            _db.ContactMessages.Add(message);
+            await _notifications.AddForAsync(message);
+            await _db.SaveChangesAsync();
+            _signal.Wake();
+        }
         TempData["ContactNotice"]="Talebiniz alındı. En kısa sürede dönüş yapılacaktır.";
         return RedirectToAction(nameof(Thanks));
     }

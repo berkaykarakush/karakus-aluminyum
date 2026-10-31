@@ -25,6 +25,13 @@ public sealed class SiteSettings
     public string SiteDescription { get; set; } = "İzmir'de mimari alüminyum doğrama ve sistem çözümleri.";
     public string IndexNowEnabled { get; set; } = "true";
     public string AiCrawlersAllowed { get; set; } = "true";
+    public string NotifyEmailEnabled { get; set; } = "true";
+    public string NotifyEmailTo { get; set; } = "";
+    public string NotifyCustomerEmailEnabled { get; set; } = "true";
+    public string NotifyWhatsAppEnabled { get; set; } = "true";
+    public string NotifyWhatsAppTo { get; set; } = "";
+    public string WhatsAppTemplateName { get; set; } = "";
+    public string WhatsAppTemplateLanguage { get; set; } = "tr";
     public string ProductionDetailsEnabled { get; set; } = "false";
     public bool ProductionDetails => ProductionDetailsEnabled == "true";
     public string ConsentText { get; set; } = "";

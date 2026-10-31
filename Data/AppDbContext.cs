@@ -16,6 +16,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<PortfolioProject> Projects => Set<PortfolioProject>();
     public DbSet<BlogPost> BlogPosts => Set<BlogPost>();
     public DbSet<ContactMessage> ContactMessages => Set<ContactMessage>();
+    public DbSet<NotificationJob> NotificationJobs => Set<NotificationJob>();
     public DbSet<SiteSettingRecord> SiteSettingRecords => Set<SiteSettingRecord>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Quote> Quotes => Set<Quote>();
@@ -121,6 +122,10 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<Expense>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<Expense>().HasOne(x => x.Account).WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<CariAdjustment>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+        // Talep silinince (KVKK) bildirim kaydı ve alıcı bilgisi de silinir.
+        builder.Entity<NotificationJob>().HasOne(x => x.ContactMessage).WithMany().HasForeignKey(x => x.ContactMessageId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<NotificationJob>().HasIndex(x => new { x.Status, x.NextAttemptUtc });
+        builder.Entity<NotificationJob>().HasIndex(x => x.CreatedUtc);
         builder.Entity<WindowDesign>().HasOne(x => x.DrawingList).WithMany(x => x.Items).HasForeignKey(x => x.DrawingListId).OnDelete(DeleteBehavior.Cascade);
         builder.Entity<WindowDesign>().HasOne(x => x.Brand).WithMany().HasForeignKey(x => x.BrandId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<DrawingList>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.SetNull);
