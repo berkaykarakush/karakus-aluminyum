@@ -66,19 +66,19 @@ public static class SiteSettingCatalog
         new("HeroEyebrow", HomeGroup, "Üst başlık", "Mimari Alüminyum Sistemleri"),
         new("HeroTitle", HomeGroup, "Büyük başlık", "Mimariye değer katan"),
         new("HeroTitleEmphasis", HomeGroup, "Büyük başlık (vurgulu kısım)", "alüminyum çözümleri."),
-        new("HeroText", HomeGroup, "Giriş metni", "Alüminyum ve PVC doğrama, cam balkon, giyotin ve sürme cam sistemleri ile otomatik kapı çözümleri. Projenizi ölçüden uygulamaya birlikte planlayalım.", SettingKind.LongText),
+        new("HeroText", HomeGroup, "Giriş metni", "Alüminyum ve PVC doğrama, cam balkon, giyotin ve sürme cam sistemleri ile otomatik kapı çözümleri sunuyoruz. Projenizi ölçüden uygulamaya birlikte planlıyoruz.", SettingKind.LongText),
         new("TrustItems", HomeGroup, "Giriş altındaki maddeler", "Projeye özel sistem seçimi\nYerinde ölçü ve keşif\nİzmir ve çevresinde hizmet", SettingKind.LongText, "Her satıra bir madde."),
-        new("ApproachTitle", HomeGroup, "Yaklaşım başlığı", "Doğru sistem, doğru detayla başlar."),
+        new("ApproachTitle", HomeGroup, "Yaklaşım başlığı", "Doğru sistemi doğru detayla kuruyoruz."),
         new("ApproachText", HomeGroup, "Yaklaşım metni", "Her yapının ölçüsü, cephesi ve kullanım beklentisi farklıdır. Profil, cam, donanım ve montaj detaylarını projenizin koşullarına göre ele alıyor, seçenekleri açık biçimde paylaşıyoruz.", SettingKind.LongText),
         new("CtaTitle", HomeGroup, "Sayfa sonu çağrı başlığı", "Projeniz için doğru sistemi birlikte belirleyelim."),
         new("CtaText", HomeGroup, "Sayfa sonu çağrı metni", "Ölçü, çizim veya yalnızca fikrinizi paylaşın; size uygun seçenekleri birlikte değerlendirelim."),
 
-        new("AboutTitle", AboutGroup, "Başlık", "Karakuş Alüminyum'u tanıyın."),
-        new("AboutIntro", AboutGroup, "Giriş metni", "Karakuş Alüminyum; İzmir'de konut, ticari ve endüstriyel yapılar için alüminyum, cam ve kapı sistemleri alanında hizmet veriyor.", SettingKind.LongText),
-        new("AboutSectionTitle", AboutGroup, "Bölüm başlığı", "Proje odaklı çalışma yaklaşımı."),
+        new("AboutTitle", AboutGroup, "Başlık", "Bizi yakından tanıyın."),
+        new("AboutIntro", AboutGroup, "Giriş metni", "Karakuş Alüminyum olarak İzmir'de konut, ticari ve endüstriyel yapılar için alüminyum, cam ve kapı sistemleri alanında hizmet veriyoruz.", SettingKind.LongText),
+        new("AboutSectionTitle", AboutGroup, "Bölüm başlığı", "Proje odaklı çalışıyoruz."),
         new("AboutText", AboutGroup, "Bölüm metni", "İlk görüşmeden uygulamaya kadar süreci şeffaf biçimde yürütüyoruz. Önce ihtiyacınızı ve yapının koşullarını dinliyor, ardından yerinde ölçü alıyor ve kullanım amacınıza uygun sistem seçeneklerini teklifimizle birlikte sunuyoruz. Onaylanan detaylar doğrultusunda uygulamayı planlıyoruz.", SettingKind.LongText),
 
-        new("FooterText", FooterGroup, "Alt bilgi tanıtım metni", "İzmir'de konut, ticari ve endüstriyel yapılar için alüminyum doğrama, cam ve kapı sistemleri.", SettingKind.LongText)
+        new("FooterText", FooterGroup, "Alt bilgi tanıtım metni", "İzmir'de konut, ticari ve endüstriyel yapılar için alüminyum doğrama, cam ve kapı sistemleri alanında hizmet veriyoruz.", SettingKind.LongText)
     };
 
     public static SettingDefinition? Find(string key) => All.FirstOrDefault(x => x.Key == key);

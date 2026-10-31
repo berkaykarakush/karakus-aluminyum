@@ -8,77 +8,77 @@ namespace KarakusAluminyum.Web.Data;
 public static class ContentSeed
 {
     public const string VersionKey = "ContentRefreshVersion";
-    private const string Version = "1";
+    private const string Version = "2";
 
     private sealed record ServiceCopy(string Slug, string Short, string Intro, string[] Benefits, string SeoTitle, string SeoDescription, (string Q, string A)[] Faqs);
 
     private static readonly ServiceCopy[] Services =
     {
-        new("aluminyum-dograma", "Konut ve ticari yapılarda pencere, kapı ve geniş açıklıklar için dayanıklı, ince profilli alüminyum doğrama çözümleri.",
-            "Alüminyum doğrama; ince profil görünümü, yüksek taşıyıcılığı ve uzun ömürlü yüzey seçenekleriyle modern mimarinin en çok tercih edilen sistemlerinden biridir. Geniş cam yüzeylere imkân verdiği için hem gün ışığını hem de manzarayı öne çıkarır.\n\nIsı yalıtımlı ve yalıtımsız profil seçenekleri, kullanım amacına ve yapının bulunduğu koşullara göre değerlendirilir. Açılım tipi, cam kombinasyonu, renk ve donanım seçimlerini projenizin ihtiyaçlarına göre birlikte netleştiriyoruz.",
+        new("aluminyum-dograma", "Konut ve ticari yapılarda pencere, kapı ve geniş açıklıklar için dayanıklı, ince profilli alüminyum doğrama çözümleri sunuyoruz.",
+            "Alüminyum doğrama; ince profil görünümü, yüksek taşıyıcılığı ve uzun ömürlü yüzey seçenekleriyle modern mimarinin en çok tercih edilen sistemlerinden biridir. Geniş cam yüzeylere imkân verdiği için hem gün ışığını hem de manzarayı öne çıkarır.\n\nIsı yalıtımlı ve yalıtımsız profil seçeneklerini kullanım amacına ve yapının bulunduğu koşullara göre değerlendiriyoruz. Açılım tipi, cam kombinasyonu, renk ve donanım seçimlerini projenizin ihtiyaçlarına göre birlikte netleştiriyoruz.",
             new[] { "Isı yalıtımlı ve yalıtımsız profil seçenekleri", "Geniş açıklıklara uygun ince profil görünümü", "Elektrostatik toz boya ve anodize yüzey alternatifleri", "Açılır, vasistas, sürme ve kapı uygulamaları", "Yerinde ölçüye göre projelendirme" },
             "Alüminyum Doğrama İzmir | Karakuş Alüminyum", "İzmir'de konut ve ticari yapılar için ısı yalıtımlı alüminyum pencere, kapı ve doğrama sistemleri. Projeniz için ölçü ve teklif alın.",
-            new[] { ("Isı yalıtımlı alüminyum doğrama ne zaman tercih edilmeli?", "Isıtılan veya soğutulan yaşam ve çalışma alanlarında enerji kaybını ve yoğuşma riskini azalttığı için genellikle ısı yalıtımlı sistem önerilir. Yalıtımsız profiller ise iç mekân bölmeleri gibi yalıtım beklentisi olmayan alanlarda değerlendirilebilir."), ("Hangi renk seçenekleri uygulanabilir?", "Elektrostatik toz boya ile RAL kartelasındaki renkler, anodize kaplama ile de metalik yüzeyler uygulanabilir. Seçim yapılırken mimari dil ve yapının çevre koşulları birlikte ele alınmalıdır."), ("Teklif için hangi bilgiler gerekir?", "Proje konumu, yaklaşık ölçüler, adetler, açılım tercihleri ve varsa mimari çizimler ilk değerlendirme için yeterlidir. Kesin ölçüler uygulama öncesinde yerinde alınır.") }),
-        new("pvc-dograma", "Isı ve ses yalıtımı öncelikli konut projeleri için kolay bakımlı, ekonomik PVC kapı ve pencere çözümleri.",
-            "PVC doğrama, çok odacıklı profil yapısı sayesinde ısı ve ses yalıtımında güçlü bir seçenektir. Düzenli boya gerektirmemesi ve kolay temizlenmesi nedeniyle özellikle konut projelerinde yaygın olarak tercih edilir.\n\nProfil serisi, cam kombinasyonu, renk ve açılım tipi; açıklığın ölçüsüne, cephenin durumuna ve yalıtım beklentisine göre belirlenir. Büyük ölçülerde kanat ağırlığı ve profil dayanımı ayrıca değerlendirilir.",
+            new[] { ("Isı yalıtımlı alüminyum doğrama ne zaman tercih edilmeli?", "Isıtılan veya soğutulan yaşam ve çalışma alanlarında enerji kaybını ve yoğuşma riskini azalttığı için genellikle ısı yalıtımlı sistem öneriyoruz. Yalıtımsız profilleri ise iç mekân bölmeleri gibi yalıtım beklentisi olmayan alanlarda değerlendiriyoruz."), ("Hangi renk seçenekleri uygulanabilir?", "Elektrostatik toz boya ile RAL kartelasındaki renkleri, anodize kaplama ile de metalik yüzeyleri uygulayabiliyoruz. Seçim yaparken mimari dili ve yapının çevre koşullarını birlikte ele alıyoruz."), ("Teklif için hangi bilgiler gerekir?", "Proje konumu, yaklaşık ölçüler, adetler, açılım tercihleri ve varsa mimari çizimler ilk değerlendirme için yeterlidir. Kesin ölçüleri uygulama öncesinde yerinde alıyoruz.") }),
+        new("pvc-dograma", "Isı ve ses yalıtımı öncelikli konut projeleri için kolay bakımlı, ekonomik PVC kapı ve pencere çözümleri sunuyoruz.",
+            "PVC doğrama, çok odacıklı profil yapısı sayesinde ısı ve ses yalıtımında güçlü bir seçenektir. Düzenli boya gerektirmemesi ve kolay temizlenmesi nedeniyle özellikle konut projelerinde yaygın olarak tercih edilir.\n\nProfil serisini, cam kombinasyonunu, rengi ve açılım tipini; açıklığın ölçüsüne, cephenin durumuna ve yalıtım beklentinize göre belirliyoruz. Büyük ölçülerde kanat ağırlığını ve profil dayanımını ayrıca değerlendiriyoruz.",
             new[] { "Çok odacıklı profillerle ısı ve ses yalıtımı", "Boya gerektirmeyen, kolay temizlenen yüzey", "Beyaz ve laminasyonlu renk seçenekleri", "Açılır, açılır-devrilir ve sürme uygulamalar", "Isıcam kombinasyonlarıyla uyumlu kullanım" },
             "PVC Doğrama İzmir | Karakuş Alüminyum", "İzmir'de ısı ve ses yalıtımlı PVC kapı ve pencere çözümleri. Profil, cam ve açılım seçeneklerini projenize göre birlikte belirleyelim.",
-            new[] { ("PVC mi alüminyum mu tercih etmeliyim?", "Karar; açıklık ölçüsüne, mimari görünüme, yalıtım beklentisine ve bütçeye göre verilir. Bilgi Merkezi'ndeki karşılaştırma yazımız seçenekleri değerlendirmenize yardımcı olur."), ("Eski pencerelerim yenisiyle nasıl değiştirilir?", "Mevcut kasanın durumu, duvar bağlantıları ve ölçüler yerinde incelenir. Söküm, montaj ve yalıtım detayları bu incelemeye göre planlanır."), ("Renkli PVC seçenekleri var mı?", "Beyazın yanı sıra laminasyon kaplamalı renk ve desen seçenekleri uygulanabilir. Güncel seçenekler teklif aşamasında paylaşılır.") }),
-        new("otomatik-giyotin-camlama-sistemleri", "Teras, restoran ve geniş açıklıklar için motorlu, dikey hareketli giyotin cam sistemleri.",
-            "Otomatik giyotin cam sistemleri, cam panelleri motor yardımıyla dikey yönde hareket ettirerek açık ve kapalı alan kullanımı arasında hızlı geçiş sağlar. Kapalı konumda rüzgâr ve yağmura karşı koruma sunarken açık konumda manzarayı ve hava akışını engellemez.\n\nÖzellikle teras, kafe, restoran ve villa uygulamalarında tercih edilir. Açıklık ölçüsü, taşıyıcı yapı, elektrik altyapısı ve güvenlik donanımları uygulama öncesinde birlikte değerlendirilir.",
+            new[] { ("PVC mi alüminyum mu tercih etmeliyim?", "Kararı; açıklık ölçüsüne, mimari görünüme, yalıtım beklentinize ve bütçenize göre birlikte veriyoruz. Bilgi Merkezi'ndeki karşılaştırma yazımız seçenekleri değerlendirmenize yardımcı olur."), ("Eski pencerelerim yenisiyle nasıl değiştirilir?", "Mevcut kasanın durumunu, duvar bağlantılarını ve ölçüleri yerinde inceliyoruz. Söküm, montaj ve yalıtım detaylarını bu incelemeye göre planlıyoruz."), ("Renkli PVC seçenekleri var mı?", "Beyazın yanı sıra laminasyon kaplamalı renk ve desen seçenekleri uygulayabiliyoruz. Güncel seçenekleri teklif aşamasında paylaşıyoruz.") }),
+        new("otomatik-giyotin-camlama-sistemleri", "Teras, restoran ve geniş açıklıklar için motorlu, dikey hareketli giyotin cam sistemleri uyguluyoruz.",
+            "Otomatik giyotin cam sistemleri, cam panelleri motor yardımıyla dikey yönde hareket ettirerek açık ve kapalı alan kullanımı arasında hızlı geçiş sağlar. Kapalı konumda rüzgâr ve yağmura karşı koruma sunarken açık konumda manzarayı ve hava akışını engellemez.\n\nÖzellikle teras, kafe, restoran ve villa uygulamalarında tercih edilir. Açıklık ölçüsünü, taşıyıcı yapıyı, elektrik altyapısını ve güvenlik donanımlarını uygulama öncesinde birlikte değerlendiriyoruz.",
             new[] { "Uzaktan kumanda ile motorlu kullanım", "Tek hamlede açılıp kapanan geniş cam yüzey", "Temperli veya lamine cam seçenekleri", "Engel algılama gibi güvenlik donanımı seçenekleri", "Teras ve işletmelerde dört mevsim kullanım" },
             "Otomatik Giyotin Cam Sistemleri İzmir | Karakuş Alüminyum", "Teras, restoran ve villalar için motorlu giyotin cam sistemleri. İzmir'de keşif ve projelendirme için Karakuş Alüminyum ile görüşün.",
-            new[] { ("Giyotin cam hangi alanlarda kullanılır?", "Teras, balkon, kış bahçesi, restoran ve kafe gibi açık alanların kontrollü biçimde kapatılmak istendiği yerlerde kullanılır."), ("Elektrik kesintisinde sistem nasıl çalışır?", "Bu durum seçilen motor ve donanıma göre değişir. Kesinti senaryosu ve varsa yedek güç veya manuel kullanım seçenekleri projelendirme sırasında netleştirilir."), ("Kurulum için ön hazırlık gerekir mi?", "Taşıyıcı yapı, zemin ve elektrik altyapısı yerinde incelenir. Gerekli hazırlıklar teklif öncesinde tarafınıza bildirilir.") }),
-        new("manuel-giyotin-ruzgar-kirici-sistemleri", "Teras ve açık oturma alanlarında rüzgârı kesen, elle kolayca kullanılan dikey hareketli cam sistemleri.",
-            "Manuel giyotin rüzgâr kırıcı sistemler, motor ve elektrik altyapısı gerektirmeden dikey hareketli cam panellerle açık alanları korur. Rüzgârı keserken görüş açısını korur ve mekânın kullanım süresini uzatır.\n\nBalkon, teras ve işletme önü gibi alanlarda tercih edilir. Panel yüksekliği, cam kalınlığı ve zemin bağlantısı; alanın ölçülerine ve maruz kaldığı rüzgâr koşullarına göre belirlenir.",
+            new[] { ("Giyotin cam hangi alanlarda kullanılır?", "Teras, balkon, kış bahçesi, restoran ve kafe gibi açık alanların kontrollü biçimde kapatılmak istendiği yerlerde kullanılır."), ("Elektrik kesintisinde sistem nasıl çalışır?", "Bu durum seçilen motor ve donanıma göre değişir. Kesinti senaryosunu ve varsa yedek güç veya manuel kullanım seçeneklerini projelendirme sırasında netleştiriyoruz."), ("Kurulum için ön hazırlık gerekir mi?", "Taşıyıcı yapıyı, zemini ve elektrik altyapısını yerinde inceliyoruz. Gerekli hazırlıkları teklif öncesinde tarafınıza bildiriyoruz.") }),
+        new("manuel-giyotin-ruzgar-kirici-sistemleri", "Teras ve açık oturma alanlarında rüzgârı kesen, elle kolayca kullanılan dikey hareketli cam sistemleri uyguluyoruz.",
+            "Manuel giyotin rüzgâr kırıcı sistemler, motor ve elektrik altyapısı gerektirmeden dikey hareketli cam panellerle açık alanları korur. Rüzgârı keserken görüş açısını korur ve mekânın kullanım süresini uzatır.\n\nBalkon, teras ve işletme önü gibi alanlarda tercih edilir. Panel yüksekliğini, cam kalınlığını ve zemin bağlantısını; alanın ölçülerine ve maruz kaldığı rüzgâr koşullarına göre belirliyoruz.",
             new[] { "Motor ve elektrik gerektirmeyen kullanım", "Manzarayı kapatmayan cam yüzey", "İhtiyaca göre yükseklik ayarı", "Teras ve işletme önlerine uygun çözüm", "Temperli cam seçenekleri" },
             "Manuel Giyotin ve Rüzgâr Kırıcı Sistemler | Karakuş Alüminyum", "Teras ve açık oturma alanları için manuel giyotin cam ve rüzgâr kırıcı sistemler. İzmir'de ölçü ve teklif için bize ulaşın.",
-            new[] { ("Manuel sistem ile otomatik sistem arasındaki fark nedir?", "Manuel sistemde paneller elle hareket ettirilir ve elektrik altyapısı gerekmez. Otomatik sistemde ise hareket motorla sağlanır, daha büyük açıklıklarda kullanım kolaylığı sunar."), ("Rüzgârlı bölgelerde kullanılabilir mi?", "Evet, ancak cam kalınlığı, panel ölçüsü ve bağlantı detayları bölgenin rüzgâr koşullarına göre seçilmelidir. Bu nedenle uygulama öncesinde yerinde değerlendirme yapılır."), ("Balkonlarda uygulanabilir mi?", "Balkonun korkuluğu, taşıyıcı yapısı ve yönetim planı koşullarına bağlı olarak uygulanabilir.") }),
-        new("katlanir-cam-sistemleri", "Balkon, teras ve işletmelerde açıklığı tamamen serbest bırakan katlanır cam sistemleri.",
-            "Katlanır cam sistemlerinde paneller birbirine paralel biçimde katlanarak açıklığın bir veya iki yanında toplanır. Böylece balkon ya da teras, açıldığında neredeyse tamamen serbest kalır; kapatıldığında ise rüzgâr, yağmur ve tozdan korunur.\n\nCam balkon uygulamalarının en yaygın çözümlerinden biridir. Isıcamlı veya tek camlı seçenekler, eşik tipi ve panel sayısı; kullanım amacına ve açıklığın ölçüsüne göre belirlenir.",
+            new[] { ("Manuel sistem ile otomatik sistem arasındaki fark nedir?", "Manuel sistemde paneller elle hareket ettirilir ve elektrik altyapısı gerekmez. Otomatik sistemde ise hareket motorla sağlanır, daha büyük açıklıklarda kullanım kolaylığı sunar."), ("Rüzgârlı bölgelerde kullanılabilir mi?", "Evet, ancak cam kalınlığı, panel ölçüsü ve bağlantı detayları bölgenin rüzgâr koşullarına göre seçilmelidir. Bu nedenle uygulama öncesinde yerinde değerlendirme yapıyoruz."), ("Balkonlarda uygulanabilir mi?", "Balkonun korkuluğu, taşıyıcı yapısı ve yönetim planı koşullarına bağlı olarak uygulanabilir.") }),
+        new("katlanir-cam-sistemleri", "Balkon, teras ve işletmelerde açıklığı tamamen serbest bırakan katlanır cam sistemleri uyguluyoruz.",
+            "Katlanır cam sistemlerinde paneller birbirine paralel biçimde katlanarak açıklığın bir veya iki yanında toplanır. Böylece balkon ya da teras, açıldığında neredeyse tamamen serbest kalır; kapatıldığında ise rüzgâr, yağmur ve tozdan korunur.\n\nCam balkon uygulamalarının en yaygın çözümlerinden biridir. Isıcamlı veya tek camlı seçenekleri, eşik tipini ve panel sayısını; kullanım amacına ve açıklığın ölçüsüne göre belirliyoruz.",
             new[] { "Tamamen açılabilen geniş yüzey", "Tek cam ve ısıcam seçenekleri", "Düşük eşikli uygulama alternatifleri", "Balkon, teras ve işletmelere uygun kullanım", "Temperli güvenlik camı" },
             "Katlanır Cam ve Cam Balkon Sistemleri İzmir | Karakuş Alüminyum", "Balkon ve teraslar için katlanır cam sistemleri. Isıcamlı ve tek camlı seçeneklerle İzmir'de cam balkon için teklif alın.",
-            new[] { ("Cam balkon için yönetim izni gerekir mi?", "Dış görünümü etkileyen uygulamalar için apartman veya site yönetim planı ile kat malikleri kararlarının kontrol edilmesi gerekir. Gerektiğinde hukuki görüş almanızı öneririz."), ("Tek cam mı ısıcam mı seçmeliyim?", "Alan yalnızca rüzgâr ve yağmurdan korunacaksa tek cam yeterli olabilir. Yaşam alanının parçası gibi kullanılacaksa ısıcam daha uygun bir seçenektir."), ("Katlanır ile sürme sistem arasında nasıl seçim yapılır?", "Tam açıklık isteniyorsa katlanır, ray üzerinde pratik kullanım ve panellerin dışa taşmaması öncelikliyse sürme sistem değerlendirilir.") }),
-        new("yana-kayar-surme-cam-sistemleri", "Geniş açıklıklarda iç ve dış mekânı birleştiren, ray üzerinde yatay hareket eden sürme cam sistemleri.",
-            "Yana kayar sürme sistemler, cam panellerin ray üzerinde yatay hareket etmesiyle çalışır. Paneller açılırken mekâna taşmadığı için alan kaybı oluşturmaz; bu özelliğiyle salon-teras geçişleri, kış bahçeleri ve geniş cepheler için uygundur.\n\nPanel sayısı ve ray adedi, ihtiyaç duyulan açıklık genişliğini belirler. Isı yalıtımlı profil, eşik detayı ve kilit donanımı; yapının kullanım amacına göre birlikte seçilir.",
+            new[] { ("Cam balkon için yönetim izni gerekir mi?", "Dış görünümü etkileyen uygulamalar için apartman veya site yönetim planı ile kat malikleri kararlarının kontrol edilmesi gerekir. Gerektiğinde hukuki görüş almanızı öneririz."), ("Tek cam mı ısıcam mı seçmeliyim?", "Alan yalnızca rüzgâr ve yağmurdan korunacaksa tek cam yeterli olabilir. Yaşam alanının parçası gibi kullanılacaksa ısıcam daha uygun bir seçenektir."), ("Katlanır ile sürme sistem arasında nasıl seçim yapılır?", "Tam açıklık isteniyorsa katlanır, ray üzerinde pratik kullanım ve panellerin dışa taşmaması öncelikliyse sürme sistemi öneriyoruz.") }),
+        new("yana-kayar-surme-cam-sistemleri", "Geniş açıklıklarda iç ve dış mekânı birleştiren, ray üzerinde yatay hareket eden sürme cam sistemleri uyguluyoruz.",
+            "Yana kayar sürme sistemler, cam panellerin ray üzerinde yatay hareket etmesiyle çalışır. Paneller açılırken mekâna taşmadığı için alan kaybı oluşturmaz; bu özelliğiyle salon-teras geçişleri, kış bahçeleri ve geniş cepheler için uygundur.\n\nPanel sayısı ve ray adedi, ihtiyaç duyulan açıklık genişliğini belirler. Isı yalıtımlı profili, eşik detayını ve kilit donanımını yapının kullanım amacına göre birlikte seçiyoruz.",
             new[] { "Açılırken alan kaplamayan kullanım", "Geniş cam yüzey ve bol gün ışığı", "İki veya daha fazla raylı seçenekler", "Isı yalıtımlı profil alternatifleri", "İç ve dış mekân arasında akıcı geçiş" },
             "Sürme Cam Sistemleri İzmir | Karakuş Alüminyum", "Geniş açıklıklar, salon-teras geçişleri ve kış bahçeleri için yana kayar sürme cam sistemleri. İzmir'de projelendirme ve teklif.",
-            new[] { ("Sürme sistem ne kadar açıklık sağlar?", "Açıklık; panel ve ray sayısına bağlıdır. Örneğin iki raylı iki panelli sistemde paneller üst üste geldiği için genişliğin yaklaşık yarısı açılır."), ("Eşik yüksekliği düşürülebilir mi?", "Sistem ve yalıtım beklentisine bağlı olarak düşük eşikli çözümler değerlendirilebilir. Su tahliyesi ve zemin detayı bu kararda belirleyicidir."), ("Sürme sistemlerde ısı yalıtımı nasıl sağlanır?", "Isı bariyerli profiller, ısıcam ve uygun fırça/conta detaylarının birlikte seçilmesiyle sağlanır.") }),
-        new("otomatik-tente", "Teras, balkon ve işletme önleri için motorlu kumaş tente ile kontrollü gölgelendirme.",
-            "Otomatik tenteler, motorlu mekanizmayla açılıp kapanarak dış mekânda ihtiyaç duyulan anda gölge sağlar. Teras, balkon, kafe ve restoran gibi alanların yaz aylarındaki kullanım konforunu artırır.\n\nAçılım ölçüsü, kumaş tipi ve duvar bağlantısı alanın özelliklerine göre belirlenir. Rüzgâra açık cephelerde sistemin kullanım koşulları ve varsa sensör seçenekleri ayrıca değerlendirilir.",
+            new[] { ("Sürme sistem ne kadar açıklık sağlar?", "Açıklık; panel ve ray sayısına bağlıdır. Örneğin iki raylı iki panelli sistemde paneller üst üste geldiği için genişliğin yaklaşık yarısı açılır."), ("Eşik yüksekliği düşürülebilir mi?", "Sistem ve yalıtım beklentisine bağlı olarak düşük eşikli çözümleri değerlendirebiliyoruz. Su tahliyesi ve zemin detayı bu kararda belirleyicidir."), ("Sürme sistemlerde ısı yalıtımı nasıl sağlanır?", "Isı bariyerli profilleri, ısıcamı ve uygun fırça/conta detaylarını birlikte seçerek sağlıyoruz.") }),
+        new("otomatik-tente", "Teras, balkon ve işletme önleri için motorlu kumaş tentelerle kontrollü gölgelendirme sağlıyoruz.",
+            "Otomatik tenteler, motorlu mekanizmayla açılıp kapanarak dış mekânda ihtiyaç duyulan anda gölge sağlar. Teras, balkon, kafe ve restoran gibi alanların yaz aylarındaki kullanım konforunu artırır.\n\nAçılım ölçüsünü, kumaş tipini ve duvar bağlantısını alanın özelliklerine göre belirliyoruz. Rüzgâra açık cephelerde sistemin kullanım koşullarını ve varsa sensör seçeneklerini ayrıca değerlendiriyoruz.",
             new[] { "Uzaktan kumanda ile motorlu kullanım", "Teras ve işletmeler için geniş gölge alanı", "Farklı kumaş ve renk seçenekleri", "Kullanılmadığında toplanabilen yapı", "Cepheye uygun bağlantı detayları" },
             "Otomatik Tente Sistemleri İzmir | Karakuş Alüminyum", "Teras, balkon, kafe ve restoranlar için motorlu otomatik tente sistemleri. İzmir'de ölçü ve teklif için bize ulaşın.",
-            new[] { ("Tente rüzgârda açık bırakılabilir mi?", "Kumaş tenteler rüzgârlı havalarda toplanmalıdır. Rüzgâra açık cephelerde sensör seçenekleri değerlendirilebilir."), ("Kumaş seçimi neye göre yapılır?", "Güneş alma durumu, renk tercihi ve kullanım yoğunluğu birlikte değerlendirilir."), ("Her cepheye montaj yapılabilir mi?", "Montaj; duvarın taşıyıcılığına ve açılım ölçüsüne bağlıdır. Bu nedenle yerinde inceleme yapılır.") }),
-        new("fotoselli-doner-kapi", "Mağaza, ofis, otel ve sağlık yapılarının girişleri için fotoselli ve döner kapı sistemleri.",
-            "Fotoselli ve döner kapılar, yoğun geçiş olan girişlerde konforlu kullanım sağlar ve iç mekân ile dış ortam arasındaki hava geçişini azaltmaya yardımcı olur. Sensörler sayesinde temas gerektirmeden çalışır.\n\nKapı tipi; geçiş yoğunluğuna, giriş genişliğine ve yapının kullanım amacına göre seçilir. Engelli erişimi, acil durum kullanımı ve güvenlik sensörleri projelendirmede birlikte ele alınır.",
+            new[] { ("Tente rüzgârda açık bırakılabilir mi?", "Kumaş tenteler rüzgârlı havalarda toplanmalıdır. Rüzgâra açık cephelerde sensör seçeneklerini de değerlendiriyoruz."), ("Kumaş seçimi neye göre yapılır?", "Güneş alma durumunu, renk tercihinizi ve kullanım yoğunluğunu birlikte değerlendiriyoruz."), ("Her cepheye montaj yapılabilir mi?", "Montaj; duvarın taşıyıcılığına ve açılım ölçüsüne bağlıdır. Bu nedenle yerinde inceleme yapıyoruz.") }),
+        new("fotoselli-doner-kapi", "Mağaza, ofis, otel ve sağlık yapılarının girişleri için fotoselli ve döner kapı sistemleri sunuyoruz.",
+            "Fotoselli ve döner kapılar, yoğun geçiş olan girişlerde konforlu kullanım sağlar ve iç mekân ile dış ortam arasındaki hava geçişini azaltmaya yardımcı olur. Sensörler sayesinde temas gerektirmeden çalışır.\n\nKapı tipini geçiş yoğunluğuna, giriş genişliğine ve yapının kullanım amacına göre seçiyoruz. Engelli erişimini, acil durum kullanımını ve güvenlik sensörlerini projelendirmede birlikte ele alıyoruz.",
             new[] { "Temassız ve konforlu geçiş", "Yoğun kullanımlı girişlere uygun yapı", "Tek ve çift kanatlı sürme seçenekleri", "Güvenlik sensörleri", "Bakım ve kullanım planlaması" },
             "Fotoselli ve Döner Kapı Sistemleri İzmir | Karakuş Alüminyum", "Mağaza, ofis, otel ve hastane girişleri için fotoselli ve döner kapı sistemleri. İzmir'de keşif ve teklif için bize ulaşın.",
-            new[] { ("Fotoselli kapı mı döner kapı mı seçilmeli?", "Sürme fotoselli kapılar birçok giriş için pratik bir çözümdür. Döner kapılar ise daha geniş alan ister ve hava geçişinin sınırlanmasının önemli olduğu girişlerde değerlendirilir."), ("Elektrik kesintisinde ne olur?", "Bu davranış seçilen donanıma göre değişir. Yedek güç ve acil durum kullanımı projelendirme sırasında planlanır."), ("Düzenli bakım gerekir mi?", "Evet. Otomatik kapıların güvenli çalışması için sensör ve mekanizmaların periyodik olarak kontrol edilmesi gerekir.") }),
-        new("sarmal-kepenk-ve-panjur-sistemleri", "Mağaza, garaj ve pencere açıklıkları için güvenlik, karartma ve yalıtım sağlayan sarmal kepenk ve panjur sistemleri.",
-            "Sarmal kepenk ve panjur sistemleri, kapı ve pencere açıklıklarını kutu içine sarılan lameller yardımıyla kapatır. Panjurlar güneş kontrolü, karartma ve ek konfor sağlarken kepenkler özellikle işyeri ve garaj girişlerinde güvenlik amacıyla tercih edilir.\n\nKullanım motorlu veya manuel olabilir. Lamel tipi, kutu ölçüsü ve yerleşim; açıklığın boyutuna ve kullanım sıklığına göre belirlenir.",
+            new[] { ("Fotoselli kapı mı döner kapı mı seçilmeli?", "Sürme fotoselli kapılar birçok giriş için pratik bir çözümdür. Döner kapılar ise daha geniş alan ister ve hava geçişinin sınırlanmasının önemli olduğu girişlerde değerlendirilir."), ("Elektrik kesintisinde ne olur?", "Bu davranış seçilen donanıma göre değişir. Yedek güç ve acil durum kullanımını projelendirme sırasında planlıyoruz."), ("Düzenli bakım gerekir mi?", "Evet. Otomatik kapıların güvenli çalışması için sensör ve mekanizmaların periyodik olarak kontrol edilmesi gerekir.") }),
+        new("sarmal-kepenk-ve-panjur-sistemleri", "Mağaza, garaj ve pencere açıklıkları için güvenlik, karartma ve yalıtım sağlayan sarmal kepenk ve panjur sistemleri sunuyoruz.",
+            "Sarmal kepenk ve panjur sistemleri, kapı ve pencere açıklıklarını kutu içine sarılan lameller yardımıyla kapatır. Panjurlar güneş kontrolü, karartma ve ek konfor sağlarken kepenkler özellikle işyeri ve garaj girişlerinde güvenlik amacıyla tercih edilir.\n\nKullanım motorlu veya manuel olabilir. Lamel tipini, kutu ölçüsünü ve yerleşimi; açıklığın boyutuna ve kullanım sıklığına göre belirliyoruz.",
             new[] { "Motorlu ve manuel kullanım seçenekleri", "Güneş kontrolü ve karartma", "İşyeri ve garaj girişlerinde güvenlik", "Doğrama ile uyumlu renk seçenekleri", "Açıklığa uygun lamel ve kutu seçimi" },
             "Sarmal Kepenk ve Panjur Sistemleri İzmir | Karakuş Alüminyum", "Mağaza, garaj ve pencereler için motorlu veya manuel sarmal kepenk ve panjur sistemleri. İzmir'de ölçü ve teklif alın.",
-            new[] { ("Panjur ile kepenk arasındaki fark nedir?", "Panjur daha çok pencerelerde güneş kontrolü ve konfor için, kepenk ise işyeri ve garaj girişlerinde güvenlik için kullanılır."), ("Mevcut pencereye panjur eklenebilir mi?", "Çoğu durumda dış cepheye veya pervaz içine uygulanabilir. Kutu yerleşimi için yerinde inceleme gerekir."), ("Motorlu sisteme sonradan geçilebilir mi?", "Sistemin yapısına ve ölçüsüne bağlıdır. Uygun olduğunda motorlu kullanıma dönüştürülebilir.") }),
-        new("ofis-bolme-sistemleri", "Açık ofisleri işlevsel alanlara ayıran, ferah görünümlü cam ve panel bölme sistemleri.",
-            "Ofis bölme sistemleri, mekânı kalıcı inşaat işine gerek kalmadan toplantı odaları, yönetici ofisleri ve çalışma alanlarına ayırır. Cam yüzeyler gün ışığının mekâna yayılmasını sağlarken ferah bir görünüm oluşturur.\n\nCam ve dolu panel oranı, kapı tipi ve ses beklentisi kullanım senaryosuna göre belirlenir. Tavan, zemin ve elektrik detayları uygulama öncesinde birlikte değerlendirilir.",
+            new[] { ("Panjur ile kepenk arasındaki fark nedir?", "Panjur daha çok pencerelerde güneş kontrolü ve konfor için, kepenk ise işyeri ve garaj girişlerinde güvenlik için kullanılır."), ("Mevcut pencereye panjur eklenebilir mi?", "Çoğu durumda dış cepheye veya pervaz içine uygulanabilir. Kutu yerleşimini yerinde inceleyerek belirliyoruz."), ("Motorlu sisteme sonradan geçilebilir mi?", "Sistemin yapısına ve ölçüsüne bağlıdır. Uygun olduğunda motorlu kullanıma dönüştürülebilir.") }),
+        new("ofis-bolme-sistemleri", "Açık ofisleri işlevsel alanlara ayıran, ferah görünümlü cam ve panel bölme sistemleri uyguluyoruz.",
+            "Ofis bölme sistemleri, mekânı kalıcı inşaat işine gerek kalmadan toplantı odaları, yönetici ofisleri ve çalışma alanlarına ayırır. Cam yüzeyler gün ışığının mekâna yayılmasını sağlarken ferah bir görünüm oluşturur.\n\nCam ve dolu panel oranını, kapı tipini ve ses beklentisini kullanım senaryosuna göre belirliyoruz. Tavan, zemin ve elektrik detaylarını uygulama öncesinde birlikte değerlendiriyoruz.",
             new[] { "Gün ışığını koruyan cam yüzeyler", "Cam ve dolu panel kombinasyonları", "Kurumsal kimliğe uygun görünüm", "Toplantı odası ve yönetici ofisi çözümleri", "Mekân ihtiyacına göre planlama" },
             "Ofis Bölme Sistemleri İzmir | Karakuş Alüminyum", "Toplantı odası, yönetici ofisi ve açık ofisler için cam ve panel bölme sistemleri. İzmir'de ölçü ve teklif için bize ulaşın.",
-            new[] { ("Cam bölmeler ses yalıtımı sağlar mı?", "Ses performansı; cam tipi, kalınlık ve birleşim detaylarına bağlıdır. Beklentiniz projelendirme aşamasında dikkate alınır."), ("Yasal bir izin gerekir mi?", "Yapının kullanım durumuna göre bina yönetimi veya yangın kuralları gibi konuların kontrol edilmesi gerekebilir."), ("Var olan ofiste uygulanabilir mi?", "Evet. Tavan, zemin ve mevcut tesisat durumu incelenerek çalışma düzeninize uygun planlanır.") }),
-        new("endustriyel-ve-garaj-kapi-sistemleri", "Fabrika, depo ve konutlar için seksiyonel, sarmal ve hızlı açılan endüstriyel ve garaj kapıları.",
-            "Endüstriyel kapılar, sevkiyat ve üretim alanlarında güvenli ve kontrollü geçiş sağlar. Garaj kapıları ise konut ve site otoparklarında konforlu kullanım sunar. Seksiyonel, sarmal ve hızlı açılan tipler; kullanım yoğunluğuna ve açıklık ölçüsüne göre seçilir.\n\nAçıklığın geometrisi, tavan yüksekliği, otomasyon ve güvenlik donanımları uygulama öncesinde değerlendirilir.",
+            new[] { ("Cam bölmeler ses yalıtımı sağlar mı?", "Ses performansı; cam tipi, kalınlık ve birleşim detaylarına bağlıdır. Beklentinizi projelendirme aşamasında dikkate alıyoruz."), ("Yasal bir izin gerekir mi?", "Yapının kullanım durumuna göre bina yönetimi veya yangın kuralları gibi konuların kontrol edilmesi gerekebilir."), ("Var olan ofiste uygulanabilir mi?", "Evet. Tavan, zemin ve mevcut tesisat durumunu inceleyerek çalışma düzeninize uygun planlıyoruz.") }),
+        new("endustriyel-ve-garaj-kapi-sistemleri", "Fabrika, depo ve konutlar için seksiyonel, sarmal ve hızlı açılan endüstriyel ve garaj kapıları sunuyoruz.",
+            "Endüstriyel kapılar, sevkiyat ve üretim alanlarında güvenli ve kontrollü geçiş sağlar. Garaj kapıları ise konut ve site otoparklarında konforlu kullanım sunar. Seksiyonel, sarmal ve hızlı açılan tipleri kullanım yoğunluğuna ve açıklık ölçüsüne göre seçiyoruz.\n\nAçıklığın geometrisini, tavan yüksekliğini, otomasyon ve güvenlik donanımlarını uygulama öncesinde değerlendiriyoruz.",
             new[] { "Seksiyonel ve sarmal kapı seçenekleri", "Motorlu ve uzaktan kumandalı kullanım", "Yoğun kullanıma uygun çözümler", "Güvenlik donanımı seçenekleri", "Açıklığa göre projelendirme" },
             "Endüstriyel ve Garaj Kapıları İzmir | Karakuş Alüminyum", "Fabrika, depo, site ve konutlar için seksiyonel ve sarmal endüstriyel kapı ile garaj kapısı sistemleri. İzmir'de teklif alın.",
-            new[] { ("Seksiyonel kapı için ne kadar tavan payı gerekir?", "Gereken pay kapının ölçüsüne ve ray tipine bağlıdır. Yerinde ölçüde lento ve yan boşluklar kontrol edilir."), ("Mevcut garaj kapısı otomatiğe çevrilebilir mi?", "Kapının yapısı ve durumu uygunsa motor eklenebilir. Bu değerlendirme yerinde yapılır."), ("Kapıda hangi güvenlik önlemleri olmalı?", "Engel algılama, acil durum kullanımı ve düzenli bakım temel konulardır. Kapsam kapının tipine göre belirlenir.") }),
-        new("rampa-ve-koruk-sistemleri", "Yükleme alanlarında araç ile bina arasında güvenli ve verimli geçiş sağlayan rampa ve körük sistemleri.",
-            "Yükleme rampaları, araç kasası ile depo zemini arasındaki kot farkını gidererek forklift ve transpalet geçişini kolaylaştırır. Körükler ise yükleme sırasında araç ile bina arasını kapatarak iç ortamı dış etkilerden korumaya yardımcı olur.\n\nAraç tipleri, yük kapasitesi, kullanım sıklığı ve yükleme alanının yerleşimi değerlendirilerek uygun sistem belirlenir.",
+            new[] { ("Seksiyonel kapı için ne kadar tavan payı gerekir?", "Gereken pay kapının ölçüsüne ve ray tipine bağlıdır. Yerinde ölçüde lento ve yan boşlukları kontrol ediyoruz."), ("Mevcut garaj kapısı otomatiğe çevrilebilir mi?", "Kapının yapısı ve durumu uygunsa motor eklenebilir. Bu değerlendirmeyi yerinde yapıyoruz."), ("Kapıda hangi güvenlik önlemleri olmalı?", "Engel algılama, acil durum kullanımı ve düzenli bakım temel konulardır. Kapsamı kapının tipine göre belirliyoruz.") }),
+        new("rampa-ve-koruk-sistemleri", "Yükleme alanlarında araç ile bina arasında güvenli ve verimli geçiş sağlayan rampa ve körük sistemleri sunuyoruz.",
+            "Yükleme rampaları, araç kasası ile depo zemini arasındaki kot farkını gidererek forklift ve transpalet geçişini kolaylaştırır. Körükler ise yükleme sırasında araç ile bina arasını kapatarak iç ortamı dış etkilerden korumaya yardımcı olur.\n\nAraç tiplerini, yük kapasitesini, kullanım sıklığını ve yükleme alanının yerleşimini değerlendirerek uygun sistemi belirliyoruz.",
             new[] { "Araç ile depo arasında kot farkı çözümü", "Forklift ve transpalet geçişine uygunluk", "Dış etkilere karşı körük ile koruma", "Yükleme kapılarıyla bütünleşik planlama", "Kapasiteye göre seçim" },
             "Yükleme Rampası ve Körük Sistemleri İzmir | Karakuş Alüminyum", "Depo ve fabrikalar için yükleme rampası ve körük sistemleri. Araç tipi ve kapasiteye uygun çözüm için İzmir'de bizimle görüşün.",
-            new[] { ("Rampa seçiminde hangi bilgiler gerekir?", "Yanaşan araç tipleri, kasa yükseklikleri, yük kapasitesi ve günlük kullanım sıklığı temel bilgilerdir."), ("Körük her rampada gerekli midir?", "Zorunlu değildir, ancak iç ortam sıcaklığının veya temizliğin önemli olduğu tesislerde faydalıdır."), ("Mevcut tesise sonradan uygulanabilir mi?", "Zemin ve yerleşim durumuna bağlıdır. Gerekli hazırlıklar yerinde incelemeyle belirlenir.") }),
-        new("bahce-kapisi-ve-bariyer-sistemleri", "Site, işletme ve villa girişlerinde araç ve yaya geçişini kontrol eden bahçe kapısı ve bariyer sistemleri.",
-            "Bahçe kapıları ve bariyerler, giriş çıkışların kontrollü ve düzenli olmasını sağlar. Yana kayar ve kanatlı kapılar site ve villa girişlerinde, bariyerler ise otopark ve işletme girişlerinde yaygın olarak kullanılır.\n\nGeçiş yoğunluğu, giriş genişliği, zemin durumu ve erişim kontrol yöntemi (kumanda, kart veya plaka tanıma gibi) birlikte değerlendirilir.",
+            new[] { ("Rampa seçiminde hangi bilgiler gerekir?", "Yanaşan araç tipleri, kasa yükseklikleri, yük kapasitesi ve günlük kullanım sıklığı temel bilgilerdir."), ("Körük her rampada gerekli midir?", "Zorunlu değildir, ancak iç ortam sıcaklığının veya temizliğin önemli olduğu tesislerde faydalıdır."), ("Mevcut tesise sonradan uygulanabilir mi?", "Zemin ve yerleşim durumuna bağlıdır. Gerekli hazırlıkları yerinde inceleyerek belirliyoruz.") }),
+        new("bahce-kapisi-ve-bariyer-sistemleri", "Site, işletme ve villa girişlerinde araç ve yaya geçişini kontrol eden bahçe kapısı ve bariyer sistemleri sunuyoruz.",
+            "Bahçe kapıları ve bariyerler, giriş çıkışların kontrollü ve düzenli olmasını sağlar. Yana kayar ve kanatlı kapılar site ve villa girişlerinde, bariyerler ise otopark ve işletme girişlerinde yaygın olarak kullanılır.\n\nGeçiş yoğunluğunu, giriş genişliğini, zemin durumunu ve erişim kontrol yöntemini (kumanda, kart veya plaka tanıma gibi) birlikte değerlendiriyoruz.",
             new[] { "Yana kayar ve kanatlı kapı seçenekleri", "Otopark ve site girişleri için bariyer", "Uzaktan kumanda ve geçiş kontrolü entegrasyonu", "Güvenlik fotoselleri", "Giriş düzenine göre planlama" },
             "Bahçe Kapısı ve Bariyer Sistemleri İzmir | Karakuş Alüminyum", "Site, işletme ve villa girişleri için otomatik bahçe kapısı ve bariyer sistemleri. İzmir'de keşif ve teklif için bize ulaşın.",
-            new[] { ("Yana kayar mı kanatlı kapı mı seçilmeli?", "Yana kayar kapı duvar boyunca boş alan ister, kanatlı kapı ise açılım alanı gerektirir. Girişin yerleşimi bu seçimde belirleyicidir."), ("Geçiş kontrol sistemine bağlanabilir mi?", "Çoğu sistem kart, kumanda veya benzeri geçiş kontrol yöntemleriyle birlikte kullanılabilir."), ("Elektrik kesintisinde kapı nasıl açılır?", "Motorun tipine göre manuel açma düzeneği veya yedek güç seçeneği planlanır.") }),
+            new[] { ("Yana kayar mı kanatlı kapı mı seçilmeli?", "Yana kayar kapı duvar boyunca boş alan ister, kanatlı kapı ise açılım alanı gerektirir. Girişin yerleşimi bu seçimde belirleyicidir."), ("Geçiş kontrol sistemine bağlanabilir mi?", "Çoğu sistem kart, kumanda veya benzeri geçiş kontrol yöntemleriyle birlikte kullanılabilir."), ("Elektrik kesintisinde kapı nasıl açılır?", "Motorun tipine göre manuel açma düzeneği veya yedek güç seçeneği planlıyoruz.") }),
     };
 
     private static readonly string[] OldBenefits = { "Projeye göre değerlendirme", "Kullanım ihtiyacına uygun sistem seçimi", "Uygulama öncesi ölçü ve detayların değerlendirilmesi" };
@@ -104,6 +104,9 @@ public static class ContentSeed
         ["FooterText"] = "Mimari projeler için estetik, işlevsel ve uzun ömürlü alüminyum çözümleri.",
         ["SiteDescription"] = "İzmir'de alüminyum doğrama, sürme sistemler, kapı ve pencere, giydirme cephe, cam balkon ve otomatik kapı çözümleri sunan mimari alüminyum firması."
     };
+
+    public const string HomeFaqQuestion = "Alüminyum doğrama nasıl seçilir?";
+    public const string HomeFaqAnswer = "Açıklık ölçüsünü, kullanım amacını, mimari tasarımı, yalıtım beklentisini ve donanım seçeneklerini birlikte değerlendiriyoruz. Bilgi Merkezi yazılarımız seçenekleri karşılaştırmanıza yardımcı olur.";
 
     private sealed record Article(string Slug, string Title, string Summary, string Image, string SeoDescription, string Content);
 
@@ -143,7 +146,7 @@ Her iki malzeme de boya gerektirmez ve doğru kullanımda uzun ömürlüdür. Ru
 
 ## Maliyeti doğru karşılaştırmak
 
-Birim fiyat tek başına yanıltıcı olabilir. İki teklifi karşılaştırırken şu kalemlerin aynı kapsamda olup olmadığına bakın:
+Birim fiyat tek başına yanıltıcı olabilir. İki teklifi karşılaştırırken şu kalemlerin aynı kapsamda olup olmadığına bakmanızı öneriyoruz:
 
 - Profil serisi ve varsa ısı bariyeri genişliği,
 - Cam kombinasyonu (Low-E, argon, temperli),
@@ -151,21 +154,21 @@ Birim fiyat tek başına yanıltıcı olabilir. İki teklifi karşılaştırırk
 - Söküm, montaj, dış ve iç bitiş işleri,
 - Nakliye ve iskele gibi şantiye giderleri.
 
-Yalnızca malzeme fiyatına değil, kullanım süresi boyunca enerji tüketimine ve bakım ihtiyacına da bakmak daha sağlıklı bir karar sağlar.
+Yalnızca malzeme fiyatına değil, kullanım süresi boyunca enerji tüketimine ve bakım ihtiyacına da bakmanın daha sağlıklı bir karar sağlayacağını düşünüyoruz.
 
 ## Tadilatta dikkat edilecekler
 
-Mevcut pencere değişiminde söküm sırasında duvar kenarlarının zarar görmesi, iç sıva ve dış mantolama detayları göz önünde bulundurulmalıdır. Yeni kasanın mevcut açıklığa oturması için ölçü, söküm yapılacak duvar durumuna göre alınmalıdır. Mantolama yapılacak bir binada pencerenin konumu ve dış denizlik detayı yalıtım işiyle birlikte planlanmalıdır; aksi durumda birleşim noktaları ısı ve su açısından zayıf kalabilir.
+Mevcut pencere değişiminde söküm sırasında duvar kenarlarının zarar görmesi, iç sıva ve dış mantolama detayları göz önünde bulundurulmalıdır. Yeni kasanın mevcut açıklığa oturması için ölçü, söküm yapılacak duvar durumuna göre alınmalıdır. Mantolama yapılacak bir binada pencerenin konumunu ve dış denizlik detayını yalıtım işiyle birlikte planlamanızı öneriyoruz; aksi durumda birleşim noktaları ısı ve su açısından zayıf kalabilir.
 
-Yeni yapılarda ise doğrama seçimi mümkün olduğunca erken aşamada yapılmalıdır. Açıklık ölçüleri, lento kotları ve panjur kutusu gibi detaylar inşaat sürecine doğrudan etki eder.
+Yeni yapılarda ise doğrama seçiminin mümkün olduğunca erken aşamada yapılmasını öneriyoruz. Açıklık ölçüleri, lento kotları ve panjur kutusu gibi detaylar inşaat sürecine doğrudan etki eder.
 
 ## Sonuç
 
-Tek bir "en iyi" malzeme yoktur. Açıklık ölçüleri, mimari dil, yalıtım beklentisi ve bütçe birlikte değerlendirildiğinde doğru seçim netleşir. [Alüminyum doğrama](/urunler/aluminyum-dograma) ve [PVC doğrama](/urunler/pvc-dograma) sayfalarımızdan seçenekleri inceleyebilir, projeniz için [bizimle iletişime geçebilirsiniz](/iletisim).
+Bize göre tek bir "en iyi" malzeme yoktur. Açıklık ölçüleri, mimari dil, yalıtım beklentisi ve bütçe birlikte değerlendirildiğinde doğru seçim netleşir. [Alüminyum doğrama](/urunler/aluminyum-dograma) ve [PVC doğrama](/urunler/pvc-dograma) sayfalarımızdan seçenekleri inceleyebilir, projeniz için [bizimle iletişime geçebilirsiniz](/iletisim).
 """),
         new("isi-yalitimli-aluminyum-dograma-nedir", "Isı Yalıtımlı Alüminyum Doğrama Nedir, Nasıl Çalışır?", "Isı bariyeri, poliamid çubuk ve Uf değeri gibi kavramları sade bir dille açıklıyor, doğru seçim için kontrol listesi sunuyoruz.", "/images/kapi-ve-pencere-sistemleri.png", "Isı yalıtımlı alüminyum doğramanın çalışma prensibi, ısı bariyeri, Uf ve Uw değerleri ve yoğuşmayı azaltmak için dikkat edilmesi gerekenler.",
 """
-Alüminyum dayanıklı ve şekil verilebilir bir malzemedir, ancak ısıyı iyi iletir. Yalıtımsız bir profilde dış ortamın sıcaklığı içeriye kolayca taşınır; kışın iç yüzeyin soğuması yoğuşmaya ve enerji kaybına yol açabilir. Isı yalıtımlı sistemler bu sorunu çözmek için geliştirilmiştir.
+Alüminyum dayanıklı ve şekil verilebilir bir malzemedir, ancak ısıyı iyi iletir. Yalıtımsız bir profilde dış ortamın sıcaklığı içeriye kolayca taşınır; kışın iç yüzeyin soğuması yoğuşmaya ve enerji kaybına yol açabilir. Isı yalıtımlı sistemler bu sorunu çözmek için geliştirilmiştir. Bu yazıda çalışma prensibini ve seçimde dikkat ettiğimiz noktaları sade bir dille anlatıyoruz.
 
 ## Isı bariyeri nedir?
 
@@ -179,7 +182,7 @@ Teklif ve teknik belgelerde şu kavramlarla karşılaşırsınız. Tümünde de�
 - **Ug:** yalnızca camın ısı geçirgenliği.
 - **Uw:** profil, cam ve kenar detayları birlikte hesaplanan pencerenin toplam değeri.
 
-Karşılaştırma yaparken asıl bakılması gereken değer Uw'dur. Çünkü iyi bir profil, zayıf bir camla birlikte beklenen sonucu vermez. Türkiye'de binalardaki ısı yalıtımı kuralları **TS 825** standardıyla düzenlenir; pencere ve dış kapılar için ürün standardı ise **TS EN 14351-1**'dir.
+Karşılaştırma yaparken asıl Uw değerine bakmanızı öneriyoruz. Çünkü iyi bir profil, zayıf bir camla birlikte beklenen sonucu vermez. Türkiye'de binalardaki ısı yalıtımı kuralları **TS 825** standardıyla düzenlenir; pencere ve dış kapılar için ürün standardı ise **TS EN 14351-1**'dir.
 
 ## Performansı belirleyen diğer unsurlar
 
@@ -189,7 +192,7 @@ Karşılaştırma yaparken asıl bakılması gereken değer Uw'dur. Çünkü iyi
 
 ## Yoğuşma tamamen önlenir mi?
 
-Yoğuşma yalnızca pencereyle ilgili değildir. İç mekândaki nem oranı, havalandırma alışkanlığı ve duvar yalıtımı da etkilidir. Isı yalıtımlı sistem iç yüzey sıcaklığını yükselterek riski azaltır. Yine de düzenli havalandırma gereklidir.
+Yoğuşma yalnızca pencereyle ilgili değildir. İç mekândaki nem oranı, havalandırma alışkanlığı ve duvar yalıtımı da etkilidir. Isı yalıtımlı sistem iç yüzey sıcaklığını yükselterek riski azaltır. Yine de düzenli havalandırmayı ihmal etmemenizi öneriyoruz.
 
 ## Isı bariyerli sürme sistemlerde durum
 
@@ -197,7 +200,7 @@ Geniş sürme sistemlerde kanatlar hareket ettiği için sızdırmazlık, açıl
 
 ## Montaj detayı neden kritik?
 
-Kasa ile duvar arasındaki birleşim, yalıtımın en sık zayıfladığı noktadır. Boşluğun yalıtım malzemesiyle doldurulması, dış tarafta su geçirmez ve iç tarafta buhar geçişini sınırlayan birleşim bantları kullanılması önerilir. Denizlik eğimi ve damlalık detayı, suyun cepheye zarar vermeden uzaklaşmasını sağlar.
+Kasa ile duvar arasındaki birleşim, yalıtımın en sık zayıfladığı noktadır. Boşluğun yalıtım malzemesiyle doldurulmasını, dış tarafta su geçirmez ve iç tarafta buhar geçişini sınırlayan birleşim bantları kullanılmasını öneriyoruz. Denizlik eğimi ve damlalık detayı, suyun cepheye zarar vermeden uzaklaşmasını sağlar.
 
 ## Renk seçimi yalıtımı etkiler mi?
 
@@ -214,7 +217,7 @@ Projeniz için uygun sistemi birlikte değerlendirmek isterseniz [alüminyum do�
 """),
         new("isicam-low-e-cam-secimi", "Isıcam ve Low-E Cam: Pencerede Doğru Cam Nasıl Seçilir?", "Çift cam, Low-E kaplama, argon gazı, temperli ve lamine cam farklarını kullanım alanlarıyla birlikte anlatıyoruz.", "/images/kapi-ve-pencere-sistemleri.png", "Isıcam, Low-E kaplama, argon gazı, temperli ve lamine cam farkları. Pencere ve geniş cam yüzeyler için doğru cam seçimi rehberi.",
 """
-Pencerenin yüzeyinin büyük bölümünü cam oluşturur. Bu nedenle ısı kaybı, güneş kontrolü ve güvenlik söz konusu olduğunda cam seçimi en az profil kadar önemlidir.
+Pencerenin yüzeyinin büyük bölümünü cam oluşturur. Bu nedenle ısı kaybı, güneş kontrolü ve güvenlik söz konusu olduğunda cam seçimini en az profil kadar önemsiyoruz.
 
 ## Isıcam nedir?
 
@@ -222,18 +225,18 @@ Isıcam, iki veya daha fazla cam levhanın aralarında boşluk bırakılarak fab
 
 ## Low-E kaplama ne işe yarar?
 
-Düşük salımlı (Low-E) kaplama, camın yüzeyine uygulanan ve gözle neredeyse fark edilmeyen ince bir tabakadır. Isının geçişini azaltır. Yaklaşık değerlerle kıyaslarsak standart çift camda Ug 2,7 W/m²K civarındayken, Low-E kaplamalı ve argon dolgulu ısıcamda 1,1 W/m²K seviyelerine inebilir. Kesin değer ürüne ve boşluk kalınlığına göre değişir, teklif sırasında üreticiden istenmelidir.
+Düşük salımlı (Low-E) kaplama, camın yüzeyine uygulanan ve gözle neredeyse fark edilmeyen ince bir tabakadır. Isının geçişini azaltır. Yaklaşık değerlerle kıyaslarsak standart çift camda Ug 2,7 W/m²K civarındayken, Low-E kaplamalı ve argon dolgulu ısıcamda 1,1 W/m²K seviyelerine inebilir. Kesin değer ürüne ve boşluk kalınlığına göre değişir; teklif sırasında bu değeri sormanızı öneriyoruz.
 
 ## Güneş kontrol camı
 
-Güneş kontrol kaplamaları, özellikle batı ve güney cephelerde içeri giren güneş ısısını azaltır. İzmir gibi sıcak yaz dönemi uzun olan bölgelerde, soğutma yükü açısından değerlendirilmesi gereken bir seçenektir. Görüş ve gün ışığı geçirgenliği ile birlikte ele alınmalıdır.
+Güneş kontrol kaplamaları, özellikle batı ve güney cephelerde içeri giren güneş ısısını azaltır. İzmir gibi sıcak yaz dönemi uzun olan bölgelerde, soğutma yükü açısından değerlendirilmesini önerdiğimiz bir seçenektir. Görüş ve gün ışığı geçirgenliği ile birlikte ele alınmalıdır.
 
 ## Temperli ve lamine cam farkı
 
 - **Temperli cam:** ısıl işlemle dayanımı artırılmış camdır. Kırıldığında keskin parçalar yerine küçük parçalara ayrılır (TS EN 12150).
 - **Lamine cam:** iki cam arasına ara katman yerleştirilerek üretilir. Kırıldığında parçalar ara katmana tutunur, düşme riskini ve güvenlik zafiyetini azaltır (TS EN 14449).
 
-Kapılar, yere kadar inen camlar, korkuluklar ve üst yüzeyler gibi çarpma veya düşme riski olan yerlerde güvenlik camı kullanımı değerlendirilmelidir. Hangi camın gerektiği uygulamanın konumuna ve projeye göre belirlenir.
+Kapılar, yere kadar inen camlar, korkuluklar ve üst yüzeyler gibi çarpma veya düşme riski olan yerlerde güvenlik camı kullanımını öncelikle değerlendiriyoruz. Hangi camın gerektiğini uygulamanın konumuna ve projeye göre belirliyoruz.
 
 ## Ses yalıtımı için
 
@@ -284,7 +287,7 @@ Kışın ısıtılan bir mekân gibi kullanılacaksa profil, cam ve eşik birlik
 
 ## Uygulama öncesi kontrol edilecekler
 
-- **Yönetim planı ve kat malikleri kararı:** Dış görünümü etkileyen uygulamalarda apartman veya site yönetim planı ile Kat Mülkiyeti Kanunu hükümleri göz önünde bulundurulmalıdır. Şüphe durumunda hukuki görüş alınması yerinde olur.
+- **Yönetim planı ve kat malikleri kararı:** Dış görünümü etkileyen uygulamalarda apartman veya site yönetim planı ile Kat Mülkiyeti Kanunu hükümleri göz önünde bulundurulmalıdır. Şüphe durumunda hukuki görüş almanızı öneririz.
 - **Taşıyıcı yapı:** Balkonun ve korkuluğun ek yükü taşıyabileceği kontrol edilmelidir.
 - **Su tahliyesi:** Eşik ve drenaj detayı doğru çözülmezse yağmur suyu içeriye sızabilir.
 - **Güvenlik:** Cam tipi temperli olmalı, yüksek katlarda düşme riski ayrıca değerlendirilmelidir.
@@ -292,7 +295,7 @@ Kışın ısıtılan bir mekân gibi kullanılacaksa profil, cam ve eşik birlik
 
 ## Cam balkon alanı nasıl kullanılacak?
 
-Karar vermeden önce kullanım senaryosunu netleştirmek en doğrusudur. Balkon, yalnızca çamaşır ve depolama alanı olarak mı kullanılacak, yoksa kışın oturma alanına mı dönüşecek? Birinci durumda tek camlı ekonomik sistemler yeterli olabilir. İkinci durumda ısı yalıtımı, su tahliyesi ve havalandırma çok daha önemlidir.
+Karar vermeden önce kullanım senaryosunu netleştirmenizi öneriyoruz. Balkon, yalnızca çamaşır ve depolama alanı olarak mı kullanılacak, yoksa kışın oturma alanına mı dönüşecek? Birinci durumda tek camlı ekonomik sistemler yeterli olabilir. İkinci durumda ısı yalıtımı, su tahliyesi ve havalandırma çok daha önemlidir.
 
 Kapalı balkonda hava sirkülasyonu sağlanmazsa nem birikebilir. Bu nedenle camların bir kısmını kolayca aralayabilmek veya havalandırma pozisyonu sunan sistemleri tercih etmek faydalıdır. Mobilya ve bitki seçiminde de güneş ve yaz sıcaklığı dikkate alınmalıdır; güneye bakan bir cam balkon yazın hızla ısınabilir, gölgelendirme için perde veya tente düşünülmelidir.
 
@@ -305,7 +308,7 @@ Kapalı balkonda hava sirkülasyonu sağlanmazsa nem birikebilir. Bu nedenle cam
 
 ## Bakım
 
-Rayların ve tekerleklerin düzenli temizlenmesi sistemin ömrünü uzatır. Fitillerin durumu kontrol edilmeli, sürtünme hissedildiğinde ayar yaptırılmalıdır.
+Rayların ve tekerleklerin düzenli temizlenmesi sistemin ömrünü uzatır. Fitillerin durumunu kontrol etmenizi, sürtünme hissettiğinizde ayar yaptırmanızı öneriyoruz.
 
 ## Hangi sistem size uygun?
 
@@ -326,7 +329,7 @@ Paneller, yan taşıyıcılar içindeki mekanizmayla yukarı veya aşağı harek
 
 ## Güvenlik neden önemli?
 
-Yukarıda duran ağır cam paneller söz konusu olduğu için güvenlik seçimin merkezinde olmalıdır. Değerlendirilmesi gereken başlıklar şunlardır:
+Yukarıda duran ağır cam paneller söz konusu olduğu için güvenliği seçimin merkezine koyuyoruz. Değerlendirdiğimiz başlıklar şunlardır:
 
 - Cam tipinin (temperli veya lamine) uygulamaya uygun seçilmesi,
 - Otomatik sistemlerde engel algılama donanımı ve acil durum kullanımı,
@@ -338,10 +341,10 @@ Kullanıcıların, özellikle çocukların bulunduğu mekânlarda hareketli par�
 ## Uygulama öncesi değerlendirme
 
 - **Açıklık ölçüsü:** Panel genişliği ve yüksekliği, sistem sınırları içinde olmalıdır.
-- **Taşıyıcı yapı:** Zemin ve üst bağlantı noktaları yerinde incelenmelidir.
-- **Rüzgâr yükü:** Yüksek katlar ve açık cepheler ayrıca değerlendirilmelidir.
-- **Su tahliyesi:** Zemin eğimi ve drenaj çözümü planlanmalıdır.
-- **Elektrik:** Otomatik sistem için motor beslemesi önceden hazırlanmalıdır.
+- **Taşıyıcı yapı:** Zemin ve üst bağlantı noktalarını yerinde inceliyoruz.
+- **Rüzgâr yükü:** Yüksek katları ve açık cepheleri ayrıca değerlendiriyoruz.
+- **Su tahliyesi:** Zemin eğimini ve drenaj çözümünü planlıyoruz.
+- **Elektrik:** Otomatik sistemde motor beslemesinin önceden hazırlanması gerekir; ihtiyacı keşifte paylaşıyoruz.
 
 ## Bakım ve kullanım alışkanlıkları
 
@@ -351,7 +354,7 @@ Paneller düzenli hareket ettirildiğinde mekanizma daha sağlıklı çalışır
 
 ## İşletmeler için ek notlar
 
-Restoran ve kafelerde sistem, yoğun kullanım koşullarına göre seçilmelidir. Mutfak havalandırması, ısıtıcı yerleşimi ve kaçış yolları açılıp kapanan alanı etkileyebilir. Kaldırım veya ortak alan kullanımı söz konusuysa ilgili belediye ve yönetim izinleri önceden araştırılmalıdır.
+Restoran ve kafelerde sistem, yoğun kullanım koşullarına göre seçilmelidir. Mutfak havalandırması, ısıtıcı yerleşimi ve kaçış yolları açılıp kapanan alanı etkileyebilir. Kaldırım veya ortak alan kullanımı söz konusuysa ilgili belediye ve yönetim izinlerini önceden araştırmanızı öneriyoruz.
 
 ## Giyotin mi, katlanır mı?
 
@@ -359,13 +362,13 @@ Giyotin sistemde paneller zeminde yer kaplamaz ve manzara açık kalır. Katlan�
 
 Ayrıntılar için [otomatik giyotin](/urunler/otomatik-giyotin-camlama-sistemleri) ve [manuel giyotin](/urunler/manuel-giyotin-ruzgar-kirici-sistemleri) sayfalarımızı inceleyebilir, alanınız için [keşif talep edebilirsiniz](/iletisim).
 """),
-        new("izmir-iklimi-dograma-secimi", "İzmir ve Kıyı Bölgelerinde Doğrama Seçimi: Nem, Tuz, Güneş", "Sıcak yazlar, kıyı nemi, tuzlu hava ve rüzgâr gibi koşullar doğrama seçimini nasıl etkiler? Yüzey, cam ve donanım önerileri.", "/images/yana-kayar-surme-cam-sistemleri.png", "İzmir ve kıyı bölgelerinde alüminyum doğrama seçimi. Tuzlu hava, nem, güneş ve rüzgâra karşı yüzey, cam ve donanım tercihleri.",
+        new("izmir-iklimi-dograma-secimi", "İzmir ve Kıyı Bölgelerinde Doğrama Seçimi: Nem, Tuz, Güneş", "Sıcak yazlar, kıyı nemi, tuzlu hava ve rüzgâr gibi koşullar doğrama seçimini nasıl etkiler? Yüzey, cam ve donanım önerilerimizi paylaşıyoruz.", "/images/yana-kayar-surme-cam-sistemleri.png", "İzmir ve kıyı bölgelerinde alüminyum doğrama seçimi. Tuzlu hava, nem, güneş ve rüzgâra karşı yüzey, cam ve donanım tercihleri.",
 """
 Doğrama seçimi yalnızca ölçüye ve bütçeye bağlı değildir; yapının bulunduğu iklim de sonucu doğrudan etkiler. İzmir'in uzun ve sıcak yazları, kıyıya yakın bölgelerdeki nem ve tuzlu hava, bazı ilçelerde ise güçlü rüzgârlar dikkate alınması gereken koşullardır.
 
 ## Tuzlu hava ve yüzey koruması
 
-Alüminyum doğal bir oksit tabakasıyla korunur, ancak kıyıya yakın yerlerde yüzey işleminin kalitesi daha da önem kazanır. Değerlendirilecek başlıklar:
+Alüminyum doğal bir oksit tabakasıyla korunur, ancak kıyıya yakın yerlerde yüzey işleminin kalitesi daha da önem kazanır. Değerlendirdiğimiz başlıklar:
 
 - **Elektrostatik toz boya:** Kıyı koşulları için ön işlemi güçlendirilmiş uygulamalar tercih edilmelidir. Qualicoat "Seaside" sınıfı bu konuda bilinen kalite referanslarından biridir.
 - **Anodize kaplama:** Sertifikalı uygulamalarda (ör. Qualanod) kaplama kalınlığı, kullanım ortamına göre seçilir.
@@ -389,7 +392,7 @@ Yüksek katlarda ve açık cephelerde rüzgâr yükü ile su sızdırmazlığı 
 
 ## Cephe yönüne göre karar
 
-Tüm cephelere aynı çözümü uygulamak yerine yön bazlı düşünmek daha verimlidir:
+Tüm cephelere aynı çözümü uygulamak yerine yön bazlı düşünmeyi öneriyoruz:
 
 - **Batı ve güney:** Öğleden sonra güneşi güçlüdür. Güneş kontrol camı, panjur veya tente değerlendirilmelidir.
 - **Kuzey:** Doğrudan güneş az olduğu için gün ışığını kesmeyen camlar ve iyi ısı yalıtımı öne çıkar.
@@ -397,7 +400,7 @@ Tüm cephelere aynı çözümü uygulamak yerine yön bazlı düşünmek daha ve
 
 ## Yaz ve kış dengesi
 
-İzmir'de kışlar görece ılımlı olsa da yağışlı ve nemlidir, yazlar ise uzun ve sıcaktır. Bu yüzden yalnızca kış ısı kaybına odaklanmak eksik bir yaklaşımdır. Düşük U değeri ile uygun güneş kontrolü birlikte ele alınmalı, dış gölgelendirme imkânları değerlendirilmelidir. Gece serinliğinden yararlanmak için kolay havalandırılabilen açılım tipleri de konforu artırır.
+İzmir'de kışlar görece ılımlı olsa da yağışlı ve nemlidir, yazlar ise uzun ve sıcaktır. Bu yüzden yalnızca kış ısı kaybına odaklanmayı eksik bir yaklaşım olarak görüyoruz. Düşük U değeri ile uygun güneş kontrolü birlikte ele alınmalı, dış gölgelendirme imkânları değerlendirilmelidir. Gece serinliğinden yararlanmak için kolay havalandırılabilen açılım tipleri de konforu artırır.
 
 ## Bakım önerileri
 
@@ -409,7 +412,7 @@ Bulunduğunuz konuma ve cepheye uygun çözümü belirlemek için [bizimle ileti
 """),
         new("otomatik-kapi-secimi-rehberi", "Otomatik Kapı Seçimi: Fotoselli, Döner, Endüstriyel ve Bahçe Kapıları", "Bina girişinden depoya kadar farklı otomatik kapı tiplerini, kullanım alanlarını ve güvenlik gereksinimlerini özetliyoruz.", "/images/fotoselli-doner-kapi.png", "Fotoselli, döner, seksiyonel ve bahçe kapısı karşılaştırması. Otomatik kapı seçiminde kullanım alanı, güvenlik ve bakım rehberi.",
 """
-Otomatik kapılar yalnızca konfor sağlamaz; yapının güvenliğini, enerji kullanımını ve iş akışını da etkiler. Doğru seçim için önce kapının nerede ve ne sıklıkla kullanılacağı netleştirilmelidir.
+Otomatik kapılar yalnızca konfor sağlamaz; yapının güvenliğini, enerji kullanımını ve iş akışını da etkiler. Doğru seçim için önce kapının nerede ve ne sıklıkla kullanılacağını netleştiriyoruz.
 
 ## Yaya girişleri: fotoselli ve döner kapılar
 
@@ -430,7 +433,7 @@ Endüstriyel ve garaj kapılarında **TS EN 13241** ürün standardı, güvenli 
 
 Yana kayar bahçe kapıları duvar boyunca boş alan ister. Kanatlı kapılar ise açılım alanı gerektirir. Otopark girişlerinde bariyerler hızlı geçiş sağlar, kart veya plaka tanıma gibi geçiş kontrol yöntemleriyle birlikte kullanılabilir.
 
-## Seçimde sorulması gereken sorular
+## Seçimde sorduğumuz sorular
 
 - Günde kaç geçiş olacak?
 - Geçişi kim veya ne yapacak: yaya, araç, forklift?
@@ -440,7 +443,7 @@ Yana kayar bahçe kapıları duvar boyunca boş alan ister. Kanatlı kapılar is
 
 ## Yangın ve kaçış senaryosu
 
-Bina girişindeki otomatik kapılar çoğu zaman acil durum planının parçasıdır. Elektrik kesildiğinde veya yangın alarmı geldiğinde kapının nasıl davranacağı önceden belirlenmelidir. Bazı yapılarda kaçış yolu üzerinde döner kapı tek başına yeterli sayılmaz; yanında ayrıca bir kapı gerekebilir. Bu konu proje müellifi ve ilgili mevzuatla birlikte değerlendirilmelidir.
+Bina girişindeki otomatik kapılar çoğu zaman acil durum planının parçasıdır. Elektrik kesildiğinde veya yangın alarmı geldiğinde kapının nasıl davranacağı önceden belirlenmelidir. Bazı yapılarda kaçış yolu üzerinde döner kapı tek başına yeterli sayılmaz; yanında ayrıca bir kapı gerekebilir. Bu konunun proje müellifiyle ve ilgili mevzuat çerçevesinde değerlendirilmesini öneriyoruz.
 
 ## Erişilebilirlik
 
@@ -452,13 +455,13 @@ Sık açılan girişlerde iç ortam havası kolayca dışarı kaçar. Sensör me
 
 ## Bakım ihmal edilmemeli
 
-Otomatik kapılar hareketli parçalar ve güvenlik sensörleri içerir. Düzenli bakım hem arızaları azaltır hem de güvenli kullanımın koşuludur. Fotosel, kuvvet sınırlama ve acil durum işlevleri periyodik olarak kontrol ettirilmelidir.
+Otomatik kapılar hareketli parçalar ve güvenlik sensörleri içerir. Düzenli bakım hem arızaları azaltır hem de güvenli kullanımın koşuludur. Fotosel, kuvvet sınırlama ve acil durum işlevlerini periyodik olarak kontrol ettirmenizi öneriyoruz.
 
 Ayrıntılar için [fotoselli kapı](/urunler/fotoselli-doner-kapi), [endüstriyel ve garaj kapıları](/urunler/endustriyel-ve-garaj-kapi-sistemleri) ile [bahçe kapısı ve bariyer](/urunler/bahce-kapisi-ve-bariyer-sistemleri) sayfalarımızı inceleyebilirsiniz.
 """),
-        new("dograma-bakimi-rehberi", "Pencere ve Kapı Bakımı: Doğramanın Ömrünü Uzatan Basit Adımlar", "Alüminyum ve PVC doğramaların temizliği, fitil ve donanım kontrolü ile sık görülen sorunların çözümüne dair pratik rehber.", "/images/kapi-ve-pencere-sistemleri.png", "Alüminyum ve PVC pencere bakımı: temizlik, fitil ve menteşe kontrolü, sık görülen sorunlar ve ne zaman uzman çağırılması gerektiği.",
+        new("dograma-bakimi-rehberi", "Pencere ve Kapı Bakımı: Doğramanın Ömrünü Uzatan Basit Adımlar", "Alüminyum ve PVC doğramaların temizliği, fitil ve donanım kontrolü ile sık görülen sorunların çözümüne dair pratik önerilerimizi derledik.", "/images/kapi-ve-pencere-sistemleri.png", "Alüminyum ve PVC pencere bakımı: temizlik, fitil ve menteşe kontrolü, sık görülen sorunlar ve ne zaman uzman çağırılması gerektiği.",
 """
-Kaliteli bir doğrama uzun yıllar sorunsuz kullanılabilir, ancak bu büyük ölçüde düzenli bakıma bağlıdır. Çoğu bakım adımı basittir ve yılda birkaç kez yapılması yeterlidir.
+Kaliteli bir doğrama uzun yıllar sorunsuz kullanılabilir, ancak bu büyük ölçüde düzenli bakıma bağlıdır. Çoğu bakım adımı basittir ve yılda birkaç kez yapılması yeterlidir. Bu yazıda önerdiğimiz temel adımları bir araya getirdik.
 
 ## Yüzey temizliği
 
@@ -505,7 +508,7 @@ Rayları toz ve küçük taşlardan arındırın, tekerleklerin rahat döndüğ�
 - Yüzeye yapışkan bant veya sert kazıyıcı kullanmak,
 - Doğramaya vida çakarak perde veya klima montajı yapmak; bu işlem profil ve yalıtımı bozabilir.
 
-Periyodik kontrol küçük bir ayarla çözülecek sorunların büyümesini önler. Özellikle yüksek binalarda ve büyük camlarda kontrolleri yetkin ekiplerin yapması güvenlik açısından önemlidir.
+Periyodik kontrol küçük bir ayarla çözülecek sorunların büyümesini önler. Özellikle yüksek binalarda ve büyük camlarda kontrollerin güvenlik açısından yetkin ekiplerce yapılmasını öneriyoruz.
 
 ## Ne zaman uzman çağırmalı?
 
@@ -526,8 +529,8 @@ Doğramalarınızla ilgili destek veya yenileme için [bize ulaşabilirsiniz](/i
             var row = services.FirstOrDefault(x => x.Slug == copy.Slug);
             if (row is null) continue;
             var oldShort = SeedData.OriginalDescription(copy.Slug);
-            if (row.ShortDescription == oldShort) row.ShortDescription = copy.Short;
-            if (row.Intro == OldIntro(oldShort ?? "")) row.Intro = copy.Intro;
+            if (row.ShortDescription == oldShort || ContentFingerprints.IsVersion1Default(row.ShortDescription)) row.ShortDescription = copy.Short;
+            if (row.Intro == OldIntro(oldShort ?? "") || ContentFingerprints.IsVersion1Default(row.Intro)) row.Intro = copy.Intro;
             if (row.SeoTitle == row.Name + " | Karakuş Alüminyum") row.SeoTitle = copy.SeoTitle;
             if (row.SeoDescription == OldSeoDescription(row.Name)) row.SeoDescription = copy.SeoDescription;
             if (row.BenefitsJson == JsonSerializer.Serialize(OldBenefits)) row.BenefitsJson = JsonSerializer.Serialize(copy.Benefits);
@@ -537,7 +540,11 @@ Doğramalarınızla ilgili destek veya yenileme için [bize ulaşabilirsiniz](/i
             db.FaqItems.RemoveRange(generic);
             var order = faqs.Except(generic).Select(x => (int?)x.SortOrder).Max() + 1 ?? 0;
             foreach (var (question, answer) in copy.Faqs)
-                if (!faqs.Any(x => x.Question == question)) db.FaqItems.Add(new FaqItem { ServiceId = row.Id, Question = question, Answer = answer, SortOrder = order++ });
+            {
+                var faq = faqs.FirstOrDefault(x => x.Question == question);
+                if (faq is null) db.FaqItems.Add(new FaqItem { ServiceId = row.Id, Question = question, Answer = answer, SortOrder = order++ });
+                else if (ContentFingerprints.IsVersion1Default(faq.Answer)) faq.Answer = answer;
+            }
             row.UpdatedUtc = DateTime.UtcNow;
         }
 
@@ -553,11 +560,27 @@ Doğramalarınızla ilgili destek veya yenileme için [bize ulaşabilirsiniz](/i
             var setting = settings.FirstOrDefault(x => x.Key == key);
             if (setting?.Value == old) setting.Value = KarakusAluminyum.Web.Services.SiteSettingCatalog.Find(key)!.Default;
         }
+        foreach (var setting in settings.Where(x => ContentFingerprints.IsVersion1Default(x.Value)))
+            setting.Value = KarakusAluminyum.Web.Services.SiteSettingCatalog.Find(setting.Key)?.Default ?? setting.Value;
+
+        var homeFaq = await db.FaqItems.FirstOrDefaultAsync(x => x.ServiceId == null && x.Question == HomeFaqQuestion);
+        if (ContentFingerprints.IsVersion1Default(homeFaq?.Answer)) homeFaq!.Answer = HomeFaqAnswer;
 
         // Yayınlanmamış yer tutucu yazı kaldırılır, yeni yazılar bir kez eklenir.
         db.BlogPosts.RemoveRange(db.BlogPosts.Where(x => x.Slug == "aluminyum-ve-mimari-sistemler" && !x.IsPublished && x.Content.StartsWith("Bu yazı taslak olarak")));
-        var slugs = await db.BlogPosts.Select(x => x.Slug).ToListAsync();
+        var posts = await db.BlogPosts.ToListAsync();
+        var slugs = posts.Select(x => x.Slug).ToList();
         var now = DateTime.UtcNow;
+        foreach (var article in Articles)
+        {
+            var post = posts.FirstOrDefault(x => x.Slug == article.Slug);
+            if (post is null) continue;
+            var summary = ContentFingerprints.IsVersion1Default(post.Summary);
+            var content = ContentFingerprints.IsVersion1Default(post.Content);
+            if (summary) post.Summary = article.Summary;
+            if (content) post.Content = article.Content;
+            if (summary || content) post.UpdatedUtc = now;
+        }
         for (var i = 0; i < Articles.Length; i++)
         {
             var article = Articles[i];

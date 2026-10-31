@@ -207,6 +207,41 @@ public sealed class ContentTests(PostgresFixture postgres)
         Assert.Contains("uygulama gerçekleştirdik", html);
     }
 
+    // Yenileme 1'deki metin varsayılan olarak tanınır; yöneticinin yazdığına dokunulmaz.
+    [Fact]
+    public async Task FirstPersonRefresh_ReplacesOnlyUntouchedDefaults()
+    {
+        await using (var first = postgres.CreateApp("content_first_person"))
+        {
+            first.NewClient();
+            await first.WithDbAsync(async db =>
+            {
+                (await db.Services.SingleAsync(x => x.Slug == "aluminyum-dograma")).ShortDescription = "Konut ve ticari yapılarda pencere, kapı ve geniş açıklıklar için dayanıklı, ince profilli alüminyum doğrama çözümleri.";
+                (await db.Services.SingleAsync(x => x.Slug == "pvc-dograma")).ShortDescription = "Yöneticinin kısa metni.";
+                (await db.SiteSettingRecords.SingleAsync(x => x.Key == "AboutTitle")).Value = "Karakuş Alüminyum'u tanıyın.";
+                (await db.SiteSettingRecords.SingleAsync(x => x.Key == "AboutSectionTitle")).Value = "Yöneticinin başlığı.";
+                (await db.FaqItems.SingleAsync(x => x.Question == "Düzenli bakım gerekir mi?")).Answer = "Yöneticinin cevabı.";
+                (await db.FaqItems.SingleAsync(x => x.Question == "Teklif için hangi bilgiler gerekir?")).Answer = "Proje konumu, yaklaşık ölçüler, adetler, açılım tercihleri ve varsa mimari çizimler ilk değerlendirme için yeterlidir. Kesin ölçüler uygulama öncesinde yerinde alınır.";
+                (await db.BlogPosts.SingleAsync(x => x.Slug == "dograma-bakimi-rehberi")).Content = "Yöneticinin yazısı.";
+                (await db.SiteSettingRecords.SingleAsync(x => x.Key == "ContentRefreshVersion")).Value = "1";
+                return await db.SaveChangesAsync();
+            });
+        }
+
+        await using var second = postgres.CreateApp("content_first_person");
+        second.NewClient();
+        var services = await second.WithDbAsync(db => db.Services.AsNoTracking().ToDictionaryAsync(x => x.Slug));
+        Assert.EndsWith("sunuyoruz.", services["aluminyum-dograma"].ShortDescription);
+        Assert.Equal("Yöneticinin kısa metni.", services["pvc-dograma"].ShortDescription);
+        var settings = await second.WithDbAsync(db => db.SiteSettingRecords.AsNoTracking().ToDictionaryAsync(x => x.Key, x => x.Value));
+        Assert.Equal("Bizi yakından tanıyın.", settings["AboutTitle"]);
+        Assert.Equal("Yöneticinin başlığı.", settings["AboutSectionTitle"]);
+        var faqs = await second.WithDbAsync(db => db.FaqItems.AsNoTracking().ToListAsync());
+        Assert.Equal("Yöneticinin cevabı.", faqs.Single(x => x.Question == "Düzenli bakım gerekir mi?").Answer);
+        Assert.EndsWith("yerinde alıyoruz.", faqs.Single(x => x.Question == "Teklif için hangi bilgiler gerekir?").Answer);
+        Assert.Equal("Yöneticinin yazısı.", (await second.WithDbAsync(db => db.BlogPosts.AsNoTracking().SingleAsync(x => x.Slug == "dograma-bakimi-rehberi"))).Content);
+    }
+
     [Fact]
     public async Task ServiceDetail_SuggestsOtherServices_NotItself()
     {

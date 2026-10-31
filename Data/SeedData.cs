@@ -241,7 +241,7 @@ public static class SeedData
         {
             db.SiteSettingRecords.Add(new SiteSettingRecord { Key = HomeFaqsSeededKey, Value = "true", Description = "Ana sayfa SSS seed'i uygulandı" });
             db.FaqItems.AddRange(
-                new FaqItem { Question = "Alüminyum doğrama nasıl seçilir?", Answer = "Açıklık ölçüsü, kullanım amacı, mimari tasarım, yalıtım beklentisi ve donanım seçenekleri birlikte değerlendirilmelidir. Bilgi Merkezi yazılarımız seçenekleri karşılaştırmanıza yardımcı olur.", SortOrder = 0 },
+                new FaqItem { Question = ContentSeed.HomeFaqQuestion, Answer = ContentSeed.HomeFaqAnswer, SortOrder = 0 },
                 new FaqItem { Question = "Projem için nasıl teklif alabilirim?", Answer = "Proje konumu, yaklaşık ölçüler, tercih edilen sistem ve varsa çizimleri iletişim formu üzerinden paylaşabilirsiniz.", SortOrder = 1 },
                 // Cevabı firma tarafından doldurulacak şablon metin; doldurulana kadar yayınlanmaz.
                 new FaqItem { Question = "İzmir dışında hizmet veriyor musunuz?", Answer = "Hizmet verdiğiniz il ve ilçeleri gerçek operasyon kapsamınıza göre burada belirtin.", SortOrder = 2, IsPublished = false });
