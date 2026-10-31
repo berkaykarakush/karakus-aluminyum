@@ -77,6 +77,8 @@ public static class SeedData
         "/images/bahce-kapisi-ve-bariyer-sistemleri.png"
     };
 
+    public static string? OriginalDescription(string slug) => Services.FirstOrDefault(x => x.Slug == slug)?.Description;
+
     public const string GallerySeededKey = "GallerySeeded";
     public const string HomeFaqsSeededKey = "HomeFaqsSeeded";
     public const string DrawingSeededKey = "DrawingSeeded";
@@ -103,7 +105,7 @@ public static class SeedData
 
 
     // Tek seferlik seed'lerin işaretçileri; site ayarları ekranında gösterilmez.
-    public static readonly string[] InternalSettingKeys = { GallerySeededKey, HomeFaqsSeededKey, DrawingSeededKey, ClausesSeededKey, ProductSystemsSeededKey, BrandsSeededKey, AccountingSeededKey, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.KeySetting, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.MarkerSetting };
+    public static readonly string[] InternalSettingKeys = { GallerySeededKey, HomeFaqsSeededKey, DrawingSeededKey, ClausesSeededKey, ContentSeed.VersionKey, ProductSystemsSeededKey, BrandsSeededKey, AccountingSeededKey, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.KeySetting, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.MarkerSetting };
 
     public static async Task InitializeAsync(IServiceProvider services, IConfiguration config)
     {
@@ -200,18 +202,6 @@ public static class SeedData
             if (existing is null) db.Projects.Add(project);
         }
 
-        if (!await db.BlogPosts.AnyAsync())
-        {
-            db.BlogPosts.Add(new BlogPost
-            {
-                Title = "Alüminyum ve Mimari Sistemler Hakkında",
-                Slug = "aluminyum-ve-mimari-sistemler",
-                Summary = "Karakuş Alüminyum hizmetleri ve mimari sistemler hakkında bilgilendirici içerikler.",
-                Content = "Bu yazı taslak olarak oluşturulmuştur. Yayına almadan önce teknik bilgiler firma tarafından gözden geçirilmeli ve özgün içerikle tamamlanmalıdır.",
-                IsPublished = false
-            });
-        }
-
         // Eksik ayarları ekle. Yöneticinin değerine dokunma; yalnızca eski yer tutucular düzeltilir.
         var existingSettings = await db.SiteSettingRecords.ToListAsync();
         foreach (var definition in SiteSettingCatalog.All)
@@ -248,12 +238,15 @@ public static class SeedData
             service.FaqsJson = "[]";
         }
 
+        await db.SaveChangesAsync(); // taşınan SSS'ler içerik yenilemesinde görünsün
+        await ContentSeed.ApplyAsync(db);
+
         // Ana sayfa SSS'leri: yalnızca bir kez eklenir; yöneticinin sildikleri geri gelmez.
         if (!await db.SiteSettingRecords.AnyAsync(s => s.Key == HomeFaqsSeededKey))
         {
             db.SiteSettingRecords.Add(new SiteSettingRecord { Key = HomeFaqsSeededKey, Value = "true", Description = "Ana sayfa SSS seed'i uygulandı" });
             db.FaqItems.AddRange(
-                new FaqItem { Question = "Alüminyum doğrama nasıl seçilir?", Answer = "Açıklık ölçüsü, kullanım amacı, mimari tasarım, yalıtım beklentisi ve donanım seçenekleri birlikte değerlendirilmelidir.", SortOrder = 0 },
+                new FaqItem { Question = "Alüminyum doğrama nasıl seçilir?", Answer = "Açıklık ölçüsü, kullanım amacı, mimari tasarım, yalıtım beklentisi ve donanım seçenekleri birlikte değerlendirilmelidir. Bilgi Merkezi yazılarımız seçenekleri karşılaştırmanıza yardımcı olur.", SortOrder = 0 },
                 new FaqItem { Question = "Projem için nasıl teklif alabilirim?", Answer = "Proje konumu, yaklaşık ölçüler, tercih edilen sistem ve varsa çizimleri iletişim formu üzerinden paylaşabilirsiniz.", SortOrder = 1 },
                 // Cevabı firma tarafından doldurulacak şablon metin; doldurulana kadar yayınlanmaz.
                 new FaqItem { Question = "İzmir dışında hizmet veriyor musunuz?", Answer = "Hizmet verdiğiniz il ve ilçeleri gerçek operasyon kapsamınıza göre burada belirtin.", SortOrder = 2, IsPublished = false });

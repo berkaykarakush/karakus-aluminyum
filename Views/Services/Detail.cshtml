@@ -20,7 +20,7 @@
             <img src="@Model.Image" alt="@Model.Name uygulama görseli" width="900" height="800" /></div>
             <div class="split__copy">
             <h2>Projeye uygun çözümü birlikte değerlendirelim.</h2>
-            <p>@Model.Intro</p>
+            <div class="content-prose">@Html.Raw(KarakusAluminyum.Web.Services.SimpleMarkdown.ToHtml(Model.Intro))</div>
             <ul class="check-list">
                 @foreach (var benefit in Model.Benefits) 
                 { 

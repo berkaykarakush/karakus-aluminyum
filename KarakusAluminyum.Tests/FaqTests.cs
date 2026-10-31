@@ -21,7 +21,8 @@ public sealed class FaqMigrationTests(PostgresFixture postgres)
         var serviceId = await ServiceIdAsync(app);
 
         var serviceFaqs = await app.WithDbAsync(db => db.FaqItems.Where(f => f.ServiceId == serviceId).OrderBy(f => f.SortOrder).ToListAsync());
-        Assert.Equal(["Sistem seçimi nasıl yapılır?", "Teklif almak için hangi bilgiler gerekir?"], serviceFaqs.Select(f => f.Question));
+        Assert.Equal(3, serviceFaqs.Count); // eski genel sorular taşındıktan sonra hizmete özel sorularla değişir
+        Assert.DoesNotContain(serviceFaqs, f => f.Question == "Sistem seçimi nasıl yapılır?");
         Assert.All(serviceFaqs, f => Assert.False(string.IsNullOrEmpty(f.Answer)));
         Assert.Equal("[]", await app.WithDbAsync(db => db.Services.Where(s => s.Id == serviceId).Select(s => s.FaqsJson).SingleAsync()));
         Assert.Equal(3, await app.WithDbAsync(db => db.FaqItems.CountAsync(f => f.ServiceId == null)));
@@ -114,7 +115,7 @@ public sealed class FaqPageTests(PostgresFixture postgres)
 
     [Fact]
     public async Task ServicePage_ShowsItsFaqsFromDatabase()
-        => Assert.Contains("Sistem seçimi nasıl yapılır?", await PageAsync(postgres.Shared.NewClient(), "/urunler/aluminyum-dograma"));
+        => Assert.Contains("Isı yalıtımlı alüminyum doğrama ne zaman tercih edilmeli?", await PageAsync(postgres.Shared.NewClient(), "/urunler/aluminyum-dograma"));
 
     [Fact]
     public async Task ServicePage_WithoutFaqs_HidesSection()

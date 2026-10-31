@@ -53,7 +53,7 @@ public sealed class SiteContentIndex
         {
             new("/", site.SiteName, site.SiteDescription, PageKind.Core, Latest(new[] { servicesModified, projectsModified, postsModified, Latest(homeFaqs.Select(x => (DateTime?)x.UpdatedUtc)) }), Array.Empty<(string, string)>(),
                 $"{site.HeroTitle} {site.HeroTitleEmphasis}.\n\n{site.HeroText}\n\n## Ürün ve hizmetler\n\n{serviceLinks}" + (homeFaqs.Count > 0 ? $"\n\n## Sık sorulan sorular\n\n{Faq(homeFaqs)}" : "")),
-            new("/kurumsal", "Hakkımızda", "Çalışma yaklaşımımız ve hizmet anlayışımız.", PageKind.Core, null, Array.Empty<(string, string)>(), $"{site.AboutIntro}\n\n## {site.AboutTitle}\n\n{site.AboutText}"),
+            new("/kurumsal", "Hakkımızda", "Çalışma yaklaşımımız ve hizmet anlayışımız.", PageKind.Core, null, Array.Empty<(string, string)>(), $"{site.AboutIntro}\n\n## {site.AboutSectionTitle}\n\n{site.AboutText}"),
             new("/urunler", "Ürün ve Hizmetler", "Sunduğumuz alüminyum, cam ve kapı sistemleri.", PageKind.Core, servicesModified, Array.Empty<(string, string)>(), serviceLinks),
             new("/projeler", "Projelerimiz", "Uyguladığımız projelerden örnekler.", PageKind.Core, projectsModified, Array.Empty<(string, string)>(), projectLinks),
             new("/galeri", "Galeri", "Uygulamalarımızdan görüntüler.", PageKind.Core, Latest(images.Select(x => (DateTime?)x.CreatedUtc)), Gallery(images, "Karakuş Alüminyum uygulaması"), $"{images.Count} görsel yayında."),

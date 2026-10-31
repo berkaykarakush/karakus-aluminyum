@@ -22,7 +22,7 @@ public class GalleryController : Controller
         ViewData["Seo"] = new SeoViewModel
         {
             Title = "Galeri | Karakuş Alüminyum",
-            Description = "Alüminyum doğrama, sürme sistemler, kapı-pencere, giydirme cephe ve cam balkon uygulamalarımızdan seçtiğimiz görüntüler.",
+            Description = "Alüminyum doğrama, sürme cam, cam balkon ve kapı sistemleri uygulamalarımızdan seçtiğimiz görüntüler.",
             CanonicalPath = "/galeri",
             PageType = "CollectionPage",
             Breadcrumbs = new[] { ("Galeri", "/galeri") },

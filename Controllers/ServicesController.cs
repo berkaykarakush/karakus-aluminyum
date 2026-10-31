@@ -16,7 +16,7 @@ public class ServicesController : Controller
     public async Task<IActionResult> Index()
     {
         var rows = await _db.Services.AsNoTracking().Where(x=>x.IsPublished).OrderBy(x=>x.SortOrder).ToListAsync();
-        ViewData["Seo"] = new SeoViewModel { Title="Ürün ve Hizmetler | Karakuş Alüminyum", Description="Alüminyum doğrama, sürme sistemler, kapı-pencere, giydirme cephe, cam balkon ve otomatik kapı çözümlerini inceleyin.", CanonicalPath="/urunler", PageType="CollectionPage", Breadcrumbs=new[]{("Ürün ve Hizmetler","/urunler")}, Schema=new[]{SchemaNodes.ItemList("/urunler", rows.Select(x=>("/urunler/"+x.Slug,x.Name)))} };
+        ViewData["Seo"] = new SeoViewModel { Title="Ürün ve Hizmetler | Karakuş Alüminyum", Description="Alüminyum ve PVC doğrama, cam balkon, giyotin ve sürme cam sistemleri, panjur, ofis bölme ve otomatik kapı çözümlerini inceleyin.", CanonicalPath="/urunler", PageType="CollectionPage", Breadcrumbs=new[]{("Ürün ve Hizmetler","/urunler")}, Schema=new[]{SchemaNodes.ItemList("/urunler", rows.Select(x=>("/urunler/"+x.Slug,x.Name)))} };
         return View(rows.Select(ToPage).ToList());
     }
     [HttpGet("{slug}")]

@@ -81,7 +81,7 @@ public sealed class SeoTests(PostgresFixture postgres)
             if (Regex.IsMatch(html, "<img(?![^>]*\\balt=\")[^>]*>")) problems.Add($"{path}: alt metinsiz görsel");
             if (Graph(html).All(x => x.GetProperty("@id").GetString() != Domain + "/#organization")) problems.Add($"{path}: işletme şeması yok");
             var markdown = Regex.Match(html, "<link rel=\"alternate\" type=\"text/markdown\" href=\"([^\"]+)\"").Groups[1].Value;
-            if ((await client.GetAsync(markdown)).StatusCode != HttpStatusCode.OK) problems.Add($"{path}: Markdown yok ({markdown})");
+            if (markdown.Length == 0 || (await client.GetAsync(markdown)).StatusCode != HttpStatusCode.OK) problems.Add($"{path}: Markdown yok ({markdown})");
         }
         Assert.True(seen.Count > 10);
         Assert.Empty(problems);
@@ -115,6 +115,17 @@ public sealed class SeoTests(PostgresFixture postgres)
             return await db.SaveChangesAsync();
         });
         Assert.False((await SitemapAsync(client)).ContainsKey($"{Domain}/blog/{slug}"));
+
+        var hidden = await app.WithDbAsync(async db =>
+        {
+            var service = await db.Services.FirstAsync(x => x.IsPublished);
+            service.IsPublished = false;
+            await db.SaveChangesAsync();
+            return service.Slug;
+        });
+        Assert.False((await SitemapAsync(client)).ContainsKey($"{Domain}/urunler/{hidden}"));
+        Assert.DoesNotContain($"/urunler/{hidden}", await client.GetStringAsync("/llms.txt"));
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/urunler/{hidden}.md")).StatusCode);
         Assert.DoesNotContain(slug, await client.GetStringAsync("/llms-full.txt"));
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/blog/{slug}.md")).StatusCode);
     }

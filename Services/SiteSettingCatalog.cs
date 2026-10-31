@@ -28,6 +28,7 @@ public static class SiteSettingCatalog
         new("PhoneE164", ContactGroup, "Telefon (aranabilir biçim)", "+905538354872", Help: "Örn. +905551112233", Pattern: "^\\+?[0-9]{7,15}$", PatternError: "Yalnızca rakam ve başta + kullanın."),
         new("WhatsAppNumber", ContactGroup, "WhatsApp numarası", "905538354872", Help: "Ülke koduyla, + olmadan. Boş bırakılırsa düğme gizlenir.", Pattern: "^[0-9]{7,15}$", PatternError: "Yalnızca rakam kullanın."),
         new("Email", ContactGroup, "E-posta", "info@karakusaluminyum.com", Pattern: "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$", PatternError: "Geçerli bir e-posta yazın."),
+        new("LegalName", ContactGroup, "Tam ticari unvan", "Karakuş Alüminyum", Help: "KVKK ve gizlilik metinlerinde veri sorumlusu olarak görünür. Vergi levhasındaki unvanı yazın."),
         new("Address", ContactGroup, "Adres", "Karacaoğlan Mah. 6252 Sk. No: 3, Bornova/İzmir"),
         new("City", ContactGroup, "Şehir", "İzmir"),
         new("PrimaryServiceArea", ContactGroup, "Ana hizmet bölgesi", "Bornova"),
@@ -35,7 +36,7 @@ public static class SiteSettingCatalog
 
         new("SiteName", SeoGroup, "Site adı", "Karakuş Alüminyum"),
         new("BaseUrl", SeoGroup, "Site adresi", "https://www.karakusaluminyum.com", Help: "Site haritası ve arama motoru bağlantıları bu adresi kullanır.", Pattern: UrlPattern, PatternError: UrlError),
-        new("SiteDescription", SeoGroup, "İşletme açıklaması", "İzmir'de alüminyum doğrama, sürme sistemler, kapı ve pencere, giydirme cephe, cam balkon ve otomatik kapı çözümleri sunan mimari alüminyum firması.", SettingKind.LongText, "Arama motoru şeması ve yapay zekâ özeti (llms.txt) bu metni kullanır."),
+        new("SiteDescription", SeoGroup, "İşletme açıklaması", "Karakuş Alüminyum, İzmir'de alüminyum ve PVC doğrama, cam balkon, giyotin ve sürme cam sistemleri, panjur, ofis bölme, otomatik ve endüstriyel kapı çözümleri sunan bir firmadır.", SettingKind.LongText, "Arama motoru şeması ve yapay zekâ özeti (llms.txt) bu metni kullanır."),
         new("IndexNowEnabled", SeoGroup, "Yeni ve değişen sayfaları arama motorlarına otomatik bildir (Bing, Yandex)", "true", SettingKind.Toggle),
         new("AiCrawlersAllowed", SeoGroup, "Yapay zekâ tarayıcılarının siteyi okumasına izin ver (ChatGPT, Claude, Perplexity, Gemini)", "true", SettingKind.Toggle),
         new("GoogleBusinessProfileUrl", SeoGroup, "Google İşletme Profili", "https://share.google/0QhP26b6Mp7BmGUGt", Pattern: UrlPattern, PatternError: UrlError),
@@ -55,19 +56,19 @@ public static class SiteSettingCatalog
         new("HeroEyebrow", HomeGroup, "Üst başlık", "Mimari Alüminyum Sistemleri"),
         new("HeroTitle", HomeGroup, "Büyük başlık", "Mimariye değer katan"),
         new("HeroTitleEmphasis", HomeGroup, "Büyük başlık (vurgulu kısım)", "alüminyum çözümleri."),
-        new("HeroText", HomeGroup, "Giriş metni", "Alüminyum doğrama, sürme sistemler, cephe ve tamamlayıcı mimari çözümler. Projenizin ihtiyaçlarını birlikte değerlendirelim.", SettingKind.LongText),
-        new("TrustItems", HomeGroup, "Giriş altındaki maddeler", "Projeye özel çözümler\nModern mimari yaklaşım\nİzmir ve çevresi", SettingKind.LongText, "Her satıra bir madde."),
-        new("ApproachTitle", HomeGroup, "Yaklaşım başlığı", "Detaylara önem veren, projeye odaklı yaklaşım."),
-        new("ApproachText", HomeGroup, "Yaklaşım metni", "Her proje farklı ölçülerle ve farklı beklentilerle başlar. Açıklıktan donanıma, camdan montaj detayına kadar sistemi projenizin ihtiyaçlarına göre birlikte değerlendiriyoruz.", SettingKind.LongText),
+        new("HeroText", HomeGroup, "Giriş metni", "Alüminyum ve PVC doğrama, cam balkon, giyotin ve sürme cam sistemleri ile otomatik kapı çözümleri. Projenizi ölçüden uygulamaya birlikte planlayalım.", SettingKind.LongText),
+        new("TrustItems", HomeGroup, "Giriş altındaki maddeler", "Projeye özel sistem seçimi\nYerinde ölçü ve keşif\nİzmir ve çevresinde hizmet", SettingKind.LongText, "Her satıra bir madde."),
+        new("ApproachTitle", HomeGroup, "Yaklaşım başlığı", "Doğru sistem, doğru detayla başlar."),
+        new("ApproachText", HomeGroup, "Yaklaşım metni", "Her yapının ölçüsü, cephesi ve kullanım beklentisi farklıdır. Profil, cam, donanım ve montaj detaylarını projenizin koşullarına göre ele alıyor, seçenekleri açık biçimde paylaşıyoruz.", SettingKind.LongText),
         new("CtaTitle", HomeGroup, "Sayfa sonu çağrı başlığı", "Projeniz için doğru sistemi birlikte belirleyelim."),
-        new("CtaText", HomeGroup, "Sayfa sonu çağrı metni", "İhtiyacınızı anlatın, ekibimizle iletişime geçin."),
+        new("CtaText", HomeGroup, "Sayfa sonu çağrı metni", "Ölçü, çizim veya yalnızca fikrinizi paylaşın; size uygun seçenekleri birlikte değerlendirelim."),
 
         new("AboutTitle", AboutGroup, "Başlık", "Karakuş Alüminyum'u tanıyın."),
-        new("AboutIntro", AboutGroup, "Giriş metni", "İzmir’de mimari alüminyum sistemleri alanında, projeye özel çözümlerle çalışıyoruz.", SettingKind.LongText),
+        new("AboutIntro", AboutGroup, "Giriş metni", "Karakuş Alüminyum; İzmir'de konut, ticari ve endüstriyel yapılar için alüminyum, cam ve kapı sistemleri alanında hizmet veriyor.", SettingKind.LongText),
         new("AboutSectionTitle", AboutGroup, "Bölüm başlığı", "Proje odaklı çalışma yaklaşımı."),
-        new("AboutText", AboutGroup, "Bölüm metni", "Her proje farklı ölçülerle ve farklı beklentilerle başlar. Sistem seçiminden uygulama detaylarına kadar süreci ihtiyaçlarınıza göre birlikte değerlendiriyoruz.", SettingKind.LongText),
+        new("AboutText", AboutGroup, "Bölüm metni", "İlk görüşmeden uygulamaya kadar süreci şeffaf biçimde yürütüyoruz. Önce ihtiyacınızı ve yapının koşullarını dinliyor, ardından yerinde ölçü alıyor ve kullanım amacınıza uygun sistem seçeneklerini teklifimizle birlikte sunuyoruz. Onaylanan detaylar doğrultusunda uygulamayı planlıyoruz.", SettingKind.LongText),
 
-        new("FooterText", FooterGroup, "Alt bilgi tanıtım metni", "Mimari projeler için estetik, işlevsel ve uzun ömürlü alüminyum çözümleri.", SettingKind.LongText)
+        new("FooterText", FooterGroup, "Alt bilgi tanıtım metni", "İzmir'de konut, ticari ve endüstriyel yapılar için alüminyum doğrama, cam ve kapı sistemleri.", SettingKind.LongText)
     };
 
     public static SettingDefinition? Find(string key) => All.FirstOrDefault(x => x.Key == key);

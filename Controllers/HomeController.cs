@@ -20,7 +20,7 @@ public class HomeController : Controller
         ViewData["Seo"] = new SeoViewModel
         {
             Title = "Karakuş Alüminyum | İzmir Mimari Alüminyum Sistemleri",
-            Description = "Alüminyum doğrama, sürme sistemler, kapı ve pencere, giydirme cephe ve cam balkon çözümleri. Karakuş Alüminyum ile projenizi değerlendirin.",
+            Description = "İzmir'de alüminyum ve PVC doğrama, cam balkon, giyotin ve sürme cam sistemleri ile otomatik kapı çözümleri. Projeniz için ölçü ve teklif alın.",
             CanonicalPath = "/",
             ImagePath = "/images/aluminyum-dograma.png",
             Schema = new[] { SchemaNodes.FaqPage("/", faqs) }

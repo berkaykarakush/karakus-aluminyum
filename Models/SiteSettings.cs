@@ -21,6 +21,7 @@ public sealed class SiteSettings
     public string GoogleSiteVerification { get; set; } = "";
     public string MetaDomainVerification { get; set; } = "";
     public string FirstPartyAnalyticsEnabled { get; set; } = "true";
+    public string LegalName { get; set; } = "Karakuş Alüminyum";
     public string SiteDescription { get; set; } = "İzmir'de mimari alüminyum doğrama ve sistem çözümleri.";
     public string IndexNowEnabled { get; set; } = "true";
     public string AiCrawlersAllowed { get; set; } = "true";

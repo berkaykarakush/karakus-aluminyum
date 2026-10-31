@@ -13,7 +13,7 @@ public class BlogController : Controller
     public async Task<IActionResult> Index()
     {
         var rows = await _db.BlogPosts.AsNoTracking().Where(x=>x.IsPublished).OrderByDescending(x=>x.PublishedUtc).ToListAsync();
-        ViewData["Seo"] = new SeoViewModel { Title="Bilgi Merkezi | Karakuş Alüminyum", Description="Alüminyum doğrama, sürme sistemler, cephe çözümleri ve ürün seçimi hakkında bilgilendirici içerikler.", CanonicalPath="/blog", PageType="CollectionPage", Breadcrumbs=new[]{("Bilgi Merkezi","/blog")}, Schema=new[]{SchemaNodes.ItemList("/blog", rows.Select(x=>("/blog/"+x.Slug,x.Title)))} };
+        ViewData["Seo"] = new SeoViewModel { Title="Bilgi Merkezi | Karakuş Alüminyum", Description="Doğrama, cam, cam balkon ve otomatik kapı seçimi hakkında uygulamadan beslenen rehberler ve teknik bilgiler.", CanonicalPath="/blog", PageType="CollectionPage", Breadcrumbs=new[]{("Bilgi Merkezi","/blog")}, Schema=new[]{SchemaNodes.ItemList("/blog", rows.Select(x=>("/blog/"+x.Slug,x.Title)))} };
         return View(rows);
     }
     [HttpGet("{slug}")]

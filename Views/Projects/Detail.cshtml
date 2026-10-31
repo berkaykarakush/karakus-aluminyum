@@ -18,7 +18,7 @@
     <div class="container content-prose">
         <img class="detail-image" src="@Model.Image" alt="@Model.Title - @Model.Type uygulaması" width="1200" height="850" />
         <h2>Proje kapsamı</h2>
-        <p style="white-space:pre-wrap">@(ViewBag.Content as string ?? "Bu proje için henüz detay içeriği girilmedi.")</p>
+        <p style="white-space:pre-wrap">@(ViewBag.Content as string ?? Model.Summary)</p>
         <a class="button button--dark" href="/iletisim">Benzer projem için iletişime geçin ↗</a>
     </div>
 </section>
