@@ -7,7 +7,7 @@
       @foreach (var img in Model)
       {
         <a href="@img.ImagePath" class="gallery-item" title="@img.Title">
-          <img src="@img.ImagePath" alt="@(img.Title ?? "Galeri görseli")" loading="lazy" />
+          <img img-sizes="(max-width: 700px) 66vw, 400px" src="@img.ImagePath" alt="@(img.Title ?? "Galeri görseli")" loading="lazy" />
         </a>
       }
     </div>

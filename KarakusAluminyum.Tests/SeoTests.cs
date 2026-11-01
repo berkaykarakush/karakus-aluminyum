@@ -49,8 +49,8 @@ public sealed class SeoTests(PostgresFixture postgres)
     public async Task SitemapImageUrls_AreAsciiEncoded()
     {
         var text = await postgres.Shared.NewClient().GetStringAsync("/sitemap.xml");
-        Assert.Contains("s%C3%BCrme-sistemleri.png", text);
-        Assert.DoesNotContain("sürme-sistemleri.png", text);
+        Assert.Contains("s%C3%BCrme-sistemleri.webp", text);
+        Assert.DoesNotContain("sürme-sistemleri.webp", text);
     }
 
     [Fact]
@@ -171,7 +171,7 @@ public sealed class SeoTests(PostgresFixture postgres)
         var graph = Graph(home);
         Assert.Equal(Domain + "/", Node(graph, "WebSite").GetProperty("url").GetString());
         var business = Node(graph, "HomeAndConstructionBusiness");
-        Assert.Equal(Domain + "/images/transparent.png", business.GetProperty("logo").GetString());
+        Assert.Equal(Domain + "/images/transparent.webp", business.GetProperty("logo").GetString());
         Assert.False(business.TryGetProperty("@context", out _));
         Assert.DoesNotContain(graph, x => x.GetProperty("@type").GetString() == "BreadcrumbList");
 

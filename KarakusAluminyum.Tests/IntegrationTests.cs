@@ -74,7 +74,7 @@ public sealed class SeedAndSchemaTests(PostgresFixture postgres)
         {
             first.NewClient();
             await first.WithDbAsync(db => db.Services.Where(s => s.Slug == slug)
-                .ExecuteUpdateAsync(s => s.SetProperty(x => x.Image, "/images/rampa-ve-koruk-sistemleri.png")));
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.Image, "/images/rampa-ve-koruk-sistemleri.webp")));
         }
 
         await using var second = postgres.CreateApp("image_repair");
@@ -269,7 +269,7 @@ public sealed class RoutingAndAuthorizationTests(PostgresFixture postgres)
 [Collection("postgres")]
 public sealed class GalleryTests(PostgresFixture postgres)
 {
-    private static readonly byte[] FakeImage = [0x89, 0x50, 0x4E, 0x47];
+    private static readonly byte[] FakeImage = TestImages.Png(40, 30);
 
     private static async Task<HttpResponseMessage> UploadAsync(HttpClient client, string token, string title, string fileName, byte[] bytes, params (string Key, string Value)[] extra)
     {
@@ -303,7 +303,7 @@ public sealed class GalleryTests(PostgresFixture postgres)
 
         var image = await app.WithDbAsync(db => db.GalleryImages.AsNoTracking().SingleAsync(g => g.Title == "yukleme-testi"));
         Assert.StartsWith("/uploads/galeri/genel/", image.ImagePath);
-        Assert.EndsWith(".png", image.ImagePath);
+        Assert.EndsWith(".webp", image.ImagePath);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(image.ImagePath)).StatusCode);
         Assert.Contains(image.ImagePath, await client.GetStringAsync("/galeri?k=genel"));
 
@@ -377,7 +377,7 @@ public sealed class GalleryTests(PostgresFixture postgres)
         Assert.Equal(all.Count, all.Distinct().Count());
 
         var filtered = Items(await client.GetStringAsync("/galeri?k=hizmet-pvc-dograma"));
-        Assert.Equal(["/images/pvc-dograma.png", "/images/kapi-ve-pencere-sistemleri.png"], filtered);
+        Assert.Equal(["/images/pvc-dograma.webp", "/images/kapi-ve-pencere-sistemleri.webp"], filtered);
 
         Assert.Contains("Bu kategoride henüz görsel yok.", await client.GetStringAsync("/galeri?k=hizmet-yok"));
     }

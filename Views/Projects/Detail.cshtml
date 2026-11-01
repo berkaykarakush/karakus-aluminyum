@@ -10,7 +10,7 @@
 <section class="page-hero page-hero--feature">
     @if (hasImage)
     {
-        <img class="page-hero__media" src="@Model.Image" alt="@Model.Title - @Model.Type uygulaması" width="1536" height="1024" fetchpriority="high" />
+        <img img-sizes="100vw" class="page-hero__media" src="@Model.Image" alt="@Model.Title - @Model.Type uygulaması" width="1536" height="1024" fetchpriority="high" />
     }
     <div class="container">
         <nav class="breadcrumbs" aria-label="İçerik yolu">
@@ -72,7 +72,7 @@
     <a class="next-project" href="/projeler/@next.Slug">
         @if (next.Image != KarakusAluminyum.Web.Services.ProjectQueries.PlaceholderImage)
         {
-            <img src="@next.Image" alt="" loading="lazy" width="1536" height="1024" />
+            <img img-sizes="(max-width: 700px) 66vw, 400px" src="@next.Image" alt="" loading="lazy" width="1536" height="1024" />
         }
         <div class="container">
             <span class="eyebrow">Sıradaki proje</span>

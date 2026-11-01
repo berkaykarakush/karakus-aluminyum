@@ -111,7 +111,7 @@ public static class ContentSeed
 
     private static readonly Article[] Articles =
     {
-        new("aluminyum-mu-pvc-mi-dograma-secimi", "Alüminyum mu PVC mi? Doğrama Seçerken Dikkate Alınması Gerekenler", "Alüminyum ve PVC doğrama arasındaki farkları; yalıtım, dayanım, görünüm ve kullanım alanı açısından karşılaştırıyoruz.", "/images/aluminyum-dograma.png", "Alüminyum ve PVC doğrama farkları: yalıtım, dayanım, görünüm ve bakım açısından hangi sistemin projenize uygun olduğunu öğrenin.",
+        new("aluminyum-mu-pvc-mi-dograma-secimi", "Alüminyum mu PVC mi? Doğrama Seçerken Dikkate Alınması Gerekenler", "Alüminyum ve PVC doğrama arasındaki farkları; yalıtım, dayanım, görünüm ve kullanım alanı açısından karşılaştırıyoruz.", "/images/aluminyum-dograma.webp", "Alüminyum ve PVC doğrama farkları: yalıtım, dayanım, görünüm ve bakım açısından hangi sistemin projenize uygun olduğunu öğrenin.",
 """
 Yeni bir yapıda veya tadilatta doğrama seçimi, uzun yıllar birlikte yaşanacak bir karardır. En sık sorulan soru da bellidir: alüminyum mu, PVC mi? Doğru cevap projeye göre değişir. Bu yazıda iki malzemeyi seçimi etkileyen başlıklar üzerinden karşılaştırıyoruz.
 
@@ -165,7 +165,7 @@ Yeni yapılarda ise doğrama seçiminin mümkün olduğunca erken aşamada yapı
 
 Bize göre tek bir "en iyi" malzeme yoktur. Açıklık ölçüleri, mimari dil, yalıtım beklentisi ve bütçe birlikte değerlendirildiğinde doğru seçim netleşir. [Alüminyum doğrama](/urunler/aluminyum-dograma) ve [PVC doğrama](/urunler/pvc-dograma) sayfalarımızdan seçenekleri inceleyebilir, projeniz için [bizimle iletişime geçebilirsiniz](/iletisim).
 """),
-        new("isi-yalitimli-aluminyum-dograma-nedir", "Isı Yalıtımlı Alüminyum Doğrama Nedir, Nasıl Çalışır?", "Isı bariyeri, poliamid çubuk ve Uf değeri gibi kavramları sade bir dille açıklıyor, doğru seçim için kontrol listesi sunuyoruz.", "/images/kapi-ve-pencere-sistemleri.png", "Isı yalıtımlı alüminyum doğramanın çalışma prensibi, ısı bariyeri, Uf ve Uw değerleri ve yoğuşmayı azaltmak için dikkat edilmesi gerekenler.",
+        new("isi-yalitimli-aluminyum-dograma-nedir", "Isı Yalıtımlı Alüminyum Doğrama Nedir, Nasıl Çalışır?", "Isı bariyeri, poliamid çubuk ve Uf değeri gibi kavramları sade bir dille açıklıyor, doğru seçim için kontrol listesi sunuyoruz.", "/images/kapi-ve-pencere-sistemleri.webp", "Isı yalıtımlı alüminyum doğramanın çalışma prensibi, ısı bariyeri, Uf ve Uw değerleri ve yoğuşmayı azaltmak için dikkat edilmesi gerekenler.",
 """
 Alüminyum dayanıklı ve şekil verilebilir bir malzemedir, ancak ısıyı iyi iletir. Yalıtımsız bir profilde dış ortamın sıcaklığı içeriye kolayca taşınır; kışın iç yüzeyin soğuması yoğuşmaya ve enerji kaybına yol açabilir. Isı yalıtımlı sistemler bu sorunu çözmek için geliştirilmiştir. Bu yazıda çalışma prensibini ve seçimde dikkat ettiğimiz noktaları sade bir dille anlatıyoruz.
 
@@ -214,7 +214,7 @@ Renk, ısı bariyerinin çalışma prensibini değiştirmez. Ancak koyu renk yü
 
 Projeniz için uygun sistemi birlikte değerlendirmek isterseniz [alüminyum doğrama](/urunler/aluminyum-dograma) sayfamızı inceleyebilir veya [teklif talep edebilirsiniz](/iletisim).
 """),
-        new("isicam-low-e-cam-secimi", "Isıcam ve Low-E Cam: Pencerede Doğru Cam Nasıl Seçilir?", "Çift cam, Low-E kaplama, argon gazı, temperli ve lamine cam farklarını kullanım alanlarıyla birlikte anlatıyoruz.", "/images/kapi-ve-pencere-sistemleri.png", "Isıcam, Low-E kaplama, argon gazı, temperli ve lamine cam farkları. Pencere ve geniş cam yüzeyler için doğru cam seçimi rehberi.",
+        new("isicam-low-e-cam-secimi", "Isıcam ve Low-E Cam: Pencerede Doğru Cam Nasıl Seçilir?", "Çift cam, Low-E kaplama, argon gazı, temperli ve lamine cam farklarını kullanım alanlarıyla birlikte anlatıyoruz.", "/images/kapi-ve-pencere-sistemleri.webp", "Isıcam, Low-E kaplama, argon gazı, temperli ve lamine cam farkları. Pencere ve geniş cam yüzeyler için doğru cam seçimi rehberi.",
 """
 Pencerenin yüzeyinin büyük bölümünü cam oluşturur. Bu nedenle ısı kaybı, güneş kontrolü ve güvenlik söz konusu olduğunda cam seçimini en az profil kadar önemsiyoruz.
 
@@ -265,7 +265,7 @@ Isıcamın kenarında iki camı ayıran bir çıta bulunur. Alüminyum çıta ı
 
 Doğru cam, her cephe için aynı olmak zorunda değildir. Projenize uygun kombinasyonu birlikte belirlemek için [bize ulaşabilirsiniz](/iletisim).
 """),
-        new("cam-balkon-katlanir-mi-surme-mi", "Cam Balkon Sistemleri: Katlanır mı, Sürme mi?", "Katlanır ve sürme cam balkon sistemlerini; kullanım, açıklık ve yalıtım açısından karşılaştırıyor, uygulama öncesi kontrol edilmesi gerekenleri sıralıyoruz.", "/images/katlanir-cam-sistemleri.png", "Katlanır ve sürme cam balkon karşılaştırması. Isıcamlı ve tek camlı seçenekler, yönetim planı ve uygulama öncesi kontrol listesi.",
+        new("cam-balkon-katlanir-mi-surme-mi", "Cam Balkon Sistemleri: Katlanır mı, Sürme mi?", "Katlanır ve sürme cam balkon sistemlerini; kullanım, açıklık ve yalıtım açısından karşılaştırıyor, uygulama öncesi kontrol edilmesi gerekenleri sıralıyoruz.", "/images/katlanir-cam-sistemleri.webp", "Katlanır ve sürme cam balkon karşılaştırması. Isıcamlı ve tek camlı seçenekler, yönetim planı ve uygulama öncesi kontrol listesi.",
 """
 Cam balkon, balkonu yılın daha uzun bölümünde kullanılabilir hale getirir. Rüzgâr, yağmur ve tozu keser, üstelik manzarayı kapatmaz. Karar verirken ilk soru genellikle şudur: katlanır mı, sürme mi?
 
@@ -313,7 +313,7 @@ Rayların ve tekerleklerin düzenli temizlenmesi sistemin ömrünü uzatır. Fit
 
 Tam açıklık önceliğinizse katlanır, pratik kullanım ve dar alan önceliğinizse sürme sistem öne çıkar. [Katlanır cam sistemleri](/urunler/katlanir-cam-sistemleri) ve [sürme cam sistemleri](/urunler/yana-kayar-surme-cam-sistemleri) sayfalarımızdan ayrıntılara bakabilir, balkonunuz için [keşif talep edebilirsiniz](/iletisim).
 """),
-        new("giyotin-cam-sistemleri-rehberi", "Giyotin Cam Sistemleri Rehberi: Otomatik ve Manuel Seçenekler", "Giyotin cam sistemlerinin çalışma prensibini, otomatik ve manuel farklarını ve güvenlik açısından dikkat edilmesi gerekenleri anlatıyoruz.", "/images/otomatik-giyotin-camlama-sistemleri.png", "Giyotin cam sistemi nedir, otomatik ve manuel farkları nelerdir? Teras ve işletmeler için güvenlik ve uygulama rehberi.",
+        new("giyotin-cam-sistemleri-rehberi", "Giyotin Cam Sistemleri Rehberi: Otomatik ve Manuel Seçenekler", "Giyotin cam sistemlerinin çalışma prensibini, otomatik ve manuel farklarını ve güvenlik açısından dikkat edilmesi gerekenleri anlatıyoruz.", "/images/otomatik-giyotin-camlama-sistemleri.webp", "Giyotin cam sistemi nedir, otomatik ve manuel farkları nelerdir? Teras ve işletmeler için güvenlik ve uygulama rehberi.",
 """
 Giyotin cam sistemleri, cam panelleri dikey yönde hareket ettirerek terasları ve açık alanları kontrollü biçimde kapatır. Son yıllarda villalarda, kafe ve restoranlarda sıkça tercih edilir. Çünkü aynı alan hem açık hem kapalı olarak kullanılabilir.
 
@@ -361,7 +361,7 @@ Giyotin sistemde paneller zeminde yer kaplamaz ve manzara açık kalır. Katlan�
 
 Ayrıntılar için [otomatik giyotin](/urunler/otomatik-giyotin-camlama-sistemleri) ve [manuel giyotin](/urunler/manuel-giyotin-ruzgar-kirici-sistemleri) sayfalarımızı inceleyebilir, alanınız için [keşif talep edebilirsiniz](/iletisim).
 """),
-        new("izmir-iklimi-dograma-secimi", "İzmir ve Kıyı Bölgelerinde Doğrama Seçimi: Nem, Tuz, Güneş", "Sıcak yazlar, kıyı nemi, tuzlu hava ve rüzgâr gibi koşullar doğrama seçimini nasıl etkiler? Yüzey, cam ve donanım önerilerimizi paylaşıyoruz.", "/images/yana-kayar-surme-cam-sistemleri.png", "İzmir ve kıyı bölgelerinde alüminyum doğrama seçimi. Tuzlu hava, nem, güneş ve rüzgâra karşı yüzey, cam ve donanım tercihleri.",
+        new("izmir-iklimi-dograma-secimi", "İzmir ve Kıyı Bölgelerinde Doğrama Seçimi: Nem, Tuz, Güneş", "Sıcak yazlar, kıyı nemi, tuzlu hava ve rüzgâr gibi koşullar doğrama seçimini nasıl etkiler? Yüzey, cam ve donanım önerilerimizi paylaşıyoruz.", "/images/yana-kayar-surme-cam-sistemleri.webp", "İzmir ve kıyı bölgelerinde alüminyum doğrama seçimi. Tuzlu hava, nem, güneş ve rüzgâra karşı yüzey, cam ve donanım tercihleri.",
 """
 Doğrama seçimi yalnızca ölçüye ve bütçeye bağlı değildir; yapının bulunduğu iklim de sonucu doğrudan etkiler. İzmir'in uzun ve sıcak yazları, kıyıya yakın bölgelerdeki nem ve tuzlu hava, bazı ilçelerde ise güçlü rüzgârlar dikkate alınması gereken koşullardır.
 
@@ -409,7 +409,7 @@ Tüm cephelere aynı çözümü uygulamak yerine yön bazlı düşünmeyi öneri
 
 Bulunduğunuz konuma ve cepheye uygun çözümü belirlemek için [bizimle iletişime geçebilirsiniz](/iletisim).
 """),
-        new("otomatik-kapi-secimi-rehberi", "Otomatik Kapı Seçimi: Fotoselli, Döner, Endüstriyel ve Bahçe Kapıları", "Bina girişinden depoya kadar farklı otomatik kapı tiplerini, kullanım alanlarını ve güvenlik gereksinimlerini özetliyoruz.", "/images/fotoselli-doner-kapi.png", "Fotoselli, döner, seksiyonel ve bahçe kapısı karşılaştırması. Otomatik kapı seçiminde kullanım alanı, güvenlik ve bakım rehberi.",
+        new("otomatik-kapi-secimi-rehberi", "Otomatik Kapı Seçimi: Fotoselli, Döner, Endüstriyel ve Bahçe Kapıları", "Bina girişinden depoya kadar farklı otomatik kapı tiplerini, kullanım alanlarını ve güvenlik gereksinimlerini özetliyoruz.", "/images/fotoselli-doner-kapi.webp", "Fotoselli, döner, seksiyonel ve bahçe kapısı karşılaştırması. Otomatik kapı seçiminde kullanım alanı, güvenlik ve bakım rehberi.",
 """
 Otomatik kapılar yalnızca konfor sağlamaz; yapının güvenliğini, enerji kullanımını ve iş akışını da etkiler. Doğru seçim için önce kapının nerede ve ne sıklıkla kullanılacağını netleştiriyoruz.
 
@@ -458,7 +458,7 @@ Otomatik kapılar hareketli parçalar ve güvenlik sensörleri içerir. Düzenli
 
 Ayrıntılar için [fotoselli kapı](/urunler/fotoselli-doner-kapi), [endüstriyel ve garaj kapıları](/urunler/endustriyel-ve-garaj-kapi-sistemleri) ile [bahçe kapısı ve bariyer](/urunler/bahce-kapisi-ve-bariyer-sistemleri) sayfalarımızı inceleyebilirsiniz.
 """),
-        new("dograma-bakimi-rehberi", "Pencere ve Kapı Bakımı: Doğramanın Ömrünü Uzatan Basit Adımlar", "Alüminyum ve PVC doğramaların temizliği, fitil ve donanım kontrolü ile sık görülen sorunların çözümüne dair pratik önerilerimizi derledik.", "/images/kapi-ve-pencere-sistemleri.png", "Alüminyum ve PVC pencere bakımı: temizlik, fitil ve menteşe kontrolü, sık görülen sorunlar ve ne zaman uzman çağırılması gerektiği.",
+        new("dograma-bakimi-rehberi", "Pencere ve Kapı Bakımı: Doğramanın Ömrünü Uzatan Basit Adımlar", "Alüminyum ve PVC doğramaların temizliği, fitil ve donanım kontrolü ile sık görülen sorunların çözümüne dair pratik önerilerimizi derledik.", "/images/kapi-ve-pencere-sistemleri.webp", "Alüminyum ve PVC pencere bakımı: temizlik, fitil ve menteşe kontrolü, sık görülen sorunlar ve ne zaman uzman çağırılması gerektiği.",
 """
 Kaliteli bir doğrama uzun yıllar sorunsuz kullanılabilir, ancak bu büyük ölçüde düzenli bakıma bağlıdır. Çoğu bakım adımı basittir ve yılda birkaç kez yapılması yeterlidir. Bu yazıda önerdiğimiz temel adımları bir araya getirdik.
 

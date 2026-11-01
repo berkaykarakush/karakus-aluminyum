@@ -18,55 +18,55 @@ public static class SeedData
         new("Alüminyum Doğrama", 
             "aluminyum-dograma", 
             "Konut ve ticari yapılar için projeye uygun alüminyum doğrama çözümleri.", 
-            "/images/aluminyum-dograma.png"),
+            "/images/aluminyum-dograma.webp"),
         new("PVC Doğrama", 
             "pvc-dograma", 
             "Kapı ve pencere uygulamaları için kullanım ihtiyacına uygun PVC doğrama çözümleri."
-            ,"/images/pvc-dograma.png"),
+            ,"/images/pvc-dograma.webp"),
         new("Otomatik Giyotin Camlama Sistemleri", 
             "otomatik-giyotin-camlama-sistemleri", 
             "Dikey hareketli cam uygulamaları için otomatik giyotin camlama sistemleri.",
-            "/images/otomatik-giyotin-camlama-sistemleri.png"),
+            "/images/otomatik-giyotin-camlama-sistemleri.webp"),
         new("Manuel Giyotin Rüzgâr Kırıcı Sistemleri", 
             "manuel-giyotin-ruzgar-kirici-sistemleri", 
             "Teras ve açık alanlarda değerlendirilebilen manuel giyotin cam ve rüzgâr kırıcı çözümleri.",
-            "/images/manuel-giyotin-ruzgar-kirici-sistemleri.png"),
+            "/images/manuel-giyotin-ruzgar-kirici-sistemleri.webp"),
         new("Katlanır Cam Sistemleri", 
             "katlanir-cam-sistemleri", 
             "Balkon, teras ve benzeri alanlar için katlanır cam sistemi seçenekleri.",
-            "/images/katlanir-cam-sistemleri.png"),
+            "/images/katlanir-cam-sistemleri.webp"),
         new("Yana Kayar Sürme Cam Sistemleri", 
             "yana-kayar-surme-cam-sistemleri", 
             "Geniş açıklıklar ve iç-dış mekân geçişleri için yana kayar sürme cam sistemleri.",
-            "/images/yana-kayar-surme-cam-sistemleri.png"),
+            "/images/yana-kayar-surme-cam-sistemleri.webp"),
         new("Otomatik Tente", 
             "otomatik-tente", 
             "Dış mekân gölgelendirmesi için otomatik tente çözümleri.",
-            "/images/otomatik-tente.png"),
+            "/images/otomatik-tente.webp"),
         new("Fotoselli Döner Kapı", 
             "fotoselli-doner-kapi", 
             "Bina girişleri için fotoselli ve döner kapı sistemleri.",
-            "/images/fotoselli-doner-kapi.png"),
+            "/images/fotoselli-doner-kapi.webp"),
         new("Sarmal Kepenk ve Panjur Sistemleri", 
             "sarmal-kepenk-ve-panjur-sistemleri", 
             "Yapıların kapı ve pencere açıklıkları için kepenk ve panjur sistemleri.",
-            "/images/sarmal-kepenk-ve-panjur-sistemleri.png"),
+            "/images/sarmal-kepenk-ve-panjur-sistemleri.webp"),
         new("Ofis Bölme Sistemleri", 
             "ofis-bolme-sistemleri", 
             "Ofis alanlarının kullanım ihtiyacına göre düzenlenmesine yönelik bölme sistemleri.",
-            "/images/ofis-bolme-sistemleri.png"),
+            "/images/ofis-bolme-sistemleri.webp"),
         new("Endüstriyel ve Garaj Kapı Sistemleri", 
             "endustriyel-ve-garaj-kapi-sistemleri", 
             "Endüstriyel alanlar ve garajlar için kapı sistemi çözümleri.",
-            "/images/endustriyel-ve-garaj-kapi-sistemleri.png"),
+            "/images/endustriyel-ve-garaj-kapi-sistemleri.webp"),
         new("Rampa ve Körük Sistemleri", 
             "rampa-ve-koruk-sistemleri", 
             "Yükleme alanlarında kullanılmak üzere rampa ve körük sistemi çözümleri.",
-            "/images/rampa-ve-koruk-sistemleri.png"),
+            "/images/rampa-ve-koruk-sistemleri.webp"),
         new("Bahçe Kapısı ve Bariyer Sistemleri", 
             "bahce-kapisi-ve-bariyer-sistemleri", 
             "Araç ve yaya girişleri için bahçe kapısı ve bariyer sistemleri.",
-            "/images/bahce-kapisi-ve-bariyer-sistemleri.png"),
+            "/images/bahce-kapisi-ve-bariyer-sistemleri.webp"),
     };
 
     // Görselleri sonradan eklenen hizmetler: genel görselde kalmışsa kendi görseline geçer.
@@ -173,7 +173,7 @@ public static class SeedData
             }
             else if (string.IsNullOrWhiteSpace(existing.Image)
                 || existing.Image.Contains("image-placeholder", StringComparison.OrdinalIgnoreCase)
-                || (DedicatedImageSlugs.Contains(seed.Slug) && existing.Image == "/images/otomatik-kapi-ve-diger-sistemler.png"))
+                || (DedicatedImageSlugs.Contains(seed.Slug) && existing.Image == "/images/otomatik-kapi-ve-diger-sistemler.webp"))
             {
                 // Önceki seed sürümü tüm hizmetlere placeholder atıyordu; bu hatalı yolu düzelt.
                 existing.Image = seed.ImageUrl;
@@ -323,39 +323,39 @@ public static class SeedData
 
             // Hizmet galerileri
             if (serviceIds.TryGetValue("aluminyum-dograma", out var id))
-                AddImages(id, null, "/images/aluminyum-dograma.png", "/images/kapi-ve-pencere-sistemleri.png", "/images/sarmal-kepenk-ve-panjur-sistemleri.png");
+                AddImages(id, null, "/images/aluminyum-dograma.webp", "/images/kapi-ve-pencere-sistemleri.webp", "/images/sarmal-kepenk-ve-panjur-sistemleri.webp");
             if (serviceIds.TryGetValue("pvc-dograma", out id))
-                AddImages(id, null, "/images/pvc-dograma.png", "/images/kapi-ve-pencere-sistemleri.png");
+                AddImages(id, null, "/images/pvc-dograma.webp", "/images/kapi-ve-pencere-sistemleri.webp");
             if (serviceIds.TryGetValue("yana-kayar-surme-cam-sistemleri", out id))
-                AddImages(id, null, "/images/yana-kayar-surme-cam-sistemleri.png", "/images/sürme-sistemleri.png", "/images/cam-balkon.png");
+                AddImages(id, null, "/images/yana-kayar-surme-cam-sistemleri.webp", "/images/sürme-sistemleri.webp", "/images/cam-balkon.webp");
             if (serviceIds.TryGetValue("katlanir-cam-sistemleri", out id))
-                AddImages(id, null, "/images/katlanir-cam-sistemleri.png", "/images/cam-balkon.png");
+                AddImages(id, null, "/images/katlanir-cam-sistemleri.webp", "/images/cam-balkon.webp");
             if (serviceIds.TryGetValue("otomatik-giyotin-camlama-sistemleri", out id))
-                AddImages(id, null, "/images/otomatik-giyotin-camlama-sistemleri.png", "/images/manuel-giyotin-ruzgar-kirici-sistemleri.png");
+                AddImages(id, null, "/images/otomatik-giyotin-camlama-sistemleri.webp", "/images/manuel-giyotin-ruzgar-kirici-sistemleri.webp");
             if (serviceIds.TryGetValue("manuel-giyotin-ruzgar-kirici-sistemleri", out id))
-                AddImages(id, null, "/images/manuel-giyotin-ruzgar-kirici-sistemleri.png");
+                AddImages(id, null, "/images/manuel-giyotin-ruzgar-kirici-sistemleri.webp");
             if (serviceIds.TryGetValue("otomatik-tente", out id))
-                AddImages(id, null, "/images/otomatik-tente.png");
+                AddImages(id, null, "/images/otomatik-tente.webp");
             if (serviceIds.TryGetValue("fotoselli-doner-kapi", out id))
-                AddImages(id, null, "/images/fotoselli-doner-kapi.png", "/images/otomatik-kapi-ve-diger-sistemler.png");
+                AddImages(id, null, "/images/fotoselli-doner-kapi.webp", "/images/otomatik-kapi-ve-diger-sistemler.webp");
             if (serviceIds.TryGetValue("sarmal-kepenk-ve-panjur-sistemleri", out id))
-                AddImages(id, null, "/images/sarmal-kepenk-ve-panjur-sistemleri.png");
+                AddImages(id, null, "/images/sarmal-kepenk-ve-panjur-sistemleri.webp");
             if (serviceIds.TryGetValue("ofis-bolme-sistemleri", out id))
-                AddImages(id, null, "/images/ofis-bolme-sistemleri.png");
+                AddImages(id, null, "/images/ofis-bolme-sistemleri.webp");
             if (serviceIds.TryGetValue("endustriyel-ve-garaj-kapi-sistemleri", out id))
-                AddImages(id, null, "/images/endustriyel-ve-garaj-kapi-sistemleri.png");
+                AddImages(id, null, "/images/endustriyel-ve-garaj-kapi-sistemleri.webp");
             if (serviceIds.TryGetValue("rampa-ve-koruk-sistemleri", out id))
-                AddImages(id, null, "/images/rampa-ve-koruk-sistemleri.png");
+                AddImages(id, null, "/images/rampa-ve-koruk-sistemleri.webp");
             if (serviceIds.TryGetValue("bahce-kapisi-ve-bariyer-sistemleri", out id))
-                AddImages(id, null, "/images/bahce-kapisi-ve-bariyer-sistemleri.png");
+                AddImages(id, null, "/images/bahce-kapisi-ve-bariyer-sistemleri.webp");
 
             // Proje galerileri
             if (projectIds.TryGetValue("nisu-insaat-a-evleri", out var pid))
-                AddImages(null, pid, "/images/aluminyum-dograma.png", "/images/yana-kayar-surme-cam-sistemleri.png", "/images/katlanir-cam-sistemleri.png");
+                AddImages(null, pid, "/images/aluminyum-dograma.webp", "/images/yana-kayar-surme-cam-sistemleri.webp", "/images/katlanir-cam-sistemleri.webp");
             if (projectIds.TryGetValue("firat-insaat-b-evleri", out pid))
-                AddImages(null, pid, "/images/kapi-ve-pencere-sistemleri.png", "/images/otomatik-giyotin-camlama-sistemleri.png");
+                AddImages(null, pid, "/images/kapi-ve-pencere-sistemleri.webp", "/images/otomatik-giyotin-camlama-sistemleri.webp");
             if (projectIds.TryGetValue("orhan-insaat-rm-evleri", out pid))
-                AddImages(null, pid, "/images/cam-balkon.png", "/images/sarmal-kepenk-ve-panjur-sistemleri.png");
+                AddImages(null, pid, "/images/cam-balkon.webp", "/images/sarmal-kepenk-ve-panjur-sistemleri.webp");
 
             await db.SaveChangesAsync();
         }

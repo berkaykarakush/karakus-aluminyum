@@ -472,7 +472,7 @@ public sealed class DocumentTemplateTests(PostgresFixture postgres)
             { new StringContent("+90 000 000 00 00"), "Phone" },
             { new StringContent("Yeni Adres"), "FooterAddress" },
             { new StringContent("Saygılarımla,"), "SignOff" },
-            { new ByteArrayContent(new byte[] { 0x89, 0x50 }), "logoFile", "logo.png" }
+            { new ByteArrayContent(TestImages.Png(40, 30)), "logoFile", "logo.png" }
         };
         var saved = await client.PostAsync("/yonetim/sablonlar/quote", form);
         Assert.Equal(HttpStatusCode.Redirect, saved.StatusCode);
@@ -483,7 +483,7 @@ public sealed class DocumentTemplateTests(PostgresFixture postgres)
         Assert.Contains("+90 000 000 00 00", html);
         Assert.Contains("Yeni Adres", html);
         Assert.Contains("/uploads/images/", html);
-        Assert.DoesNotContain("/images/transparent.png", html);
+        Assert.DoesNotContain("/images/transparent.webp", html);
     }
 
     // Tarayıcı boş alanları da gönderir: bedel maddesinin metni ve fazladan boş satırlar kaydı engellememeli.

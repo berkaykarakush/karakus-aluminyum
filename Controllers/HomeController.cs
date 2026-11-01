@@ -22,7 +22,7 @@ public class HomeController : Controller
             Title = "Karakuş Alüminyum | İzmir Mimari Alüminyum Sistemleri",
             Description = "İzmir'de alüminyum ve PVC doğrama, cam balkon, giyotin ve sürme cam sistemleri ile otomatik kapı çözümleri. Projeniz için ölçü ve teklif alın.",
             CanonicalPath = "/",
-            ImagePath = "/images/aluminyum-dograma.png",
+            ImagePath = "/images/aluminyum-dograma.webp",
             Schema = new[] { SchemaNodes.FaqPage("/", faqs) }
         };
         ViewBag.Faqs = faqs;

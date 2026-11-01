@@ -13,12 +13,28 @@ public static class AdminImageUpload
         if (file.Length > 8 * 1024 * 1024) throw new InvalidOperationException("Görsel en fazla 8 MB olabilir.");
         var extension = Path.GetExtension(Path.GetFileName(file.FileName));
         if (!Extensions.Contains(extension)) throw new InvalidOperationException("Yalnızca JPG, PNG, WEBP veya GIF görselleri yükleyebilirsiniz.");
-        var folder = Path.Combine(environment.WebRootPath ?? Path.Combine(environment.ContentRootPath, "wwwroot"), "uploads", "images");
-        Directory.CreateDirectory(folder);
-        var fileName = $"{Guid.NewGuid():N}{extension.ToLowerInvariant()}";
-        var path = Path.Combine(folder, fileName);
-        await using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-        await file.CopyToAsync(stream, cancellationToken);
-        return $"/uploads/images/{fileName}";
+        var webRoot = environment.WebRootPath ?? Path.Combine(environment.ContentRootPath, "wwwroot");
+        return await SaveOptimizedAsync(file, webRoot, "uploads/images", cancellationToken);
+    }
+
+    // Dosyanın içeriği çözülemezse uzantısı ne olursa olsun reddedilir; kaydedilen dosya sunucuda yeniden üretilir.
+    public static async Task<string> SaveOptimizedAsync(IFormFile file, string webRoot, string folder, CancellationToken cancellationToken = default)
+    {
+        await using var memory = new MemoryStream();
+        await file.CopyToAsync(memory, cancellationToken);
+        var input = memory.ToArray();
+        var image = ImageOptimizer.Process(input);
+        var name = Guid.NewGuid().ToString("N");
+        var physicalFolder = Path.Combine(webRoot, folder.Replace('/', Path.DirectorySeparatorChar));
+
+        // Hareketli GIF tek kareye düşmesin diye olduğu gibi saklanır.
+        if (ImageOptimizer.IsAnimated(input))
+        {
+            Directory.CreateDirectory(physicalFolder);
+            await File.WriteAllBytesAsync(Path.Combine(physicalFolder, name + ".gif"), input, cancellationToken);
+            return $"/{folder}/{name}.gif";
+        }
+        await ImageOptimizer.WriteAsync(image, Path.Combine(physicalFolder, name + ".webp"), cancellationToken);
+        return $"/{folder}/{name}.webp";
     }
 }

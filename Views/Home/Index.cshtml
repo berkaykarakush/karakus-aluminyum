@@ -46,12 +46,12 @@
                     imagePath = "/" + imagePath.TrimStart('~', '/');
                 }
                 <a class="mosaic-card" href="/urunler/@service.Slug" aria-label="@service.Name detayları">
-                    <img src="@(string.IsNullOrWhiteSpace(imagePath) ? "/images/aluminyum-dograma.png" : imagePath)"
+                    <img img-sizes="(max-width: 700px) 66vw, 400px" src="@(string.IsNullOrWhiteSpace(imagePath) ? "/images/aluminyum-dograma.webp" : imagePath)"
                          alt="@service.Name uygulama örneği"
                          loading="lazy"
                          width="800"
                          height="600"
-                         onerror="this.onerror=null;this.src='/images/aluminyum-dograma.png';" />
+                         onerror="this.onerror=null;this.src='/images/aluminyum-dograma.webp';" />
                     <span class="mosaic-card__index">@((i + 1).ToString("00"))</span>
                     <div class="mosaic-card__body">
                         <h3>@service.Name</h3>
@@ -65,7 +65,7 @@
 <section class="section section--dark">
     <div class="container">
         <div class="split">
-            <div class="split__visual"><img src="/images/kapi-ve-pencere-sistemleri.png" alt="Alüminyum kapı ve pencere uygulama detayı" loading="lazy" width="900" height="1000" /></div>
+            <div class="split__visual"><img img-sizes="(max-width: 900px) 100vw, 50vw" src="/images/kapi-ve-pencere-sistemleri.webp" alt="Alüminyum kapı ve pencere uygulama detayı" loading="lazy" width="900" height="1000" /></div>
             <div class="split__copy"><span class="eyebrow">Karakuş Alüminyum</span><h2>@site.ApproachTitle</h2><p>@site.ApproachText</p><ul class="check-list"><li>Proje ihtiyaçlarına göre sistem değerlendirmesi</li><li>Ürün seçimi ve uygulama sürecinde açık iletişim</li><li>Uygulama öncesi ölçü ve detayların değerlendirilmesi</li></ul><a class="button button--dark" href="/kurumsal">Bizi daha yakından tanıyın ↗</a></div>
         </div>
         <partial name="_ProcessSteps" />
@@ -79,7 +79,7 @@
             <div class="project-grid">
                 @foreach (var project in projects)
                 {
-                    <a class="project-card" href="/projeler/@project.Slug"><img src="@project.Image" alt="@project.Title - @project.Type" loading="lazy" width="1000" height="900" /><div class="project-card__text"><span>@project.Type · @project.Location</span><h3>@project.Title</h3></div></a>
+                    <a class="project-card" href="/projeler/@project.Slug"><img img-sizes="(max-width: 700px) 66vw, 400px" src="@project.Image" alt="@project.Title - @project.Type" loading="lazy" width="1000" height="900" /><div class="project-card__text"><span>@project.Type · @project.Location</span><h3>@project.Title</h3></div></a>
                 }
             </div>
         </div>

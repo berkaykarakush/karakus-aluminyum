@@ -128,6 +128,9 @@ await using (var scope = app.Services.CreateAsyncScope())
 
     // Idempotent CRM/audit DDL, mevcut kurulumlarda geçiş sırasında korunması gereken şemayı ekler.
     await CrmSchemaInitializer.EnsureCreatedAsync(db);
+    // Seed, galeriyi adrese göre karşılaştırır; eski adresler önce taşınmalıdır. Görsel hatası sitenin açılmasını engellemez.
+    try { await KarakusAluminyum.Web.Services.ImageMigration.RunAsync(db, app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot"), app.Logger); }
+    catch (Exception error) when (error is not OperationCanceledException) { app.Logger.LogError(error, "Görsel geçişi tamamlanamadı."); }
     await SeedData.InitializeAsync(scope.ServiceProvider, app.Configuration);
 }
 
@@ -150,7 +153,36 @@ app.Use((context, next) =>
         context.Response.Headers["X-Robots-Tag"] = "noindex, nofollow";
     return next();
 });
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = context =>
+    {
+        // Yüklenen dosyanın adı benzersizdir, sürümlü CSS/JS adresi içerik değişince değişir: ikisi de uzun süre saklanabilir.
+        var request = context.Context.Request;
+        var longLived = request.Path.StartsWithSegments("/uploads") || request.Query.ContainsKey("v");
+        context.Context.Response.Headers.CacheControl = longLived ? "public,max-age=31536000,immutable"
+            : request.Path.StartsWithSegments("/images") ? "public,max-age=2592000" : "public,max-age=3600";
+    }
+});
+// Eski PNG/JPG adresleri (arama motoru, dış bağlantı, eski belge kopyası) WebP karşılığına yönlenir.
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path.Value ?? "";
+    if (HttpMethods.IsGet(context.Request.Method) || HttpMethods.IsHead(context.Request.Method))
+    {
+        var extension = Path.GetExtension(path).ToLowerInvariant();
+        if (path.StartsWith("/images/", StringComparison.OrdinalIgnoreCase) && extension is ".png" or ".jpg" or ".jpeg")
+        {
+            var target = Path.ChangeExtension(path, ".webp");
+            if (app.Environment.WebRootFileProvider.GetFileInfo(target).Exists)
+            {
+                context.Response.Redirect(new PathString(target).ToUriComponent() + context.Request.QueryString, permanent: true);
+                return;
+            }
+        }
+    }
+    await next();
+});
 app.UseRouting();
 app.UseRateLimiter();
 app.UseAuthentication();

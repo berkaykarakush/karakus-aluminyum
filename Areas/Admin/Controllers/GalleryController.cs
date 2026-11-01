@@ -1,3 +1,4 @@
+using KarakusAluminyum.Web.Services;
 using KarakusAluminyum.Web.Data;
 using KarakusAluminyum.Web.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -61,18 +62,20 @@ public class GalleryController : Controller
         var sub = serviceSlug is not null ? "hizmet-" + serviceSlug
                 : projectSlug is not null ? "proje-" + projectSlug
                 : "genel";
-        var dir = Path.Combine(WebRoot, "uploads", "galeri", sub);
-        Directory.CreateDirectory(dir);
-
-        var fileName = $"{Guid.NewGuid():N}{Path.GetExtension(file!.FileName).ToLowerInvariant()}";
-        await using (var stream = System.IO.File.Create(Path.Combine(dir, fileName)))
-            await file.CopyToAsync(stream);
+        string imagePath;
+        try { imagePath = await AdminImageUpload.SaveOptimizedAsync(file!, WebRoot, $"uploads/galeri/{sub}"); }
+        catch (ImageFormatException error)
+        {
+            ModelState.AddModelError("file", error.Message);
+            await FillBags();
+            return View(vm);
+        }
 
         _db.GalleryImages.Add(new GalleryImage
         {
             ServiceId = vm.ServiceId,
             ProjectId = vm.ProjectId,
-            ImagePath = $"/uploads/galeri/{sub}/{fileName}",
+            ImagePath = imagePath,
             Title = vm.Title,
             Caption = vm.Caption,
             SortOrder = vm.SortOrder,
@@ -92,7 +95,7 @@ public class GalleryController : Controller
         if (img.ImagePath.StartsWith("/uploads/galeri/", StringComparison.OrdinalIgnoreCase))
         {
             var path = Path.Combine(WebRoot, img.ImagePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
-            if (System.IO.File.Exists(path)) System.IO.File.Delete(path);
+            ImageOptimizer.DeleteWithVariants(path);
         }
         _db.GalleryImages.Remove(img);
         await _db.SaveChangesAsync();

@@ -5,7 +5,7 @@
     var projects = (IReadOnlyList<ProjectItem>)ViewBag.Projects;
 }
 <section class="page-hero page-hero--feature">
-    <img class="page-hero__media" src="/images/hero-villa.webp" alt="" width="1920" height="1080" fetchpriority="high" />
+    <img img-sizes="100vw" class="page-hero__media" src="/images/hero-villa.webp" alt="" width="1920" height="1080" fetchpriority="high" />
     <div class="container">
         <nav class="breadcrumbs" aria-label="İçerik yolu"><a href="/">Ana Sayfa</a><span>/</span><span>Kurumsal</span></nav>
         <span class="eyebrow">Kurumsal</span>
@@ -27,8 +27,8 @@
             </div>
         </div>
         <div class="duo-figure">
-            <img src="/images/aluminyum-dograma.png" alt="Alüminyum doğrama profil detayı" loading="lazy" width="1536" height="1024" />
-            <img src="/images/kapi-ve-pencere-sistemleri.png" alt="Alüminyum kapı ve pencere uygulama detayı" loading="lazy" width="1536" height="1024" />
+            <img img-sizes="(max-width: 900px) 100vw, 50vw" src="/images/aluminyum-dograma.webp" alt="Alüminyum doğrama profil detayı" loading="lazy" width="1536" height="1024" />
+            <img img-sizes="(max-width: 900px) 100vw, 50vw" src="/images/kapi-ve-pencere-sistemleri.webp" alt="Alüminyum kapı ve pencere uygulama detayı" loading="lazy" width="1536" height="1024" />
         </div>
     </div>
 </section>
@@ -79,7 +79,7 @@
             <div class="project-grid">
                 @foreach (var project in projects)
                 {
-                    <a class="project-card" href="/projeler/@project.Slug"><img src="@project.Image" alt="@project.Title - @project.Type" loading="lazy" width="1000" height="900" /><div class="project-card__text"><span>@project.Type · @project.Location</span><h3>@project.Title</h3></div></a>
+                    <a class="project-card" href="/projeler/@project.Slug"><img img-sizes="(max-width: 700px) 66vw, 400px" src="@project.Image" alt="@project.Title - @project.Type" loading="lazy" width="1000" height="900" /><div class="project-card__text"><span>@project.Type · @project.Location</span><h3>@project.Title</h3></div></a>
                 }
             </div>
         </div>

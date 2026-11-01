@@ -2,6 +2,7 @@
 @using KarakusAluminyum.Web.Models
 @using KarakusAluminyum.Web.Services
 @inject SiteSettingsProvider SettingsProvider
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment WebHostEnvironment
 @inject SeoService Seo
 @inject KarakusAluminyum.Web.Data.AppDbContext Db
 @using Microsoft.EntityFrameworkCore
@@ -10,7 +11,10 @@
     var seo = ViewData["Seo"] as SeoViewModel ?? new SeoViewModel();
     var settings = await SettingsProvider.GetAsync();
     var canonical = settings.BaseUrl.TrimEnd('/') + (seo.CanonicalPath.StartsWith('/') ? seo.CanonicalPath : "/" + seo.CanonicalPath);
-    var imagePath = string.IsNullOrWhiteSpace(seo.ImagePath) ? "/images/aluminyum-dograma.png" : seo.ImagePath;
+    var imagePath = string.IsNullOrWhiteSpace(seo.ImagePath) ? "/images/aluminyum-dograma.webp" : seo.ImagePath;
+    // Sosyal ağların tamamı WebP önizleme göstermediği için paylaşımda JPG kopyası kullanılır.
+    var shareImage = KarakusAluminyum.Web.Services.ImageOptimizer.SharePath(imagePath);
+    if (imagePath.StartsWith('/') && WebHostEnvironment.WebRootFileProvider.GetFileInfo(shareImage).Exists) imagePath = shareImage;
     var imageUrl = imagePath.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? imagePath : settings.BaseUrl.TrimEnd('/') + imagePath;
     // Yönetici oturumu ve aranmayan sayfalar (giriş, hata) ölçüme girmez.
     var firstParty = settings.FirstPartyAnalyticsEnabled == "true";
@@ -70,7 +74,7 @@
     <header class="site-header">
         <div class="container nav-wrap">
             <a class="brand" href="/" aria-label="Karakuş Alüminyum ana sayfa">
-                <img src="/images/transparent.png" alt="Karakuş Alüminyum" width="206" height="64" />
+                <img src="/images/transparent.webp" alt="Karakuş Alüminyum" width="206" height="64" />
             </a>
             <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="primary-nav" aria-label="Menüyü aç veya kapat">
                 <span></span><span></span><span></span>
@@ -99,7 +103,7 @@
     <footer class="site-footer">
         <div class="container footer-grid">
             <div class="footer-brand">
-                <a class="brand brand--footer" href="/"><img src="/images/transparent.png" alt="Karakuş Alüminyum" width="206" height="64" loading="lazy" /></a>
+                <a class="brand brand--footer" href="/"><img src="/images/transparent.webp" alt="Karakuş Alüminyum" width="206" height="64" loading="lazy" /></a>
                 <p>@settings.FooterText</p>
             </div>
             <div><h2>Hızlı Erişim</h2><a href="/kurumsal">Hakkımızda</a><a href="/urunler">Ürün ve Hizmetler</a><a href="/projeler">Projelerimiz</a><a href="/galeri">Galeri</a><a href="/blog">Bilgi Merkezi</a><a href="/iletisim">İletişim</a></div>

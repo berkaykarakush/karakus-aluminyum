@@ -11,7 +11,7 @@
 <section class="page-hero page-hero--feature">
     @if (hasImage)
     {
-        <img class="page-hero__media" src="@Model.Image" alt="@Model.Name uygulama görseli" width="1536" height="1024" fetchpriority="high" />
+        <img img-sizes="100vw" class="page-hero__media" src="@Model.Image" alt="@Model.Name uygulama görseli" width="1536" height="1024" fetchpriority="high" />
     }
     <div class="container">
         <nav class="breadcrumbs" aria-label="İçerik yolu">
@@ -64,7 +64,7 @@
             <div class="split split--top">
                 @if (showcaseImage is not null)
                 {
-                    <div class="split__visual"><img src="@showcaseImage" alt="@Model.Name detay görseli" loading="lazy" width="900" height="1000" /></div>
+                    <div class="split__visual"><img img-sizes="(max-width: 900px) 100vw, 50vw" src="@showcaseImage" alt="@Model.Name detay görseli" loading="lazy" width="900" height="1000" /></div>
                 }
                 <div class="split__copy">
                     <span class="eyebrow">Öne çıkanlar</span>
@@ -97,7 +97,7 @@
                 @foreach (var item in related)
                 {
                     <a class="service-card" href="/urunler/@item.Slug">
-                        <div class="service-card__image"><img src="@item.Image" alt="@item.Name uygulama örneği" loading="lazy" width="800" height="600" /></div>
+                        <div class="service-card__image"><img img-sizes="(max-width: 700px) 66vw, 400px" src="@item.Image" alt="@item.Name uygulama örneği" loading="lazy" width="800" height="600" /></div>
                         <div class="service-card__body"><h3>@item.Name</h3><p>@item.ShortDescription</p></div>
                     </a>
                 }

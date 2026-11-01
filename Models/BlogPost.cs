@@ -7,7 +7,7 @@ public sealed class BlogPost
     [Required, StringLength(180)] public string Slug { get; set; } = "";
     [Required, StringLength(500)] public string Summary { get; set; } = "";
     [Required] public string Content { get; set; } = "";
-    [StringLength(500)] public string Image { get; set; } = "/images/aluminyum-dograma.png";
+    [StringLength(500)] public string Image { get; set; } = "/images/aluminyum-dograma.webp";
     [StringLength(180)] public string SeoTitle { get; set; } = "";
     [StringLength(320)] public string SeoDescription { get; set; } = "";
     public bool IsPublished { get; set; } = false;

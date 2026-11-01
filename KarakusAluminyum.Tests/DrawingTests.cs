@@ -1686,7 +1686,7 @@ public sealed class BrandTests(PostgresFixture postgres)
         var form = new MultipartFormDataContent
         {
             { new StringContent(token), "__RequestVerificationToken" }, { new StringContent(name), "Name" }, { new StringContent(category), "Category" }, { new StringContent("true"), "IsActive" },
-            { new ByteArrayContent(new byte[] { 0x89, 0x50, 0x4E, 0x47 }), "logoFile", fileName }
+            { new ByteArrayContent(TestImages.Png(40, 30)), "logoFile", fileName }
         };
         foreach (var (key, value) in extra) form.Add(new StringContent(value), key);
         return client.PostAsync(url, form);
