@@ -14,3 +14,6 @@ appsettings.Development.json
 
 # Panelden yüklenen görseller
 wwwroot/uploads/
+
+# Veritabanı ve görsel yedekleri
+backups/

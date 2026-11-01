@@ -3,6 +3,7 @@ using KarakusAluminyum.Web.Models;
 using KarakusAluminyum.Web.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 using KarakusAluminyum.Web.Controllers;
@@ -37,12 +38,36 @@ builder.Services.AddScoped<KarakusAluminyum.Web.Services.Seo.SiteContentIndex>()
 builder.Services.AddScoped<KarakusAluminyum.Web.Services.Seo.IndexNowPublisher>();
 builder.Services.AddHttpClient(KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.ClientName, client => client.Timeout = TimeSpan.FromSeconds(30));
 if (!builder.Environment.IsDevelopment()) builder.Services.AddHostedService<KarakusAluminyum.Web.Services.Seo.IndexNowBackgroundService>();
+// Uygulama TLS'i sonlandıran proxy arkasında çalışır. Başlıklara yalnızca özel ağdan gelen istekte güvenilir;
+// bu yüzden web konteyneri internete doğrudan açılmamalıdır.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.ForwardLimit = 1;
+    options.KnownProxies.Clear();
+    options.KnownIPNetworks.Clear();
+    foreach (var network in new[] { "127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "::1/128", "fc00::/7" })
+        options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(network));
+});
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.AddPolicy(AnalyticsController.RateLimitPolicy, context => RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 120, Window = TimeSpan.FromMinutes(1) }));
+    // Tek IP saatte en fazla 10 form gönderebilir; böylece tek kaynak saatlik bildirim sınırını tek başına dolduramaz.
+    options.AddPolicy(ContactController.RateLimitPolicy, context => PerIp(context, 10, TimeSpan.FromHours(1)));
+    // Hesap kilidi tek hesabı korur; bu sınır farklı hesaplar üzerinde şifre denemeyi yavaşlatır.
+    options.AddPolicy(AccountController.RateLimitPolicy, context => PerIp(context, 10, TimeSpan.FromMinutes(5)));
+
+    static RateLimitPartition<string> PerIp(HttpContext context, int limit, TimeSpan window)
+    {
+        var ip = context.Connection.RemoteIpAddress?.ToString();
+        // Gerçek sunucuda IP her zaman vardır; yalnızca bellek içi test sunucusunda boş gelir.
+        return ip is null
+            ? RateLimitPartition.GetNoLimiter("no-ip")
+            : RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions { PermitLimit = limit, Window = window });
+    }
 });
 builder.Services.AddScoped<SiteSettingsProvider>();
 builder.Services.Configure<NotificationOptions>(builder.Configuration.GetSection(NotificationOptions.SectionName));
@@ -105,6 +130,9 @@ await using (var scope = app.Services.CreateAsyncScope())
     await CrmSchemaInitializer.EnsureCreatedAsync(db);
     await SeedData.InitializeAsync(scope.ServiceProvider, app.Configuration);
 }
+
+// Şema, IP ve yönlendirmeler gerçek istemciye göre işlensin diye en başta çalışır.
+app.UseForwardedHeaders();
 
 if (!app.Environment.IsDevelopment())
 {

@@ -42,13 +42,35 @@ services:
       Notifications__WhatsApp__PhoneNumberId: ${WHATSAPP_PHONE_NUMBER_ID:-}
       Notifications__WhatsApp__To: ${WHATSAPP_TO:-}
       Notifications__WhatsApp__GraphApiVersion: ${WHATSAPP_GRAPH_API_VERSION:-v22.0}
+    # Yalnızca sunucunun kendisinden erişilir; internete Caddy üzerinden açılır.
     ports:
-      - "${WEB_PORT:-8080}:8080"
+      - "127.0.0.1:${WEB_PORT:-8080}:8080"
     volumes:
       - dataprotection_keys:/var/dpkeys
       - uploads:/app/wwwroot/uploads
+
+  # TLS sertifikasını alır ve yeniler. Sunucuda COMPOSE_PROFILES=production ile devreye girer.
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["production"]
+    restart: unless-stopped
+    depends_on:
+      - web
+    environment:
+      DOMAIN: ${DOMAIN:-www.karakusaluminyum.com}
+      APEX_DOMAIN: ${APEX_DOMAIN:-karakusaluminyum.com}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
 
 volumes:
   postgres_data:
   dataprotection_keys:
   uploads:
+  caddy_data:
+  caddy_config:

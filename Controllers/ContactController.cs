@@ -2,12 +2,14 @@ using KarakusAluminyum.Web.Data;
 using Microsoft.EntityFrameworkCore;
 using KarakusAluminyum.Web.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using KarakusAluminyum.Web.Services;
 using KarakusAluminyum.Web.Services.Notifications;
 namespace KarakusAluminyum.Web.Controllers;
 [Route("iletisim")]
 public class ContactController : Controller
 {
+    public const string RateLimitPolicy = "contact";
     private readonly SiteSettingsProvider _settingsProvider;
     private readonly AppDbContext _db;
     private readonly NotificationQueue _notifications;
@@ -27,6 +29,7 @@ public class ContactController : Controller
     }
     [HttpPost("")]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting(RateLimitPolicy)]
     [RequestSizeLimit(32000)]
     public async Task<IActionResult> Index(ContactRequest model)
     {
