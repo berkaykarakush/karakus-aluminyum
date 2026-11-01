@@ -262,7 +262,7 @@ public sealed class ContentTests(PostgresFixture postgres)
         foreach (var path in new[] { "/", "/kurumsal" })
         {
             var html = WebUtility.HtmlDecode(await client.GetStringAsync(path));
-            Assert.Contains($"© 1998-{year} ", html);
+            Assert.Contains($"© 2001-{year} ", html);
             foreach (var text in new[] { "Projeye özel sistem seçimi", "Yerinde ölçü ve keşif", "İzmir ve çevresinde hizmet", "trust-row" }) Assert.DoesNotContain(text, html);
         }
     }

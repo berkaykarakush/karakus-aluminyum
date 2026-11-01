@@ -68,7 +68,7 @@ public sealed class SiteSettings
     public string AboutText { get; set; } = "";
     public string FooterText { get; set; } = "";
 
-    public const int FoundedYear = 1998;
+    public const int FoundedYear = 2001;
     // Sunucu saati UTC olabilir; yıl Türkiye saatine göre değişir.
     public static string CopyrightYears => $"{FoundedYear}-{DateTime.UtcNow.AddHours(3).Year}";
 }
