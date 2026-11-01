@@ -565,6 +565,37 @@ internal static class DrawingLists
 [Collection("postgres")]
 public sealed class DrawingPageTests(PostgresFixture postgres)
 {
+    [Theory]
+    [InlineData(1, 1)]
+    [InlineData(5, 1)]
+    [InlineData(9, 1)]
+    [InlineData(10, 2)]
+    [InlineData(19, 3)]
+    public async Task DrawingList_PrintsAtMostNineOnEachPage(int count, int pageCount)
+    {
+        await using var app = postgres.CreateApp($"drawing_pages_{count}");
+        var (client, token) = await AdminAsync(app);
+        var list = "Liste" + count;
+        var rows = Enumerable.Range(1, count).Select(i => DrawingLists.Row($"Poz {i}", width: i % 2 == 0 ? 3000 : 800, height: i % 2 == 0 ? 900 : 2400)).ToArray();
+        await DrawingLists.PostAsync(client, token, list, DrawingLists.Rows(rows));
+        var html = await client.GetStringAsync($"/yonetim/cizim/detay/{await DrawingLists.ListIdAsync(app, list)}");
+
+        var pages = html.Split("<section class=\"wd-page\">").Skip(1).ToList();
+        Assert.Equal(pageCount, pages.Count);
+        Assert.All(pages, page => Assert.True(page.Split("class=\"wd-pos\"").Length - 1 <= 9));
+        Assert.Equal(count, pages.Sum(page => page.Split("class=\"wd-pos\"").Length - 1));
+    }
+
+    [Fact]
+    public async Task DrawingList_KeepsNotesInSeparateSection()
+    {
+        await using var app = postgres.CreateApp("drawing_notes");
+        var (client, token) = await AdminAsync(app);
+        await DrawingLists.PostAsync(client, token, "Notlu", DrawingLists.Rows(DrawingLists.Row("Poz")), ("Notes", "Liste notu burada"));
+        var html = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/cizim/detay/{await DrawingLists.ListIdAsync(app, "Notlu")}"));
+        Assert.Contains("Liste notu burada", html[html.IndexOf("wd-page-notes", StringComparison.Ordinal)..]);
+    }
+
     private static async Task<(HttpClient Client, string Token)> AdminAsync(AppFactory app)
     {
         var client = app.NewClient();

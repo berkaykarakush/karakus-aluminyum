@@ -76,11 +76,7 @@
   }
   @if (Model.Attachments.Items.Count > 0)
   {
-    <table class="doc-sheet">
-      <thead><tr><td><partial name="~/Areas/Admin/Views/Documents/_DocumentHead.cshtml" model="t" /></td></tr></thead>
-      <tfoot><tr><td><partial name="~/Areas/Admin/Views/Documents/_DocumentFoot.cshtml" model="t" /></td></tr></tfoot>
-      <tbody><tr><td class="doc-body"><partial name="~/Areas/Admin/Views/Documents/_Attachments.cshtml" model="Model.Attachments" /></td></tr></tbody>
-    </table>
+    <partial name="~/Areas/Admin/Views/Documents/_Attachments.cshtml" model="Model.Attachments" view-data='new ViewDataDictionary(ViewData) { ["Template"] = t }' />
   }
   <div class="doc-print-foot"><partial name="~/Areas/Admin/Views/Documents/_DocumentFoot.cshtml" model="t" /></div>
   <script src="~/js/units.js" asp-append-version="true"></script>

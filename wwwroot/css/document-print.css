@@ -36,11 +36,13 @@ body.doc--contract{font-family:Arial,Helvetica,sans-serif;font-size:11.5pt}
 .doc-signatures{width:100%;margin-top:5mm;border-collapse:collapse}
 .doc-signatures td{width:50%;padding:0;text-align:center;vertical-align:top}
 .doc-signatures strong{display:block;margin-bottom:2mm}
-.doc-attachments{display:flex;flex-wrap:wrap;gap:6mm;margin-top:6mm;font-family:Arial,Helvetica,sans-serif;font-size:9.5pt;line-height:1.2}
-.doc-pos{width:calc(33.3% - 4mm);break-inside:avoid}
-.doc-pos svg{display:block;width:100%;height:auto;margin-top:2mm}
-.doc-pos-total{margin-top:6mm;font-family:Arial,Helvetica,sans-serif;font-size:9.5pt;break-inside:avoid}
-@media screen and (max-width:800px){.doc-sheet>thead>tr>td,.doc-sheet>tfoot>tr>td,.doc-sheet>tbody>tr>td{padding:0 16px}.doc-title{font-size:24pt}.doc-amount{white-space:normal}.doc-pos{width:calc(50% - 3mm)}}
+/* Ekler: A4 sayfada 3 x 3. Hücre ölçüsü çizim sayısına göre değişmez. */
+.doc-attachments{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:60mm;gap:4mm 5mm;margin-top:3mm;font-family:Arial,Helvetica,sans-serif;font-size:9pt;line-height:1.2}
+.doc-pos{position:relative;display:flex;flex-direction:column;min-width:0;overflow:hidden;break-inside:avoid}
+.doc-pos__name{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.doc-pos svg{display:block;flex:1 1 0;width:100%;min-height:0;margin-top:1mm}
+.doc-pos-total{display:flex;flex-wrap:wrap;gap:2mm 8mm;margin-top:3mm;font-family:Arial,Helvetica,sans-serif;font-size:9pt;break-inside:avoid}
+@media screen and (max-width:800px){.doc-sheet>thead>tr>td,.doc-sheet>tfoot>tr>td,.doc-sheet>tbody>tr>td{padding:0 16px}.doc-title{font-size:24pt}.doc-amount{white-space:normal}.doc-attachments{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media print{
   body.doc{padding:0;background:#fff}
   .doc-toolbar{display:none}
@@ -54,5 +56,5 @@ body.doc--contract{font-family:Arial,Helvetica,sans-serif;font-size:11.5pt}
   .doc-print-foot{position:fixed;right:25mm;bottom:0;left:25mm;display:block}
   .doc-print-foot .doc-foot{visibility:visible;height:auto}
 }
-.doc-pos .wd-brand{float:right;display:inline-flex;align-items:center;max-width:42%;font-weight:700;text-align:right}
-.doc-pos .wd-brand img{display:block;max-width:100%;height:9mm;object-fit:contain}
+.doc-pos .wd-brand{position:absolute;top:0;right:0;display:inline-flex;align-items:center;max-width:36%;font-weight:700;text-align:right}
+.doc-pos .wd-brand img{display:block;max-width:100%;height:7mm;object-fit:contain}

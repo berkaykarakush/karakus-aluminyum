@@ -20,32 +20,46 @@
   @if (production && withSystem.Count > 0) { <a class="admin-btn admin-btn--secondary" href="/yonetim/cizim/optimizasyon?@string.Join("&", withSystem.Select(x => $"ids={x.Id}"))">Birlikte optimize et</a> }
   <button class="admin-btn admin-btn--secondary" type="button" onclick="window.print()">Yazdır / PDF kaydet</button>
 </div>
-<div class="wd-sheet">
-  <div class="admin-panel">
-    <h2>@Model.Name</h2>
-    <p class="admin-muted">@(Model.Customer is null ? "" : Model.Customer.Name + " · ")@items.Count çizim · @items.Sum(x => x.Quantity) adet</p>
-    @if (!string.IsNullOrWhiteSpace(Model.Notes)) { <p style="white-space:pre-wrap">@Model.Notes</p> }
-  </div>
-  <div class="wd-pos-grid">
-    @foreach (var item in items)
-    {
-      <article class="admin-panel wd-pos">
-        <header class="wd-pos__head">
-          <div>
-            <strong>@item.Name</strong>
-            <div class="admin-muted">@ProductCategories.Label(item.Category) · @Units.Size(item.WidthMm, item.HeightMm) @Units.Code · @item.Quantity adet</div>
-            <div class="admin-actions wd-noprint wd-pos__links">
-              <a href="/yonetim/cizim/poz/@item.Id">Çizimi aç</a>
-              @if (production && item.ProfileSystemId is not null) { <a href="/yonetim/cizim/imalat/@item.Id">İmalat föyü</a> }
-            </div>
-          </div>
-          <partial name="_BrandMark" model="item.Brand" />
-        </header>
-        <svg data-drawing="@JsonSerializer.Serialize(WindowDrawings.Drawing(item), json)" role="img" aria-label="@item.Name çizimi"></svg>
-        @if (!string.IsNullOrWhiteSpace(item.Notes)) { <p style="white-space:pre-wrap">@item.Notes</p> }
-      </article>
-    }
-  </div>
+<style>@@page{size:A4;margin:10mm}</style>
+<div class="wd-sheet wd-pages">
+  @* Her sayfada en fazla 9 çizim: çizim sayısı ne olursa olsun hücre ölçüsü değişmez. *@
+  @{ var pages = items.Chunk(9).ToList(); var itemNotes = items.Where(x => !string.IsNullOrWhiteSpace(x.Notes)).ToList(); }
+  @for (var p = 0; p < pages.Count; p++)
+  {
+    <section class="wd-page">
+      <header class="wd-page__head">
+        <div><strong>@Model.Name</strong><div class="admin-muted">@(Model.Customer is null ? "" : Model.Customer.Name + " · ")@items.Count çizim · @items.Sum(x => x.Quantity) adet</div></div>
+        <span class="admin-muted">Sayfa @(p + 1) / @pages.Count</span>
+      </header>
+      <div class="wd-pos-grid">
+        @foreach (var item in pages[p])
+        {
+          <article class="wd-pos">
+            <header class="wd-pos__head">
+              <div class="wd-pos__title">
+                <strong>@item.Name</strong>
+                <div class="admin-muted">@ProductCategories.Label(item.Category) · @Units.Size(item.WidthMm, item.HeightMm) @Units.Code · @item.Quantity adet</div>
+                <div class="admin-actions wd-noprint wd-pos__links">
+                  <a href="/yonetim/cizim/poz/@item.Id">Çizimi aç</a>
+                  @if (production && item.ProfileSystemId is not null) { <a href="/yonetim/cizim/imalat/@item.Id">İmalat föyü</a> }
+                </div>
+              </div>
+              <partial name="_BrandMark" model="item.Brand" />
+            </header>
+            <svg data-drawing="@JsonSerializer.Serialize(WindowDrawings.Drawing(item), json)" role="img" aria-label="@item.Name çizimi"></svg>
+          </article>
+        }
+      </div>
+    </section>
+  }
+  @if (!string.IsNullOrWhiteSpace(Model.Notes) || itemNotes.Count > 0)
+  {
+    <section class="wd-page-notes">
+      <h2>Notlar</h2>
+      @if (!string.IsNullOrWhiteSpace(Model.Notes)) { <p style="white-space:pre-wrap">@Model.Notes</p> }
+      @foreach (var item in itemNotes) { <p style="white-space:pre-wrap"><strong>@item.Name:</strong> @item.Notes</p> }
+    </section>
+  }
   <div class="admin-panel wd-noprint">
     <h2>Teklife ekle</h2>
     @if (quotes.Any())
@@ -74,4 +88,4 @@
   </div>
 </div>
 <script src="~/js/window-drawing.js" asp-append-version="true"></script>
-<script>document.querySelectorAll("[data-drawing]").forEach((svg) => WindowDrawing.render(svg, JSON.parse(svg.dataset.drawing), { textScale: 1.7 }));</script>
+<script>document.querySelectorAll("[data-drawing]").forEach((svg) => WindowDrawing.render(svg, JSON.parse(svg.dataset.drawing), { textScale: 2.4 }));</script>

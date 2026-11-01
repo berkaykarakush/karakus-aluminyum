@@ -428,6 +428,30 @@ public sealed class ContractTests(PostgresFixture postgres)
         Assert.Contains("data-doc-drawing", html);
     }
 
+    [Theory]
+    [InlineData(1, 1)]
+    [InlineData(9, 1)]
+    [InlineData(10, 2)]
+    public async Task Attachments_PrintAtMostNineOnEachPage_WithTotalsOnLastPage(int count, int pageCount)
+    {
+        var (app, client, token, customer) = await SetupAsync();
+        var ids = await app.WithDbAsync(async db =>
+        {
+            var designs = Enumerable.Range(1, count).Select(i => new WindowDesign { DrawingList = new DrawingList { Name = "Ek" }, Name = $"Poz {i}", WidthMm = 1000, HeightMm = 2000, Quantity = 1, LayoutJson = "{\"opening\":\"fixed\"}" }).ToList();
+            db.WindowDesigns.AddRange(designs);
+            await db.SaveChangesAsync();
+            return designs.Select(x => x.Id).ToArray();
+        });
+        var title = Unique("Sayfa");
+        await SaveAsync(client, token, "/yonetim/sozlesmeler/ekle", customer, title, ContentJson(500000, ids));
+        var html = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/sozlesmeler/yazdir/{await IdAsync(app, title)}"));
+        var grids = html.Split("class=\"doc-attachments\"").Skip(1).ToList();
+        Assert.Equal(pageCount, grids.Count);
+        Assert.All(grids, grid => Assert.True(grid.Split("class=\"doc-pos\"").Length - 1 <= 9));
+        Assert.Single(html.Split("class=\"doc-pos-total\"").Skip(1));
+        Assert.Contains("doc-pos-total", grids[^1]);
+    }
+
     [Fact]
     public async Task Create_RejectsNegativePaymentAndBrokenJson()
     {

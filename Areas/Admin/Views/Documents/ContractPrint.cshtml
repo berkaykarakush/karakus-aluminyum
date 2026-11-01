@@ -75,9 +75,12 @@
         </td>
       </tr></tbody></table>
       </div>
-      <partial name="~/Areas/Admin/Views/Documents/_Attachments.cshtml" model="Model.Attachments" />
     </td></tr></tbody>
   </table>
+  @if (Model.Attachments.Items.Count > 0)
+  {
+    <partial name="~/Areas/Admin/Views/Documents/_Attachments.cshtml" model="Model.Attachments" view-data='new ViewDataDictionary(ViewData) { ["Template"] = t }' />
+  }
   <div class="doc-print-foot"><partial name="~/Areas/Admin/Views/Documents/_DocumentFoot.cshtml" model="t" /></div>
   <script src="~/js/units.js" asp-append-version="true"></script>
   <script src="~/js/window-drawing.js" asp-append-version="true"></script>

@@ -1,25 +1,38 @@
 @model KarakusAluminyum.Web.Services.Documents.AttachmentList
 @using System.Text.Json
-@if (Model.Items.Count > 0)
+@using KarakusAluminyum.Web.Models.Documents
+@{
+    // Her sayfada en fazla 9 çizim: çizim sayısı ne olursa olsun hücre ölçüsü değişmez.
+    var template = (DocumentTemplate)ViewData["Template"]!;
+    var pages = Model.Items.Chunk(9).ToList();
+}
+@for (var p = 0; p < pages.Count; p++)
 {
-  <div class="doc-attachments">
-    @foreach (var item in Model.Items)
-    {
-      <div class="doc-pos">
-        <partial name="_BrandMark" model="item.Design.Brand" />
-        <div>Poz: @item.Position</div>
-        <div>Adt: @item.Design.Quantity</div>
-        <div>@item.Design.Name</div>
-        <div>@KarakusAluminyum.Web.Models.Drawing.ProductCategories.Label(item.Design.Category)</div>
-        <div>Çevre: @item.PerimeterM.ToString("0.0")m</div>
-        <div>Alan: @item.AreaM2.ToString("0.0")m²</div>
-        <svg data-doc-drawing="@JsonSerializer.Serialize(item.Drawing, new JsonSerializerOptions(JsonSerializerDefaults.Web))" role="img" aria-label="@item.Design.Name çizimi"></svg>
+  <table class="doc-sheet">
+    <thead><tr><td><partial name="~/Areas/Admin/Views/Documents/_DocumentHead.cshtml" model="template" /></td></tr></thead>
+    <tfoot><tr><td><partial name="~/Areas/Admin/Views/Documents/_DocumentFoot.cshtml" model="template" /></td></tr></tfoot>
+    <tbody><tr><td class="doc-body">
+      <div class="doc-attachments">
+        @foreach (var item in pages[p])
+        {
+          <div class="doc-pos">
+            <partial name="_BrandMark" model="item.Design.Brand" />
+            <div>Poz: @item.Position · Adt: @item.Design.Quantity</div>
+            <div class="doc-pos__name">@item.Design.Name</div>
+            <div>@KarakusAluminyum.Web.Models.Drawing.ProductCategories.Label(item.Design.Category)</div>
+            <div>Çevre: @item.PerimeterM.ToString("0.0")m · Alan: @item.AreaM2.ToString("0.0")m²</div>
+            <svg data-doc-drawing="@JsonSerializer.Serialize(item.Drawing, new JsonSerializerOptions(JsonSerializerDefaults.Web))" role="img" aria-label="@item.Design.Name çizimi"></svg>
+          </div>
+        }
       </div>
-    }
-  </div>
-  <div class="doc-pos-total">
-    <div>Ünite Adedi: @Model.UnitCount</div>
-    <div>Toplam Çevre: @Model.TotalPerimeterM.ToString("0.0")m</div>
-    <div>Toplam Alan: @Model.TotalAreaM2.ToString("0.0")m²</div>
-  </div>
+      @if (p == pages.Count - 1)
+      {
+        <div class="doc-pos-total">
+          <span>Ünite Adedi: @Model.UnitCount</span>
+          <span>Toplam Çevre: @Model.TotalPerimeterM.ToString("0.0")m</span>
+          <span>Toplam Alan: @Model.TotalAreaM2.ToString("0.0")m²</span>
+        </div>
+      }
+    </td></tr></tbody>
+  </table>
 }
