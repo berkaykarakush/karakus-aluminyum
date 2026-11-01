@@ -42,7 +42,7 @@ services:
       Notifications__WhatsApp__To: ${WHATSAPP_TO:-}
       Notifications__WhatsApp__GraphApiVersion: ${WHATSAPP_GRAPH_API_VERSION:-v22.0}
     ports:
-      - "127.0.0.1:${WEB_PORT:-8080}:8080"
+      - "127.0.0.1:${WEB_PORT:-5200}:8080"
     volumes:
       - dataprotection_keys:/var/dpkeys
 
