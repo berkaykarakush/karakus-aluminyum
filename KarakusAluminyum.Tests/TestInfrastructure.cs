@@ -15,7 +15,7 @@ public sealed class PostgresCollection : ICollectionFixture<PostgresFixture>;
 // Tüm entegrasyon testleri tek bir PostgreSQL konteynerini paylaşır; bu yüzden Docker gerektirir.
 public sealed class PostgresFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:16-alpine").Build();
+    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:16-alpine").WithCommand("-c", "max_connections=500").Build(); // her testin kendi veritabanı ve bağlantı havuzu var
     private AppFactory? _shared;
 
     // Veritabanının ilk hâline bağlı olmayan testlerin ortak uygulaması.

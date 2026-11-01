@@ -1,0 +1,40 @@
+@model IReadOnlyList<KarakusAluminyum.Web.Models.ClientReference>
+@{
+    // Az logoda kayan şerit boş ve tekrarlı görünür; bu durumda logolar ortalanır.
+    var animated = Model.Count >= 5;
+    // Şerit geniş ekranı da doldursun diye logolar tekrar edilir; tekrarlar ekran okuyucu ve klavyeden gizlenir.
+    var repeat = animated ? (int)Math.Ceiling(12d / Model.Count) : 1;
+    var seconds = Math.Max(30, Model.Count * repeat * 4);
+
+    void Item(KarakusAluminyum.Web.Models.ClientReference x, bool duplicate)
+    {
+        var alt = duplicate ? "" : x.Name;
+        if (string.IsNullOrEmpty(x.WebsiteUrl))
+        {
+            <span class="references__item" aria-hidden="@(duplicate ? "true" : null)"><img src="@x.LogoPath" alt="@alt" loading="lazy" width="180" height="72" /></span>
+        }
+        else
+        {
+            <a class="references__item" href="@x.WebsiteUrl" target="_blank" rel="noopener noreferrer" aria-label="@(duplicate ? null : x.Name + " web sitesi (yeni sekmede açılır)")" aria-hidden="@(duplicate ? "true" : null)" tabindex="@(duplicate ? "-1" : null)"><img src="@x.LogoPath" alt="@alt" loading="lazy" width="180" height="72" /></a>
+        }
+    }
+}
+@if (Model.Count > 0)
+{
+    <section class="section references" aria-labelledby="references-title">
+        <div class="container"><div class="section-heading"><div><span class="eyebrow">Referanslarımız</span><h2 id="references-title">Birlikte çalıştığımız firmalar.</h2></div></div></div>
+        <div class="references__viewport @(animated ? "references__viewport--animated" : "")">
+            <div class="references__track" style="--references-duration:@(seconds)s">
+                @for (var copy = 0; copy < (animated ? 2 : 1); copy++)
+                {
+                    <div class="references__group" aria-hidden="@(copy > 0 ? "true" : null)">
+                        @for (var pass = 0; pass < repeat; pass++)
+                        {
+                            foreach (var reference in Model) { Item(reference, copy > 0 || pass > 0); }
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+}

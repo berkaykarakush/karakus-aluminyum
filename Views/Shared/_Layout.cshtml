@@ -33,9 +33,11 @@
     <meta name="robots" content="@seo.Robots" />
     <link rel="canonical" href="@canonical" />
     @if (seo.IsIndexable) { <link rel="alternate" type="text/markdown" href="@seo.MarkdownPath" title="Markdown" /> }
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/manrope-latin.woff2" crossorigin />
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/manrope-latin-ext.woff2" crossorigin />
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/instrument-serif-latin.woff2" crossorigin />
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/instrument-serif-latin-ext.woff2" crossorigin />
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/instrument-serif-italic-latin.woff2" crossorigin />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link href="~/images/favicon.ico" rel="icon">
     <meta property="og:type" content="@seo.Type" />
@@ -74,7 +76,7 @@
     <header class="site-header">
         <div class="container nav-wrap">
             <a class="brand" href="/" aria-label="Karakuş Alüminyum ana sayfa">
-                <img src="/images/transparent.webp" alt="Karakuş Alüminyum" width="206" height="64" />
+                <img src="/images/logo-ust.webp" alt="Karakuş Alüminyum" width="206" height="64" />
             </a>
             <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="primary-nav" aria-label="Menüyü aç veya kapat">
                 <span></span><span></span><span></span>
@@ -103,7 +105,7 @@
     <footer class="site-footer">
         <div class="container footer-grid">
             <div class="footer-brand">
-                <a class="brand brand--footer" href="/"><img src="/images/transparent.webp" alt="Karakuş Alüminyum" width="206" height="64" loading="lazy" /></a>
+                <a class="brand brand--footer" href="/"><img src="/images/logo-ust.webp" alt="Karakuş Alüminyum" width="206" height="64" loading="lazy" /></a>
                 <p>@settings.FooterText</p>
             </div>
             <div><h2>Hızlı Erişim</h2><a href="/kurumsal">Hakkımızda</a><a href="/urunler">Ürün ve Hizmetler</a><a href="/projeler">Projelerimiz</a><a href="/galeri">Galeri</a><a href="/blog">Bilgi Merkezi</a><a href="/iletisim">İletişim</a></div>

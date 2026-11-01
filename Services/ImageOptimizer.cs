@@ -15,6 +15,7 @@ public static class ImageOptimizer
     private const int ShareEdge = 1200;
     private const int PhotoQuality = 82;
     private const int TransparentQuality = 90;
+    private const int MediumQuality = 72; // kartlarda küçük gösterilir, ayrıntı kaybı görünmez
     private const int ShareQuality = 82;
     private const long MaxPixels = 60_000_000; // sıkıştırılmış küçük dosyanın belleği doldurmasını önler
 
@@ -35,7 +36,7 @@ public static class ImageOptimizer
         if (main.Width > MediumWidth * 5 / 4)
         {
             using var scaled = Scale(main, MediumWidth, (int)Math.Round(main.Height * (double)MediumWidth / main.Width));
-            medium = Encode(scaled, quality);
+            medium = Encode(scaled, hasAlpha ? TransparentQuality : MediumQuality);
         }
 
         byte[]? share = null;

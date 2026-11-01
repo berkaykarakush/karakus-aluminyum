@@ -23,6 +23,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<QuoteItem> QuoteItems => Set<QuoteItem>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<GalleryImage> GalleryImages => Set<GalleryImage>();
+    public DbSet<ClientReference> ClientReferences => Set<ClientReference>();
     public DbSet<FaqItem> FaqItems => Set<FaqItem>();
     public DbSet<ProfileSystem> ProfileSystems => Set<ProfileSystem>();
     public DbSet<GlassType> GlassTypes => Set<GlassType>();

@@ -5,7 +5,7 @@
     var projects = (IReadOnlyList<ProjectItem>)ViewBag.Projects;
 }
 <section class="page-hero page-hero--feature">
-    <img img-sizes="100vw" class="page-hero__media" src="/images/hero-villa.webp" alt="" width="1920" height="1080" fetchpriority="high" />
+    <img class="page-hero__media" src="/images/hero-villa.webp" alt="" width="1920" height="1080" fetchpriority="high" />
     <div class="container">
         <nav class="breadcrumbs" aria-label="İçerik yolu"><a href="/">Ana Sayfa</a><span>/</span><span>Kurumsal</span></nav>
         <span class="eyebrow">Kurumsal</span>
@@ -86,4 +86,5 @@
     </section>
 }
 
+<partial name="_References" model="(IReadOnlyList<KarakusAluminyum.Web.Models.ClientReference>)ViewBag.References" />
 <section class="section"><div class="container"><div class="cta-band"><div><h2>@site.CtaTitle</h2><p>@site.CtaText</p></div><a class="button button--silver" href="/iletisim">İletişime geçin ↗</a></div></div></section>

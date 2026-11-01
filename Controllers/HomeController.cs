@@ -12,6 +12,9 @@ public class HomeController : Controller
     private readonly AppDbContext _db;
     public HomeController(AppDbContext db) => _db = db;
 
+    private async Task<IReadOnlyList<ClientReference>> PublishedReferencesAsync() => await _db.ClientReferences.AsNoTracking()
+        .Where(x => x.IsPublished && x.LogoPath != null).OrderBy(x => x.SortOrder).ThenBy(x => x.Name).ToListAsync();
+
     public async Task<IActionResult> Index()
     {
         var faqs = await _db.FaqItems.AsNoTracking()
@@ -27,6 +30,7 @@ public class HomeController : Controller
         };
         ViewBag.Faqs = faqs;
         ViewBag.Projects = await ProjectQueries.PublishedAsync(_db, take: 3);
+        ViewBag.References = await PublishedReferencesAsync();
         return View(await _db.Services.AsNoTracking().Where(s => s.IsPublished).OrderBy(s => s.SortOrder).ToListAsync());
     }
 
@@ -34,6 +38,7 @@ public class HomeController : Controller
     public async Task<IActionResult> About()
     {
         ViewBag.Services = await _db.Services.AsNoTracking().Where(s => s.IsPublished).OrderBy(s => s.SortOrder).ToListAsync();
+        ViewBag.References = await PublishedReferencesAsync();
         // Görseli olmayan proje vitrinde yer almaz.
         ViewBag.Projects = (await ProjectQueries.PublishedAsync(_db)).Where(p => p.Image != ProjectQueries.PlaceholderImage).Take(3).ToList();
         ViewData["Seo"] = new SeoViewModel

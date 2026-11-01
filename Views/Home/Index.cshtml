@@ -5,7 +5,8 @@
     var projects = (IReadOnlyList<ProjectItem>)ViewBag.Projects;
 }
 @section Head {
-    <link rel="preload" as="image" href="/images/hero-villa.webp" />
+    <link rel="preload" as="image" href="/images/hero-villa-mobil.webp" media="(max-aspect-ratio: 3/5)" fetchpriority="high" />
+    <link rel="preload" as="image" href="/images/hero-villa.webp" media="(min-aspect-ratio: 3001/5000)" fetchpriority="high" />
 }
 <section class="hero">
     <div class="container hero__content">
@@ -85,6 +86,7 @@
         </div>
     </section>
 }
+<partial name="_References" model="(IReadOnlyList<KarakusAluminyum.Web.Models.ClientReference>)ViewBag.References" />
 @{ ViewData["FaqHeading"] = "Karar vermenize yardımcı bilgiler."; }
 <partial name="_Faqs" model="(IReadOnlyList<KarakusAluminyum.Web.Models.FaqItem>)ViewBag.Faqs" />
 <section class="section section--soft"><div class="container"><div class="cta-band"><div><h2>@site.CtaTitle</h2><p>@site.CtaText</p></div><a class="button button--silver" href="/iletisim">İletişime geçin ↗</a></div></div></section>

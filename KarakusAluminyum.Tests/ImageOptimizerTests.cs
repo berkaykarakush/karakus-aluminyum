@@ -85,6 +85,15 @@ public sealed class ImageOptimizerTests
     }
 
     [Fact]
+    public void MediumCopy_IsCompressedMoreThanMain()
+    {
+        // Aynı çözünürlükte karşılaştırma: küçük kopya ana görselden daha sıkı kodlanır.
+        var result = ImageOptimizer.Process(TestImages.Png(1600, 1000));
+        var sameSize = ImageOptimizer.Process(TestImages.Png(800, 500));
+        Assert.True(result.Medium!.Length < sameSize.Main.Length);
+    }
+
+    [Fact]
     public void SmallPhoto_IsNotUpscaled_AndNeedsNoMediumCopy()
     {
         var result = ImageOptimizer.Process(TestImages.Png(600, 400));
@@ -231,7 +240,41 @@ public sealed class ImageUploadAndMigrationTests(PostgresFixture postgres)
         var page = WebUtility.HtmlDecode(await app.NewClient().GetStringAsync($"/urunler/{slug}"));
         Assert.Contains($"property=\"og:image\" content=\"https://www.karakusaluminyum.com{ImageOptimizer.SharePath(path)}\"", page);
         Assert.Contains($"class=\"page-hero__media\" src=\"{path}\"", page);
-        Assert.Contains($"{ImageOptimizer.MediumPath(path)} 800w", page);
+        // Kapak telefonda dikey alana gerilir: küçük kopya bulanık görünür, tam boy dosya kullanılır.
+        Assert.DoesNotContain($"{ImageOptimizer.MediumPath(path)} 800w", page);
+    }
+
+    [Fact]
+    public async Task PublicPages_LoadFontsFromOwnServer_AndHomePreloadsResponsiveHero()
+    {
+        var visitor = postgres.Shared.NewClient();
+        foreach (var page in new[] { "/", "/kurumsal", "/iletisim", "/urunler" })
+        {
+            var html = await visitor.GetStringAsync(page);
+            Assert.DoesNotContain("fonts.googleapis", html);
+            Assert.DoesNotContain("fonts.gstatic", html);
+            Assert.Contains("href=\"/fonts/manrope-latin.woff2\"", html);
+        }
+        var home = await visitor.GetStringAsync("/");
+        Assert.Contains("href=\"/images/hero-villa-mobil.webp\" media=\"(max-aspect-ratio: 3/5)\" fetchpriority=\"high\"", home);
+        Assert.Contains("href=\"/images/hero-villa.webp\" media=\"(min-aspect-ratio: 3001/5000)\" fetchpriority=\"high\"", home);
+    }
+
+    [Fact]
+    public async Task AdminLayout_DoesNotCallGoogleFonts()
+    {
+        await using var app = postgres.CreateApp("fonts_admin");
+        var (client, _) = await AdminAsync(app);
+        Assert.DoesNotContain("fonts.google", await client.GetStringAsync("/yonetim"));
+    }
+
+    [Fact]
+    public async Task Fonts_AreCachedLongTerm()
+    {
+        await using var app = postgres.CreateApp("fonts_cache");
+        Directory.CreateDirectory(Path.Combine(app.WebRoot, "fonts"));
+        await File.WriteAllBytesAsync(Path.Combine(app.WebRoot, "fonts", "a.woff2"), [1, 2, 3]);
+        Assert.Contains("immutable", (await app.NewClient().GetAsync("/fonts/a.woff2")).Headers.CacheControl?.ToString());
     }
 
     [Fact]

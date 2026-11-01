@@ -1,0 +1,26 @@
+@model List<KarakusAluminyum.Web.Models.ClientReference>
+@{ ViewData["Title"] = "Referanslar"; }
+<div class="admin-actions"><h1>Referanslar</h1><a class="admin-btn" href="/yonetim/referanslar/ekle">+ Yeni referans</a></div>
+<div class="admin-panel" style="overflow-x:auto">
+  <p class="admin-muted">Yayında olan logolar ana sayfada ve Hakkımızda sayfasında kayan şerit olarak görünür. 5'ten az logo varsa şerit kaymaz, logolar ortalanır. Müşteri logosunu yayımlamadan önce firmanın iznini alın.</p>
+  <table class="admin-table">
+    <thead><tr><th>Logo</th><th>Firma</th><th>Web sitesi</th><th>Sıra</th><th>Durum</th><th>İşlem</th></tr></thead>
+    <tbody>
+    @foreach (var x in Model)
+    {
+      <tr>
+        <td><img src="@x.LogoPath" alt="@x.Name" style="max-width:120px;max-height:48px;object-fit:contain" /></td>
+        <td>@x.Name</td>
+        <td>@if (!string.IsNullOrEmpty(x.WebsiteUrl)) { <a href="@x.WebsiteUrl" target="_blank" rel="noopener noreferrer">@x.WebsiteUrl</a> } else { <span class="admin-muted">Yok</span> }</td>
+        <td>@x.SortOrder</td>
+        <td>@(x.IsPublished ? "Yayında" : "Taslak")</td>
+        <td><div class="admin-actions">
+          <a class="admin-btn" href="/yonetim/referanslar/duzenle/@x.Id">Düzenle</a>
+          <form method="post" action="/yonetim/referanslar/sil/@x.Id" onsubmit="return confirm('Bu referans silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form>
+        </div></td>
+      </tr>
+    }
+    </tbody>
+  </table>
+  @if (Model.Count == 0) { <p class="admin-muted">Henüz referans yok. Eklenene kadar sitede bu bölüm görünmez.</p> }
+</div>

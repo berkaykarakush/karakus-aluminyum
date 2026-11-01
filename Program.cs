@@ -159,7 +159,7 @@ app.UseStaticFiles(new StaticFileOptions
     {
         // Yüklenen dosyanın adı benzersizdir, sürümlü CSS/JS adresi içerik değişince değişir: ikisi de uzun süre saklanabilir.
         var request = context.Context.Request;
-        var longLived = request.Path.StartsWithSegments("/uploads") || request.Query.ContainsKey("v");
+        var longLived = request.Path.StartsWithSegments("/uploads") || request.Path.StartsWithSegments("/fonts") || request.Query.ContainsKey("v");
         context.Context.Response.Headers.CacheControl = longLived ? "public,max-age=31536000,immutable"
             : request.Path.StartsWithSegments("/images") ? "public,max-age=2592000" : "public,max-age=3600";
     }

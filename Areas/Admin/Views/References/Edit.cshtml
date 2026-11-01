@@ -1,0 +1,22 @@
+@model KarakusAluminyum.Web.Models.ClientReference
+@{
+    var editing = Model.Id != 0;
+    ViewData["Title"] = editing ? "Referansı düzenle" : "Yeni referans";
+    var action = editing ? $"/yonetim/referanslar/duzenle/{Model.Id}" : "/yonetim/referanslar/ekle";
+}
+<link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/referanslar">Referanslar</a></div>
+<div class="admin-panel">
+  <form class="admin-form" method="post" action="@action" enctype="multipart/form-data">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="All" class="wd-errors"></div>
+    <label asp-for="Name">Firma adı</label><input asp-for="Name" required />
+    <label asp-for="WebsiteUrl">Web sitesi (logoya tıklanınca yeni sekmede açılır)</label><input asp-for="WebsiteUrl" type="text" inputmode="url" placeholder="https://www.ornek.com" />
+    <label for="logoFile">Logo @(editing ? "(değiştirmek için seçin)" : "") - şeffaf PNG veya WEBP önerilir</label>
+    @if (!string.IsNullOrEmpty(Model.LogoPath)) { <p><img src="@Model.LogoPath" alt="@Model.Name" style="max-width:180px;max-height:72px;object-fit:contain" /></p> }
+    <input id="logoFile" type="file" name="logoFile" accept=".png,.jpg,.jpeg,.webp" required="@(!editing && string.IsNullOrEmpty(Model.LogoPath))" />
+    <label asp-for="SortOrder">Sıra</label><input asp-for="SortOrder" type="number" />
+    <p><label><input asp-for="IsPublished" /> Sitede yayınla</label></p>
+    <div class="admin-actions"><button class="admin-btn" type="submit">Kaydet</button><a href="/yonetim/referanslar">İptal</a></div>
+  </form>
+</div>
