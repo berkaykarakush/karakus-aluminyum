@@ -40,12 +40,21 @@
     document.head.appendChild(script);
   }
 
+  // Google raporlarındaki "İçerik grubu" boyutu.
+  function contentGroup() {
+    const path = location.pathname;
+    if (path === "/") return "Ana sayfa";
+    const groups = { urunler: "Ürünler", projeler: "Projeler", blog: "Blog", galeri: "Galeri", kurumsal: "Kurumsal", iletisim: "İletişim", "gizlilik-politikasi": "Yasal", "kvkk-aydinlatma-metni": "Yasal" };
+    return groups[path.split("/")[1]] || "Diğer";
+  }
+
   function startGoogle(id) {
     window.dataLayer = window.dataLayer || [];
     window.gtag = function () { window.dataLayer.push(arguments); };
-    window.gtag("consent", "default", { ad_storage: "granted", analytics_storage: "granted", ad_user_data: "granted", ad_personalization: "granted" });
+    // Çerez metni reklam ölçümünü söyler; kişiselleştirilmiş reklam izni verilmez.
+    window.gtag("consent", "default", { ad_storage: "granted", analytics_storage: "granted", ad_user_data: "granted", ad_personalization: "denied" });
     window.gtag("js", new Date());
-    window.gtag("config", id);
+    window.gtag("config", id, { content_group: contentGroup() });
     loadScript(`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(id)}`);
   }
 
@@ -58,22 +67,84 @@
     fbq("track", "PageView");
   }
 
-  // Olayın üç hedefteki karşılığı
+  // Olayın Google ve Meta karşılığı. Google parametrelerine ad, telefon gibi kişisel veri yazılmaz.
   const EVENTS = {
     whatsapp: { ga: "contact_whatsapp", meta: "Contact" },
     phone: { ga: "contact_phone", meta: "Contact" },
     email: { ga: "contact_email", meta: "Contact" },
     quote_cta: { ga: "quote_click", meta: "InitiateCheckout" },
     lead: { ga: "generate_lead", meta: "Lead" },
-    view_service: { ga: "view_item", meta: "ViewContent" }
+    view_service: { ga: "view_item", meta: "ViewContent" },
+    view_project: { ga: "view_project", meta: "ViewContent" },
+    view_article: { ga: "view_article", meta: "ViewContent" },
+    contact_form_start: { ga: "contact_form_start" },
+    contact_form_error: { ga: "contact_form_error" },
+    select_content: { ga: "select_content" },
+    faq_open: { ga: "faq_open" },
+    scroll_depth: { ga: "scroll_depth" }
   };
+  // Panel raporunun tanıdığı olaylar; diğerleri yalnızca Google'a gider.
+  const FIRST_PARTY = new Set(["whatsapp", "phone", "email", "quote_cta", "lead", "view_service"]);
 
-  function track(type, label) {
+  // Google metin parametrelerini 100 karakterde keser; boş değer gönderilmez.
+  function clean(params) {
+    return Object.fromEntries(Object.entries(params).filter(([, value]) => value !== null && value !== undefined && value !== "").map(([key, value]) => [key, typeof value === "string" ? value.slice(0, 100) : value]));
+  }
+
+  function track(type, params = {}) {
     const event = EVENTS[type];
     if (!event) return;
-    if (window.gtag) window.gtag("event", event.ga, label ? { item_name: label } : {});
-    if (window.fbq) window.fbq("track", event.meta, label ? { content_name: label } : {});
-    record(type);
+    const data = clean(params);
+    if (window.gtag) window.gtag("event", event.ga, data);
+    if (window.fbq && event.meta) window.fbq("track", event.meta, data.item_name ? { content_name: data.item_name } : {});
+    if (FIRST_PARTY.has(type)) record(type);
+  }
+
+  // Sunucunun sayfaya yazdığı olay: görüntülenen içerik, gönderilen veya hatalı form.
+  function pageEvent() {
+    const label = config.eventLabel;
+    const id = config.eventId;
+    switch (config.event) {
+      case "view_service": return { item_name: label, item_id: id, items: [{ item_id: id, item_name: label, item_category: "Hizmet" }] };
+      case "view_project": case "view_article": return { item_name: label, item_id: id };
+      case "lead": return { form_name: "iletisim", item_name: label };
+      case "contact_form_error": return { form_name: "iletisim", error_fields: label };
+      default: return {};
+    }
+  }
+
+  function linkLocation(link) {
+    if (link.closest(".floating-contact")) return "sabit_buton";
+    if (link.closest("header")) return "ust_menu";
+    if (link.closest("footer")) return "alt_menu";
+    return "sayfa";
+  }
+
+  function trackLink(link) {
+    const href = link.getAttribute("href");
+    const common = {
+      link_location: linkLocation(link), link_text: link.textContent.replace(/[↗\s]+/g, " ").trim(),
+      item_name: config.event === "view_service" ? config.eventLabel : null
+    };
+    if (href.startsWith("tel:")) return track("phone", common);
+    // Cloudflare e-posta adreslerini gizlerken bağlantıyı bu adrese çevirebilir.
+    if (href.startsWith("mailto:") || href.includes("/cdn-cgi/l/email-protection")) return track("email", common);
+    if (href.includes("wa.me/")) return track("whatsapp", common);
+    if (href.startsWith("/iletisim")) return track("quote_cta", common);
+    const detail = href.match(/^\/(urunler|projeler|blog)\/([^/?#]+)/);
+    if (detail) track("select_content", { content_type: { urunler: "hizmet", projeler: "proje", blog: "blog" }[detail[1]], content_id: detail[2], link_location: common.link_location });
+  }
+
+  function trackScroll() {
+    const steps = [25, 50, 75];
+    const onScroll = () => {
+      const height = document.documentElement.scrollHeight - window.innerHeight;
+      if (height <= 0) return;
+      const percent = (window.scrollY / height) * 100;
+      while (steps.length && percent >= steps[0]) track("scroll_depth", { percent_scrolled: steps.shift() });
+      if (!steps.length) window.removeEventListener("scroll", onScroll);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
   }
 
   let started = false;
@@ -83,17 +154,27 @@
     if (config.ga4) startGoogle(config.ga4);
     if (config.pixel) startMeta(config.pixel);
     record("pageview");
-    if (config.event) track(config.event, config.eventLabel);
+    if (config.event) track(config.event, pageEvent());
 
     document.addEventListener("click", (e) => {
       const link = e.target.closest?.("a[href]");
-      if (!link) return;
-      const href = link.getAttribute("href");
-      if (href.startsWith("tel:")) track("phone");
-      else if (href.startsWith("mailto:")) track("email");
-      else if (href.includes("wa.me/")) track("whatsapp");
-      else if (href.startsWith("/iletisim")) track("quote_cta");
+      if (link) trackLink(link);
     });
+
+    // Formu doldurmaya başlayıp göndermeyenleri görmek için sayfa başına bir kez sayılır.
+    let formStarted = false;
+    document.addEventListener("focusin", (e) => {
+      if (formStarted || !e.target.closest?.('form[action="/iletisim"]')) return;
+      formStarted = true;
+      track("contact_form_start", { form_name: "iletisim" });
+    });
+
+    // toggle olayı kabarcıklanmaz; ilk açık gelen soru sayılmaz.
+    document.querySelectorAll("details.faq-item").forEach((item) => item.addEventListener("toggle", () => {
+      if (item.open) track("faq_open", { faq_question: item.querySelector("summary")?.textContent.trim() });
+    }));
+
+    trackScroll();
   }
 
   // Onay geri alınınca oluşmuş analiz çerezleri silinir, sayfa temiz yüklenir.

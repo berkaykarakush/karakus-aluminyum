@@ -37,7 +37,13 @@ public class ContactController : Controller
         ViewBag.Settings=await _settingsProvider.GetAsync();
         ViewBag.Services=await _db.Services.AsNoTracking().Where(x=>x.IsPublished).OrderBy(x=>x.SortOrder).Select(x=>x.Name).ToListAsync();
         if (!string.IsNullOrWhiteSpace(model.Website)) return RedirectToAction(nameof(Thanks));
-        if (!ModelState.IsValid) return View(model);
+        if (!ModelState.IsValid)
+        {
+            // Yalnızca hatalı alanın adı ölçülür; yazılan değer gönderilmez.
+            ViewData["TrackEvent"] = "contact_form_error";
+            ViewData["TrackLabel"] = string.Join(",", ModelState.Where(x => x.Value?.Errors.Count > 0).Select(x => x.Key).Where(x => typeof(ContactRequest).GetProperty(x) is not null).Order());
+            return View(model);
+        }
         var contact = model.ContactInfo.Trim();
         var text = model.Message.Trim();
         var windowStart = DateTime.UtcNow.AddMinutes(-10);
@@ -51,13 +57,15 @@ public class ContactController : Controller
             _signal.Wake();
         }
         TempData["ContactNotice"]="Talebiniz alındı. En kısa sürede dönüş yapılacaktır.";
+        // Ölçüme yalnızca sitedeki hizmet adı gider; serbest metin gönderilmez.
+        if (((List<string>)ViewBag.Services).Contains(model.Service?.Trim() ?? "")) TempData["LeadService"]=model.Service!.Trim();
         return RedirectToAction(nameof(Thanks));
     }
     [HttpGet("tesekkurler")]
     public IActionResult Thanks()
     {
         // Yalnızca gerçek form gönderiminden gelindiğinde dönüşüm sayılır; bot tuzağı veya doğrudan açılış sayılmaz.
-        if (TempData["ContactNotice"] is string) { ViewData["TrackEvent"] = "lead"; }
+        if (TempData["ContactNotice"] is string) { ViewData["TrackEvent"] = "lead"; ViewData["TrackLabel"] = TempData["LeadService"] as string; }
         ViewData["Seo"] = new SeoViewModel { Title="Talebiniz Alındı | Karakuş Alüminyum", Description="İletişim talebi bilgilendirme sayfası.", CanonicalPath="/iletisim/tesekkurler", Robots="noindex,follow" };
         return View();
     }

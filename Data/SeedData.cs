@@ -202,12 +202,14 @@ public static class SeedData
 
         // Eksik ayarları ekle. Yöneticinin değerine dokunma; yalnızca eski yer tutucular düzeltilir.
         var existingSettings = await db.SiteSettingRecords.ToListAsync();
+        // Yayına yanlış varsayılanla çıkan sosyal medya adresleri; yöneticinin yazdığı başka bir değer korunur.
+        string[] wrongSocialDefaults = { "https://www.instagram.com/karakus-aluminyum", "https://www.facebook.com/karakus-aluminyum", "https://www.linkedin.com/karakus-aluminyum" };
         foreach (var definition in SiteSettingCatalog.All)
         {
             var setting = existingSettings.FirstOrDefault(s => s.Key == definition.Key);
             if (setting is null)
                 db.SiteSettingRecords.Add(new SiteSettingRecord { Key = definition.Key, Value = definition.Default, Description = definition.Label });
-            else if (setting.Value.Contains("DOMAININIZ", StringComparison.OrdinalIgnoreCase) || setting.Value.Contains("XXX", StringComparison.OrdinalIgnoreCase))
+            else if (setting.Value.Contains("DOMAININIZ", StringComparison.OrdinalIgnoreCase) || setting.Value.Contains("XXX", StringComparison.OrdinalIgnoreCase) || wrongSocialDefaults.Contains(setting.Value))
                 setting.Value = definition.Default;
         }
 

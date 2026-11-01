@@ -578,6 +578,29 @@ public sealed class AdminPanelTests(PostgresFixture postgres)
 
     private static Task<string> SettingAsync(AppFactory app, string key) => app.WithDbAsync(db => db.SiteSettingRecords.Where(s => s.Key == key).Select(s => s.Value).SingleAsync());
 
+    [Fact]
+    public async Task WrongSocialDefaults_AreCorrectedOnRestart_ButAdminValuesAreKept()
+    {
+        await using (var first = postgres.CreateApp("settings_social"))
+        {
+            first.NewClient();
+            await first.WithDbAsync(async db =>
+            {
+                async Task Set(string key, string value) => await db.SiteSettingRecords.Where(x => x.Key == key).ExecuteUpdateAsync(x => x.SetProperty(r => r.Value, value));
+                await Set("InstagramUrl", "https://www.instagram.com/karakus-aluminyum");
+                await Set("FacebookUrl", "https://www.facebook.com/baska-sayfa");
+                await Set("LinkedInUrl", "https://www.linkedin.com/karakus-aluminyum");
+                return 0;
+            });
+        }
+
+        await using var second = postgres.CreateApp("settings_social");
+        second.NewClient();
+        Assert.Equal("https://www.instagram.com/karakusaluminyum", await SettingAsync(second, "InstagramUrl"));
+        Assert.Equal("https://www.facebook.com/baska-sayfa", await SettingAsync(second, "FacebookUrl"));
+        Assert.Equal("", await SettingAsync(second, "LinkedInUrl"));
+    }
+
     // Regresyon: yöneticinin değerleri her yeniden başlatmada koddakilerle eziliyordu.
     [Fact]
     public async Task EditedSettings_SurviveRestart()
@@ -694,6 +717,55 @@ public sealed class AdminPanelTests(PostgresFixture postgres)
         var token = await visitor.GetTokenAsync("/iletisim");
         await visitor.PostFormAsync("/iletisim", token, ("Name", "Dönüşüm Testi"), ("ContactInfo", "0555"), ("Message", "Proje için bilgi almak istiyorum."), ("PrivacyAccepted", "true"), ("Website", ""));
         Assert.Contains("\"event\":\"lead\"", await visitor.GetStringAsync("/iletisim/tesekkurler"));
+    }
+
+    private static string TrackingConfig(string html) => WebUtility.HtmlDecode(System.Text.RegularExpressions.Regex.Match(html, "id=\"tracking-config\">(.*?)</script>").Groups[1].Value);
+
+    [Fact]
+    public async Task LeadEvent_CarriesOnlyPublishedServiceName_NeverPersonalData()
+    {
+        await using var app = postgres.CreateApp("tracking_lead");
+        async Task<System.Text.Json.JsonElement> Submit(string service, string name)
+        {
+            var visitor = app.NewClient();
+            var token = await visitor.GetTokenAsync("/iletisim");
+            await visitor.PostFormAsync("/iletisim", token, ("Name", name), ("ContactInfo", $"{Guid.NewGuid():N}@example.com"), ("Service", service), ("Message", "Proje için bilgi almak istiyorum."), ("PrivacyAccepted", "true"), ("Website", ""));
+            var page = TrackingConfig(await visitor.GetStringAsync("/iletisim/tesekkurler"));
+            Assert.DoesNotContain(name, page);
+            Assert.DoesNotContain("example.com", page);
+            return System.Text.Json.JsonDocument.Parse(page).RootElement;
+        }
+
+        var service = await app.WithDbAsync(db => db.Services.Where(x => x.IsPublished).Select(x => x.Name).FirstAsync());
+        Assert.Equal(service, (await Submit(service, "Ayşe Yılmaz")).GetProperty("eventLabel").GetString());
+        var free = await Submit("05551112233 numaramı arayın", "Fatma Demir");
+        Assert.Equal("lead", free.GetProperty("event").GetString());
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, free.GetProperty("eventLabel").ValueKind);
+    }
+
+    [Fact]
+    public async Task InvalidContactForm_ReportsFieldNamesOnly()
+    {
+        var visitor = postgres.Shared.NewClient();
+        var token = await visitor.GetTokenAsync("/iletisim");
+        var response = await visitor.PostFormAsync("/iletisim", token, ("Name", "Gizli Kişi"), ("ContactInfo", ""), ("Message", "kısa"), ("Website", ""), ("YabanciAlan", "x"));
+        var config = TrackingConfig(await response.Content.ReadAsStringAsync());
+        var root = System.Text.Json.JsonDocument.Parse(config).RootElement;
+        Assert.Equal("contact_form_error", root.GetProperty("event").GetString());
+        Assert.Contains("ContactInfo", root.GetProperty("eventLabel").GetString());
+        Assert.DoesNotContain("Gizli", config);
+        Assert.DoesNotContain("YabanciAlan", config);
+    }
+
+    [Theory]
+    [InlineData("/urunler/aluminyum-dograma", "view_service", "aluminyum-dograma")]
+    [InlineData("/projeler/orhan-insaat-rm-evleri", "view_project", "orhan-insaat-rm-evleri")]
+    [InlineData("/blog/dograma-bakimi-rehberi", "view_article", "dograma-bakimi-rehberi")]
+    public async Task DetailPages_DeclareTheirViewEvent(string url, string expected, string id)
+    {
+        var root = System.Text.Json.JsonDocument.Parse(TrackingConfig(await postgres.Shared.NewClient().GetStringAsync(url))).RootElement;
+        Assert.Equal((expected, id), (root.GetProperty("event").GetString(), root.GetProperty("eventId").GetString()));
+        Assert.False(string.IsNullOrEmpty(root.GetProperty("eventLabel").GetString()));
     }
 
     private static HttpRequestMessage Beacon(object body, string userAgent = "Mozilla/5.0 (Windows NT 10.0)", string? origin = null)

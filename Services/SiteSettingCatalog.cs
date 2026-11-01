@@ -42,9 +42,9 @@ public static class SiteSettingCatalog
         new("IndexNowEnabled", SeoGroup, "Yeni ve değişen sayfaları arama motorlarına otomatik bildir (Bing, Yandex)", "true", SettingKind.Toggle),
         new("AiCrawlersAllowed", SeoGroup, "Yapay zekâ tarayıcılarının siteyi okumasına izin ver (ChatGPT, Claude, Perplexity, Gemini)", "true", SettingKind.Toggle),
         new("GoogleBusinessProfileUrl", SeoGroup, "Google İşletme Profili", "https://share.google/0QhP26b6Mp7BmGUGt", Pattern: UrlPattern, PatternError: UrlError),
-        new("InstagramUrl", SeoGroup, "Instagram", "https://www.instagram.com/karakus-aluminyum", Pattern: UrlPattern, PatternError: UrlError),
-        new("FacebookUrl", SeoGroup, "Facebook", "https://www.facebook.com/karakus-aluminyum", Pattern: UrlPattern, PatternError: UrlError),
-        new("LinkedInUrl", SeoGroup, "LinkedIn", "https://www.linkedin.com/karakus-aluminyum", Pattern: UrlPattern, PatternError: UrlError),
+        new("InstagramUrl", SeoGroup, "Instagram", "https://www.instagram.com/karakusaluminyum", Pattern: UrlPattern, PatternError: UrlError),
+        new("FacebookUrl", SeoGroup, "Facebook", "https://www.facebook.com/karakusaluminyumizmir", Pattern: UrlPattern, PatternError: UrlError),
+        new("LinkedInUrl", SeoGroup, "LinkedIn", "", Pattern: UrlPattern, PatternError: UrlError),
 
         new("Ga4MeasurementId", AnalyticsGroup, "Google Analytics 4 ölçüm kimliği", "", Help: "Örn. G-ABC123DEF4. Analytics > Yönetici > Veri akışları ekranında yazar.", Pattern: "^G-[A-Z0-9]{4,20}$", PatternError: "G- ile başlayan kimliği büyük harflerle yazın."),
         new("MetaPixelId", AnalyticsGroup, "Meta Pixel kimliği", "", Help: "Yalnızca rakamlardan oluşur. Meta Events Manager > Veri kaynakları ekranında yazar.", Pattern: "^[0-9]{6,20}$", PatternError: "Yalnızca rakam kullanın."),

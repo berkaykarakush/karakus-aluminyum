@@ -58,7 +58,7 @@ public sealed class DiscoveryController : Controller
                 foreach (var photo in page.Images.Take(1000))
                 {
                     xml.WriteStartElement("image", "image", image);
-                    xml.WriteElementString("image", "loc", image, Absolute(site, photo.Path));
+                    xml.WriteElementString("image", "loc", image, new Uri(Absolute(site, photo.Path)).AbsoluteUri); // Türkçe karakterli dosya adı kodlanmış yazılır
                     xml.WriteEndElement();
                 }
                 xml.WriteEndElement();

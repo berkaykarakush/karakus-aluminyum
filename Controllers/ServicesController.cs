@@ -28,6 +28,7 @@ public class ServicesController : Controller
         ViewData["Service"] = service;
         ViewData["TrackEvent"] = "view_service";
         ViewData["TrackLabel"] = service.Name;
+        ViewData["TrackId"] = row.Slug;
         ViewBag.Gallery = await _db.GalleryImages.AsNoTracking()
             .Where(g => g.ServiceId == row.Id && g.IsPublished && g.ImagePath != row.Image)
             .OrderBy(g => g.SortOrder).ToListAsync();

@@ -22,6 +22,7 @@ public class BlogController : Controller
         var post=await _db.BlogPosts.AsNoTracking().FirstOrDefaultAsync(x=>x.IsPublished && x.Slug==slug);
         if(post is null) return NotFound();
         ViewData["Seo"] = new SeoViewModel { Title=string.IsNullOrWhiteSpace(post.SeoTitle)?post.Title:post.SeoTitle, Description=string.IsNullOrWhiteSpace(post.SeoDescription)?post.Summary:post.SeoDescription, CanonicalPath="/blog/"+post.Slug, ImagePath=post.Image, Type="article", PublishedUtc=post.PublishedUtc??post.CreatedUtc, ModifiedUtc=post.UpdatedUtc, Breadcrumbs=new[]{("Bilgi Merkezi","/blog"),(post.Title,"/blog/"+post.Slug)}, Schema=new[]{SchemaNodes.Article(post,"/blog/"+post.Slug)} };
+        ViewData["TrackEvent"] = "view_article"; ViewData["TrackLabel"] = post.Title; ViewData["TrackId"] = slug;
         return View("Detail",post);
     }
 }

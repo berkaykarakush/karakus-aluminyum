@@ -33,6 +33,7 @@ public class ProjectsController : Controller
         var index = others.FindIndex(p => p.Slug == x.Slug);
         ViewBag.Next = others.Count > 1 ? others[(index + 1) % others.Count] : null;
         ViewBag.Gallery = gallery.Where(g => g.ImagePath != image).ToList(); // kapak görseli galeride tekrar etmesin
+        ViewData["TrackEvent"] = "view_project"; ViewData["TrackLabel"] = project.Title; ViewData["TrackId"] = slug;
         return View(project);
     }
 }

@@ -46,6 +46,14 @@ public sealed class SeoTests(PostgresFixture postgres)
 
     // Sitede bağlantı verilen her sayfa dolaşılır. Yeni bir sayfa türü eklenip dizine girmezse bu test başarısız olur.
     [Fact]
+    public async Task SitemapImageUrls_AreAsciiEncoded()
+    {
+        var text = await postgres.Shared.NewClient().GetStringAsync("/sitemap.xml");
+        Assert.Contains("s%C3%BCrme-sistemleri.png", text);
+        Assert.DoesNotContain("sürme-sistemleri.png", text);
+    }
+
+    [Fact]
     public async Task EveryLinkedPublicPage_IsInSitemap_AndHasCompleteMetadata()
     {
         await using var app = postgres.CreateApp("seo_crawl");
