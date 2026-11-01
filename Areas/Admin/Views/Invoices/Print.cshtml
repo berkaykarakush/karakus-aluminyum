@@ -10,7 +10,7 @@
 <body>
 <button class="noprint" onclick="window.print()">Yazdır</button>
 <div class="head">
-  <div><strong>@site.SiteName</strong><br />@site.Address<br />@site.PhoneDisplay</div>
+  <div><strong>@site.SiteName</strong><br />@site.Address<br />@site.PhoneText</div>
   <div><strong>@AccountingLabels.Label(Model.Kind)</strong><br />No: @(Model.Number ?? "Taslak")<br />Tarih: @Model.Date.ToString("dd.MM.yyyy")<br />Vade: @Model.DueDate.ToString("dd.MM.yyyy")@if (!string.IsNullOrEmpty(Model.EDocumentNumber)) { <br /><text>e-Belge: @Model.EDocumentNumber</text> }</div>
 </div>
 <p><strong>@Model.Customer?.Name</strong><br />@Model.Customer?.Address<br />@(Model.Customer?.TaxOffice) @(Model.Customer?.TaxNumber)</p>

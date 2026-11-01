@@ -68,8 +68,8 @@
         <div class="container top-strip__inner">
             <span>İzmir’de mimari alüminyum çözümleri sunuyoruz</span>
             <div class="top-strip__links">
-                <a href="tel:@settings.PhoneE164">@settings.PhoneDisplay</a>
-                <a href="/iletisim">Teklif isteyin <span aria-hidden="true">↗</span></a>
+                <span class="top-strip__phones">@foreach (var phone in settings.Phones) { <a href="tel:@phone.E164">@phone.Display</a> }</span>
+                <a class="top-strip__quote" href="/iletisim">Teklif isteyin <span aria-hidden="true">↗</span></a>
             </div>
         </div>
     </div>
@@ -115,7 +115,7 @@
                     <a href="/urunler/@item.Slug">@item.Name</a>
                 }
             </div>
-            <div><h2>İletişim</h2><p>@settings.Address</p><a href="tel:@settings.PhoneE164">@settings.PhoneDisplay</a><a href="mailto:@settings.Email">@settings.Email</a>@if (!string.IsNullOrWhiteSpace(settings.GoogleMapsUrl)) { <a href="@settings.GoogleMapsUrl" rel="noopener noreferrer" target="_blank">Haritada görüntüle ↗</a> }</div>
+            <div><h2>İletişim</h2><p>@settings.Address</p>@foreach (var phone in settings.Phones) { <a href="tel:@phone.E164">@phone.Display</a> }<a href="mailto:@settings.Email">@settings.Email</a>@if (!string.IsNullOrWhiteSpace(settings.GoogleMapsUrl)) { <a href="@settings.GoogleMapsUrl" rel="noopener noreferrer" target="_blank">Haritada görüntüle ↗</a> }</div>
         </div>
         <div class="container footer-bottom"><span>© @SiteSettings.CopyrightYears @settings.SiteName. Tüm hakları saklıdır.</span><div><a href="/gizlilik-politikasi">Gizlilik</a><a href="/kvkk-aydinlatma-metni">KVKK</a>@if (tracking) { <button type="button" class="footer-link-button" data-consent-open>Çerez tercihleri</button> }</div></div>
     </footer>

@@ -44,9 +44,9 @@
             <p>Ölçü, çizim ve ihtiyaçlarınızı paylaşın; projenize uygun seçenekleri birlikte belirleyelim.</p>
             <a class="button button--silver" href="@quoteUrl">Teklif isteyin <span aria-hidden="true">↗</span></a>
             <div class="side-card__links">
-                @if (!site.PhoneE164.Contains('X'))
+                @foreach (var phone in site.Phones)
                 {
-                    <a href="tel:@site.PhoneE164">@site.PhoneDisplay</a>
+                    <a href="tel:@phone.E164">@phone.Display</a>
                 }
                 @if (!string.IsNullOrWhiteSpace(site.WhatsAppNumber) && !site.WhatsAppNumber.Contains('X'))
                 {

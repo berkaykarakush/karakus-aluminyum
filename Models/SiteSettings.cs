@@ -6,6 +6,22 @@ public sealed class SiteSettings
     public string BaseUrl { get; set; } = "https://www.DOMAININIZ.com";
     public string PhoneDisplay { get; set; } = "0232 XXX XX XX";
     public string PhoneE164 { get; set; } = "+90232XXXXXXX";
+    public string Phone2Display { get; set; } = "";
+    public string Phone2E164 { get; set; } = "";
+    // İkinci numara ancak iki alanı da doluysa gösterilir: aranabilir adresi olmayan numara tıklanınca çalışmaz.
+    private bool HasPhone2 => !string.IsNullOrWhiteSpace(Phone2Display) && !string.IsNullOrWhiteSpace(Phone2E164);
+    public IReadOnlyList<(string Display, string E164)> Phones
+    {
+        get
+        {
+            var phones = new List<(string, string)>();
+            if (!string.IsNullOrWhiteSpace(PhoneDisplay) && !PhoneE164.Contains('X')) phones.Add((PhoneDisplay, PhoneE164));
+            if (HasPhone2) phones.Add((Phone2Display, Phone2E164));
+            return phones;
+        }
+    }
+    // Düz metinde kullanılan numara yazısı.
+    public string PhoneText => HasPhone2 ? $"{PhoneDisplay} veya {Phone2Display}" : PhoneDisplay;
     public string Email { get; set; } = "info@DOMAININIZ.com";
     public string WhatsAppNumber { get; set; } = "90XXXXXXXXXX";
     public string Address { get; set; } = "İzmir, Türkiye";

@@ -601,6 +601,50 @@ public sealed class AdminPanelTests(PostgresFixture postgres)
         Assert.Equal("", await SettingAsync(second, "LinkedInUrl"));
     }
 
+    [Fact]
+    public void SiteSettings_ShowSecondPhoneOnlyWhenComplete()
+    {
+        var one = new SiteSettings { PhoneDisplay = "0232 111 11 11", PhoneE164 = "+902321111111" };
+        Assert.Single(one.Phones);
+        Assert.Equal("0232 111 11 11", one.PhoneText);
+        one.Phone2Display = "0532 222 22 22";
+        Assert.Single(one.Phones); // aranabilir biçim yok
+        Assert.Equal("0232 111 11 11", one.PhoneText);
+        one.Phone2E164 = "+905322222222";
+        Assert.Equal(new[] { ("0232 111 11 11", "+902321111111"), ("0532 222 22 22", "+905322222222") }, one.Phones);
+        Assert.Equal("0232 111 11 11 veya 0532 222 22 22", one.PhoneText);
+    }
+
+    [Fact]
+    public async Task SecondPhone_AppearsEverywhere_AndInvalidNumberIsRejected()
+    {
+        await using var app = postgres.CreateApp("settings_phone2");
+        var (client, token) = await AdminAsync(app);
+        var visitor = app.NewClient();
+        var single = await visitor.GetStringAsync("/iletisim");
+        Assert.DoesNotContain("0532 222 22 22", single);
+        Assert.DoesNotContain("contactPoint", await visitor.GetStringAsync("/")); // tek numarada şemaya boş alan yazılmaz
+        Assert.Equal(HttpStatusCode.OK, (await SaveSettingsAsync(client, token, ("Phone2Display", "0532 222 22 22"), ("Phone2E164", "<script>"))).StatusCode);
+        Assert.Equal("", await SettingAsync(app, "Phone2E164"));
+        var all = await app.WithDbAsync(db => db.SiteSettingRecords.AsNoTracking().ToDictionaryAsync(x => x.Key, x => x.Value));
+        all["Phone2Display"] = "0532 222 22 22"; all["Phone2E164"] = "+905322222222";
+        Assert.Equal(HttpStatusCode.Redirect, (await SaveSettingsAsync(client, token, all.Select(x => (x.Key, x.Value)).ToArray())).StatusCode);
+
+        var slug = await app.WithDbAsync(db => db.Services.Where(x => x.IsPublished).Select(x => x.Slug).FirstAsync());
+        foreach (var page in new[] { "/", "/iletisim", $"/urunler/{slug}" })
+        {
+            var html = WebUtility.HtmlDecode(await visitor.GetStringAsync(page));
+            Assert.Contains("href=\"tel:+905322222222\"", html);
+            Assert.Contains("href=\"tel:+905538354872\"", html);
+        }
+        Assert.Contains("0532 222 22 22", await visitor.GetStringAsync("/gizlilik-politikasi"));
+        Assert.Contains("0532 222 22 22", await visitor.GetStringAsync("/llms.txt"));
+        Assert.Contains("0532 222 22 22", await visitor.GetStringAsync("/iletisim.md"));
+        var schema = await visitor.GetStringAsync("/");
+        Assert.Contains("\"contactPoint\"", schema);
+        Assert.Contains("\"+905322222222\"", System.Text.RegularExpressions.Regex.Unescape(schema));
+    }
+
     // Regresyon: yöneticinin değerleri her yeniden başlatmada koddakilerle eziliyordu.
     [Fact]
     public async Task EditedSettings_SurviveRestart()

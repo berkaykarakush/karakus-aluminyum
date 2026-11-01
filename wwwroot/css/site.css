@@ -119,3 +119,5 @@ a.references__item:focus-visible{outline:2px solid var(--ink);outline-offset:-2p
 /* Telefonda dikey alanlarda görselin yalnızca ortası görünür: aynı netlikte, kırpılmış küçük dosya kullanılır. */
 @media(max-aspect-ratio:3/5){.hero:before{background-image:url("/images/hero-villa-mobil.webp")}}
 @media(max-width:700px){:root{--cephe-image:url("/images/cephe-koyu-mobil.webp")}}
+.top-strip__phones{display:flex;flex-wrap:wrap;gap:4px 18px}
+@media(max-width:420px){.top-strip__phones{gap:2px 12px}.top-strip__phones:has(a+a)~.top-strip__quote{display:none}}

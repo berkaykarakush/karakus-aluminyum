@@ -55,12 +55,12 @@ public static partial class NotificationComposer
     public static OutgoingEmail CustomerEmail(string to, SiteSettings site)
     {
         var subject = $"Talebinizi aldık | {site.SiteName}";
-        var text = $"Merhaba,\n\nTeklif talebiniz bize ulaştı. Ekibimiz talebinizi inceleyip en kısa sürede sizinle iletişime geçecek.\n\nBu arada bize {site.PhoneDisplay} numarasından veya {site.Email} adresinden ulaşabilirsiniz.\n\nBu talebi siz oluşturmadıysanız bu e-postayı dikkate almayın.\n\n{site.SiteName}\n{site.BaseUrl}\n";
+        var text = $"Merhaba,\n\nTeklif talebiniz bize ulaştı. Ekibimiz talebinizi inceleyip en kısa sürede sizinle iletişime geçecek.\n\nBu arada bize {site.PhoneText} numarasından veya {site.Email} adresinden ulaşabilirsiniz.\n\nBu talebi siz oluşturmadıysanız bu e-postayı dikkate almayın.\n\n{site.SiteName}\n{site.BaseUrl}\n";
         var html = $"""
             <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#111;font-size:15px;line-height:1.6">
               <p>Merhaba,</p>
               <p>Teklif talebiniz bize ulaştı. Ekibimiz talebinizi inceleyip en kısa sürede sizinle iletişime geçecek.</p>
-              <p>Bu arada bize <strong>{H(site.PhoneDisplay)}</strong> numarasından veya <strong>{H(site.Email)}</strong> adresinden ulaşabilirsiniz.</p>
+              <p>Bu arada bize <strong>{H(site.PhoneText)}</strong> numarasından veya <strong>{H(site.Email)}</strong> adresinden ulaşabilirsiniz.</p>
               <p style="color:#5b6872;font-size:13px">Bu talebi siz oluşturmadıysanız bu e-postayı dikkate almayın.</p>
               <p><strong>{H(site.SiteName)}</strong><br /><a href="{WebUtility.HtmlEncode(site.BaseUrl)}">{H(site.BaseUrl)}</a></p>
             </div>

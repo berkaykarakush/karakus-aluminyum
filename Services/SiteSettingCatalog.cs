@@ -28,6 +28,8 @@ public static class SiteSettingCatalog
     {
         new("PhoneDisplay", ContactGroup, "Görünen telefon", "+90 553 835 48 72"),
         new("PhoneE164", ContactGroup, "Telefon (aranabilir biçim)", "+905538354872", Help: "Örn. +905551112233", Pattern: "^\\+?[0-9]{7,15}$", PatternError: "Yalnızca rakam ve başta + kullanın."),
+        new("Phone2Display", ContactGroup, "İkinci telefon: görünen", "", Help: "İki alan da doluysa sitede her yerde birinci numaranın yanında görünür."),
+        new("Phone2E164", ContactGroup, "İkinci telefon: aranabilir biçim", "", Help: "Örn. +905551112233", Pattern: "^\\+?[0-9]{7,15}$", PatternError: "Yalnızca rakam ve başta + kullanın."),
         new("WhatsAppNumber", ContactGroup, "WhatsApp numarası", "905538354872", Help: "Ülke koduyla, + olmadan. Boş bırakılırsa düğme gizlenir.", Pattern: "^[0-9]{7,15}$", PatternError: "Yalnızca rakam kullanın."),
         new("Email", ContactGroup, "E-posta", "info@karakusaluminyum.com", Pattern: "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$", PatternError: "Geçerli bir e-posta yazın."),
         new("LegalName", ContactGroup, "Tam ticari unvan", "Karakuş Alüminyum", Help: "KVKK ve gizlilik metinlerinde veri sorumlusu olarak görünür. Vergi levhasındaki unvanı yazın."),

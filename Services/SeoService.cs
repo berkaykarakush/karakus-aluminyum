@@ -77,6 +77,7 @@ public sealed class SeoService
         ["image"] = Canonical("/images/aluminyum-dograma.webp", site),
         ["description"] = site.SiteDescription,
         ["telephone"] = site.PhoneE164,
+        ["contactPoint"] = site.Phones.Count > 1 ? site.Phones.Select(x => new Dictionary<string, object?> { ["@type"] = "ContactPoint", ["telephone"] = x.E164, ["contactType"] = "customer service", ["areaServed"] = "TR", ["availableLanguage"] = "Turkish" }).ToArray() : null,
         ["email"] = site.Email,
         ["address"] = new Dictionary<string, object?>
         {

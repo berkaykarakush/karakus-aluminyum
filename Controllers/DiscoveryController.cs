@@ -75,7 +75,7 @@ public sealed class DiscoveryController : Controller
         var site = await _settings.GetAsync();
         var pages = await _index.PagesAsync();
         var text = new StringBuilder($"# {site.SiteName}\n\n> {site.SiteDescription}\n\n");
-        text.Append($"- Konum: {site.Address}\n- Telefon: {site.PhoneDisplay}\n- E-posta: {site.Email}\n- Web: {Base(site)}\n- Tüm içerik tek dosyada: {Absolute(site, "/llms-full.txt")}\n");
+        text.Append($"- Konum: {site.Address}\n- Telefon: {site.PhoneText}\n- E-posta: {site.Email}\n- Web: {Base(site)}\n- Tüm içerik tek dosyada: {Absolute(site, "/llms-full.txt")}\n");
         void Section(string title, PageKind kind)
         {
             var rows = pages.Where(x => x.Kind == kind).ToList();

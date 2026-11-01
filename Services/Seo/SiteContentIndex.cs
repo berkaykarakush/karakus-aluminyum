@@ -58,7 +58,7 @@ public sealed class SiteContentIndex
             new("/projeler", "Projelerimiz", "Uyguladığımız projelerden örnekler.", PageKind.Core, projectsModified, Array.Empty<(string, string)>(), projectLinks),
             new("/galeri", "Galeri", "Uygulamalarımızdan görüntüler.", PageKind.Core, Latest(images.Select(x => (DateTime?)x.CreatedUtc)), Gallery(images, "Karakuş Alüminyum uygulaması"), $"{images.Count} görsel yayında."),
             new("/blog", "Bilgi Merkezi", "Alüminyum sistemler ve ürün seçimi hakkında yazılar.", PageKind.Core, postsModified, Array.Empty<(string, string)>(), postLinks),
-            new("/iletisim", "İletişim ve Teklif", "Projeniz için bize ulaşın.", PageKind.Core, null, Array.Empty<(string, string)>(), $"- Telefon: {site.PhoneDisplay}\n- E-posta: {site.Email}\n- Adres: {site.Address}\n- Hizmet bölgesi: {site.City}, {site.PrimaryServiceArea}\n\nTeklif formu: /iletisim")
+            new("/iletisim", "İletişim ve Teklif", "Projeniz için bize ulaşın.", PageKind.Core, null, Array.Empty<(string, string)>(), $"- Telefon: {site.PhoneText}\n- E-posta: {site.Email}\n- Adres: {site.Address}\n- Hizmet bölgesi: {site.City}, {site.PrimaryServiceArea}\n\nTeklif formu: /iletisim")
         };
 
         foreach (var x in services)
