@@ -1,0 +1,13 @@
+@model List<KarakusAluminyum.Web.Services.Accounting.ProjectSummary>
+@using KarakusAluminyum.Web.Models.Accounting
+@using KarakusAluminyum.Web.Services.Documents
+@{ ViewData["Title"] = "Proje analizi"; var selected = ViewBag.Status as CostProjectStatus?; }
+<div class="admin-actions"><h1>Proje analizi</h1><a class="admin-btn" href="/yonetim/muhasebe/projeler/ekle">+ Yeni proje</a></div>
+<form class="admin-panel admin-actions" method="get"><select name="durum" aria-label="Durum"><option value="">Tüm projeler</option>@foreach (var s in Enum.GetValues<CostProjectStatus>()) { <option value="@s" selected="@(s == selected)">@AccountingLabels.Label(s)</option> }</select><button class="admin-btn">Filtrele</button></form>
+<div class="admin-panel" style="overflow-x:auto"><table class="admin-table"><thead><tr><th>Proje</th><th>Cari</th><th>Durum</th><th>Gelir</th><th>Maliyet</th><th>Kâr / zarar</th><th>Marj</th></tr></thead><tbody>
+@foreach (var x in Model)
+{
+  <tr><td><a href="/yonetim/muhasebe/projeler/detay/@x.Project.Id">@x.Project.Name</a></td><td>@x.Project.Customer?.Name</td><td>@AccountingLabels.Label(x.Project.Status)</td><td>@TurkishNumbers.Money(x.Revenue)</td><td>@TurkishNumbers.Money(x.Cost)</td><td>@TurkishNumbers.Money(x.Profit)</td><td>@(x.Margin is { } margin ? "%" + margin.ToString("0.##", TurkishNumbers.Culture) : "-")</td></tr>
+}
+</tbody></table>@if (Model.Count == 0) { <p class="admin-muted">Henüz proje yok.</p> }
+<p class="admin-muted">Tutarlar KDV hariçtir. Yalnızca onaylı faturalar ve iptal edilmemiş giderler sayılır.</p></div>

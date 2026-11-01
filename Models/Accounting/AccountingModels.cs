@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using KarakusAluminyum.Web.Models.Crm;
+using KarakusAluminyum.Web.Models.Documents;
 
 namespace KarakusAluminyum.Web.Models.Accounting;
 
@@ -14,6 +15,8 @@ public enum CashKind { Collection = 0, Payment = 1, Expense = 2, Salary = 3, Tra
 public enum ChequeKind { Cheque = 0, PromissoryNote = 1 }
 public enum ChequeDirection { Received = 0, Given = 1 }
 public enum ChequeStatus { Portfolio = 0, Deposited = 1, Collected = 2, Endorsed = 3, Bounced = 4, Paid = 5, Cancelled = 6 }
+public enum CostProjectStatus { Active = 0, Completed = 1, Cancelled = 2 }
+public enum ProjectCostKind { Material = 0, Labor = 1, Transport = 2, Installation = 3, Subcontract = 4, Other = 5 }
 
 public sealed class Product
 {
@@ -67,6 +70,8 @@ public sealed class Invoice
     public int? QuoteId { get; set; }
     public Quote? Quote { get; set; }
     public int? ContractId { get; set; }
+    public int? ProjectId { get; set; } // yalnızca analiz içindir; onaylı faturada da değiştirilebilir
+    public CostProject? Project { get; set; }
     [StringLength(2000)] public string? Notes { get; set; }
     [StringLength(500)] public string? CancelReason { get; set; }
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
@@ -191,6 +196,8 @@ public sealed class Expense
     public Customer? Customer { get; set; }
     public int? AccountId { get; set; } // peşin gider: bu hesaptan çıkar
     public FinanceAccount? Account { get; set; }
+    public int? ProjectId { get; set; }
+    public CostProject? Project { get; set; }
     public bool IsCancelled { get; set; }
     [StringLength(500)] public string? CancelReason { get; set; }
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
@@ -220,6 +227,41 @@ public sealed class CariAdjustment
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
 
+// Maliyet takibi yapılan iş. Sitedeki referans projelerden (PortfolioProject) bağımsızdır.
+public sealed class CostProject
+{
+    public int Id { get; set; }
+    [Required(ErrorMessage = "Proje adı yazın."), StringLength(160)] public string Name { get; set; } = "";
+    public CostProjectStatus Status { get; set; } = CostProjectStatus.Active;
+    public int? CustomerId { get; set; }
+    public Customer? Customer { get; set; }
+    public int? QuoteId { get; set; }
+    public Quote? Quote { get; set; }
+    public int? ContractId { get; set; }
+    public Contract? Contract { get; set; }
+    [Column(TypeName = "numeric(5,2)"), Range(0, 95, ErrorMessage = "Hedef kâr marjı 0-95 arasında olmalıdır.")] public decimal TargetMargin { get; set; } = 20m; // satış fiyatının yüzdesi
+    [Column(TypeName = "numeric(5,2)"), Range(0, 100, ErrorMessage = "KDV oranı 0-100 arasında olmalıdır.")] public decimal VatRate { get; set; } = 20m;
+    [StringLength(2000)] public string? Notes { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+    public List<ProjectCostItem> Items { get; set; } = new();
+}
+
+// Faturası veya gider kaydı olmayan maliyet: işçilik, depodan kullanılan malzeme gibi. Kasa ve cariyi etkilemez.
+public sealed class ProjectCostItem
+{
+    public int Id { get; set; }
+    public int ProjectId { get; set; }
+    public CostProject? Project { get; set; }
+    public DateOnly Date { get; set; }
+    public ProjectCostKind Kind { get; set; }
+    [Required, StringLength(300)] public string Description { get; set; } = "";
+    [Column(TypeName = "numeric(18,3)")] public decimal Quantity { get; set; } = 1;
+    [StringLength(20)] public string Unit { get; set; } = "Adet";
+    [Column(TypeName = "numeric(18,4)")] public decimal UnitCost { get; set; }
+    [Column(TypeName = "numeric(18,2)")] public decimal Total { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+
 public sealed class AccountingSequence
 {
     [Key, StringLength(40)] public string Key { get; set; } = "";
@@ -240,6 +282,7 @@ public sealed class InvoiceInputVm
     [StringLength(2000)] public string? Notes { get; set; }
     public int? QuoteId { get; set; }
     public int? ContractId { get; set; }
+    public int? ProjectId { get; set; }
     public string LinesJson { get; set; } = "[]";
 }
 
@@ -272,6 +315,11 @@ public static class AccountingLabels
     {
         ChequeStatus.Portfolio => "Portföyde", ChequeStatus.Deposited => "Tahsile verildi", ChequeStatus.Collected => "Tahsil edildi", ChequeStatus.Endorsed => "Ciro edildi",
         ChequeStatus.Bounced => "Karşılıksız", ChequeStatus.Paid => "Ödendi", _ => "İptal"
+    };
+    public static string Label(CostProjectStatus status) => status switch { CostProjectStatus.Active => "Devam ediyor", CostProjectStatus.Completed => "Tamamlandı", _ => "İptal" };
+    public static string Label(ProjectCostKind kind) => kind switch
+    {
+        ProjectCostKind.Material => "Malzeme", ProjectCostKind.Labor => "İşçilik", ProjectCostKind.Transport => "Nakliye", ProjectCostKind.Installation => "Montaj", ProjectCostKind.Subcontract => "Dış hizmet", _ => "Diğer"
     };
     public static string Label(PartyType type) => type switch { PartyType.Customer => "Müşteri", PartyType.Supplier => "Tedarikçi", _ => "Müşteri ve tedarikçi" };
     // İade faturası cariyi ana türün tersine çalıştırır.

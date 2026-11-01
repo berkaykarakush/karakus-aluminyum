@@ -202,24 +202,26 @@ public sealed class ExpensesController : Controller
     private readonly AppDbContext _db;
     private readonly AccountingService _accounting;
     private readonly IAuditService _audit;
-    public ExpensesController(AppDbContext db, AccountingService accounting, IAuditService audit) { _db = db; _accounting = accounting; _audit = audit; }
+    private readonly AccountingQueries _queries;
+    public ExpensesController(AppDbContext db, AccountingService accounting, IAuditService audit, AccountingQueries queries) { _db = db; _accounting = accounting; _audit = audit; _queries = queries; }
 
     [HttpGet("")]
     public async Task<IActionResult> Index(int? kategori)
     {
-        var query = _db.Expenses.AsNoTracking().Include(x => x.Category).Include(x => x.Customer).Include(x => x.Account).AsQueryable();
+        var query = _db.Expenses.AsNoTracking().Include(x => x.Category).Include(x => x.Customer).Include(x => x.Account).Include(x => x.Project).AsQueryable();
         if (kategori is not null) query = query.Where(x => x.CategoryId == kategori);
         ViewBag.CategoryId = kategori;
         ViewBag.Categories = await _db.ExpenseCategories.AsNoTracking().OrderBy(x => x.Name).ToListAsync();
+        ViewBag.Projects = await _queries.ProjectOptionsAsync();
         return View(await query.OrderByDescending(x => x.Date).ThenByDescending(x => x.Id).Take(500).ToListAsync());
     }
 
     [HttpGet("ekle")]
-    public async Task<IActionResult> Create()
+    public async Task<IActionResult> Create(int? proje = null)
     {
-        await LoadOptions();
+        await LoadOptions(proje);
         var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(3));
-        return View(new Expense { Date = today, DueDate = today, VatRate = 20m });
+        return View(new Expense { Date = today, DueDate = today, VatRate = 20m, ProjectId = proje });
     }
 
     [HttpPost("ekle"), ValidateAntiForgeryToken]
@@ -227,10 +229,15 @@ public sealed class ExpensesController : Controller
     {
         if (ModelState.IsValid)
         {
-            try { await _accounting.AddExpenseAsync(input); TempData["Notice"] = "Gider kaydedildi."; return RedirectToAction(nameof(Index)); }
+            try
+            {
+                await _accounting.AddExpenseAsync(input);
+                TempData["Notice"] = "Gider kaydedildi.";
+                return input.ProjectId is { } project ? Redirect($"/yonetim/muhasebe/projeler/detay/{project}") : RedirectToAction(nameof(Index));
+            }
             catch (AccountingException error) { ModelState.AddModelError(string.Empty, error.Message); }
         }
-        await LoadOptions();
+        await LoadOptions(input.ProjectId);
         return View(input);
     }
 
@@ -239,6 +246,23 @@ public sealed class ExpensesController : Controller
     {
         try { await _accounting.CancelExpenseAsync(id, reason); TempData["Notice"] = "Gider iptal edildi."; }
         catch (AccountingException error) { TempData["Notice"] = error.Message; }
+        return RedirectToAction(nameof(Index));
+    }
+
+    // Tutarları değiştirmez; geçmiş giderler de sonradan projeye bağlanabilir.
+    [HttpPost("proje/{id:int}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetProject(int id, int? projectId)
+    {
+        var row = await _db.Expenses.FindAsync(id);
+        if (row is null) return NotFound();
+        if (projectId is not null && !await _db.CostProjects.AnyAsync(x => x.Id == projectId)) TempData["Notice"] = "Proje bulunamadı.";
+        else
+        {
+            row.ProjectId = projectId;
+            await _db.SaveChangesAsync();
+            await _audit.RecordAsync("project", "Expense", id.ToString(), projectId?.ToString() ?? "kaldırıldı");
+            TempData["Notice"] = "Proje bağlantısı kaydedildi.";
+        }
         return RedirectToAction(nameof(Index));
     }
 
@@ -255,8 +279,9 @@ public sealed class ExpensesController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    private async Task LoadOptions()
+    private async Task LoadOptions(int? projectId = null)
     {
+        ViewBag.Projects = new SelectList(await _queries.ProjectOptionsAsync(projectId), "Id", "Name");
         ViewBag.Categories = new SelectList(await _db.ExpenseCategories.AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.Name).Select(x => new { x.Id, x.Name }).ToListAsync(), "Id", "Name");
         ViewBag.Customers = new SelectList(await _db.Customers.AsNoTracking().OrderBy(x => x.Name).Select(x => new { x.Id, x.Name }).ToListAsync(), "Id", "Name");
         ViewBag.Accounts = new SelectList(await _db.FinanceAccounts.AsNoTracking().Where(x => x.IsActive && x.Currency == "TRY").OrderBy(x => x.Kind).ThenBy(x => x.Name).Select(x => new { x.Id, x.Name }).ToListAsync(), "Id", "Name");

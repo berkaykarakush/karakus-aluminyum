@@ -1,0 +1,96 @@
+@model KarakusAluminyum.Web.Services.Accounting.ProjectAnalysis
+@using KarakusAluminyum.Web.Models.Accounting
+@using KarakusAluminyum.Web.Services.Accounting
+@using KarakusAluminyum.Web.Services.Documents
+@{
+    var project = Model.Project;
+    ViewData["Title"] = project.Name;
+    var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(3));
+    string Percent(decimal? value) => value is { } rate ? "%" + rate.ToString("0.##", TurkishNumbers.Culture) : "-";
+    var breakdown = Model.Costs.GroupBy(x => x.Group).Select(g => (Name: g.Key, Amount: g.Sum(x => x.Amount))).OrderByDescending(x => x.Amount).ToList();
+}
+<div class="admin-actions">
+  <h1>@project.Name</h1>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/projeler">Projeler</a>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/projeler/duzenle/@project.Id">Düzenle</a>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/projeler/detay/@project.Id?csv=true">CSV</a>
+  <a class="admin-btn" href="/yonetim/muhasebe/faturalar/ekle?tur=Purchase&proje=@project.Id">+ Alış faturası</a>
+  <a class="admin-btn" href="/yonetim/muhasebe/giderler/ekle?proje=@project.Id">+ Gider</a>
+  <a class="admin-btn" href="/yonetim/muhasebe/faturalar/ekle?tur=Sale&proje=@project.Id&cari=@project.CustomerId">+ Satış faturası</a>
+</div>
+<div class="admin-panel">
+  <div class="admin-grid">
+    <div><span class="admin-muted">Durum</span><br /><strong>@AccountingLabels.Label(project.Status)</strong></div>
+    <div><span class="admin-muted">Cari</span><br />@if (project.CustomerId is not null) { <a href="/yonetim/muhasebe/cariler/@project.CustomerId">@project.Customer?.Name</a> } else { <span>-</span> }</div>
+    <div><span class="admin-muted">Teklif</span><br />@(project.Quote?.QuoteNumber ?? "-")</div>
+    <div><span class="admin-muted">Sözleşme</span><br />@(project.Contract?.ContractNumber ?? "-")</div>
+  </div>
+  @if (!string.IsNullOrWhiteSpace(project.Notes)) { <p style="white-space:pre-wrap;margin-top:12px">@project.Notes</p> }
+</div>
+<div class="report-kpis">
+  <div class="report-kpi"><span class="report-kpi__label">Faturalanan gelir</span><strong class="report-kpi__value">@TurkishNumbers.Money(Model.Revenue)</strong></div>
+  <div class="report-kpi"><span class="report-kpi__label">Toplam maliyet</span><strong class="report-kpi__value">@TurkishNumbers.Money(Model.Cost)</strong></div>
+  <div class="report-kpi"><span class="report-kpi__label">Kâr / zarar</span><strong class="report-kpi__value">@TurkishNumbers.Money(Model.Profit)</strong></div>
+  <div class="report-kpi"><span class="report-kpi__label">Gerçekleşen marj</span><strong class="report-kpi__value">@Percent(Model.Margin)</strong></div>
+</div>
+@if (Model.DraftInvoices > 0) { <p class="wd-errors">Bu projede @Model.DraftInvoices taslak fatura var. Onaylanana kadar analize dahil edilmez.</p> }
+<div class="admin-panel">
+  <h2>Fiyatlandırma</h2>
+  <table class="admin-table"><tbody>
+    <tr><td>Maliyet</td><td>@TurkishNumbers.Money(Model.Cost)</td></tr>
+    <tr><td>Hedef kâr marjı</td><td>@Percent(project.TargetMargin)</td></tr>
+    <tr><td><strong>Önerilen satış fiyatı (KDV hariç)</strong></td><td><strong>@TurkishNumbers.Money(Model.SuggestedNet)</strong></td></tr>
+    <tr><td>Önerilen satış fiyatı (@Percent(project.VatRate) KDV dahil)</td><td>@TurkishNumbers.Money(Model.SuggestedGross)</td></tr>
+    @if (Model.AgreedNet is { } agreed)
+    {
+      <tr><td>Teklif / sözleşme fiyatı, KDV hariç (@Model.AgreedSource)</td><td>@TurkishNumbers.Money(agreed)</td></tr>
+      <tr><td>Bu fiyatla kâr / zarar</td><td>@TurkishNumbers.Money(Model.AgreedProfit!.Value) (@Percent(Model.AgreedMargin))</td></tr>
+    }
+  </tbody></table>
+  <p class="admin-muted">Öneri, bugüne kadar girilen maliyetlere göre hesaplanır. Henüz girilmemiş maliyetler fiyata yansımaz.</p>
+</div>
+@if (breakdown.Count > 0)
+{
+  <div class="admin-panel">
+    <h2>Maliyet dağılımı</h2>
+    <table class="admin-table"><thead><tr><th>Grup</th><th>Tutar</th><th>Pay</th></tr></thead><tbody>
+    @foreach (var x in breakdown) { <tr><td>@x.Name</td><td>@TurkishNumbers.Money(x.Amount)</td><td>@Percent(Model.Cost > 0 ? decimal.Round(x.Amount / Model.Cost * 100m, 1) : null)</td></tr> }
+    </tbody></table>
+  </div>
+}
+<div class="admin-panel">
+  <h2>Kalem ekle</h2>
+  <p class="admin-muted">Faturası veya gider kaydı olmayan maliyetler içindir: işçilik, depodan kullanılan malzeme gibi. KDV hariç yazın. Kasa, cari ve stok değişmez; faturası girilmiş bir maliyeti burada tekrar yazmayın.</p>
+  <form class="admin-actions" method="post" action="/yonetim/muhasebe/projeler/kalem/@project.Id">@Html.AntiForgeryToken()
+    <input type="date" name="date" value="@today.ToString("yyyy-MM-dd")" aria-label="Tarih" required />
+    <select name="kind" aria-label="Tür">@foreach (var k in Enum.GetValues<ProjectCostKind>()) { <option value="@k">@AccountingLabels.Label(k)</option> }</select>
+    <input name="description" placeholder="Açıklama" aria-label="Açıklama" maxlength="300" required />
+    <input name="quantity" type="number" step="0.001" min="0.001" value="1" aria-label="Miktar" required />
+    <input name="unit" value="Adet" maxlength="20" aria-label="Birim" />
+    <input name="unitCost" type="number" step="0.01" min="0.01" placeholder="Birim maliyet" aria-label="Birim maliyet" required />
+    <button class="admin-btn">Ekle</button>
+  </form>
+</div>
+<div class="admin-panel" style="overflow-x:auto">
+  <h2>Maliyet kalemleri</h2>
+  <table class="admin-table"><thead><tr><th>Tarih</th><th>Kaynak</th><th>Grup</th><th>Belge</th><th>Cari</th><th>Açıklama</th><th>Tutar</th><th></th></tr></thead><tbody>
+  @foreach (var x in Model.Costs)
+  {
+    <tr><td>@x.Date.ToString("dd.MM.yyyy")</td><td>@if (x.Url is not null) { <a href="@x.Url">@x.Source</a> } else { @x.Source }</td><td>@x.Group</td><td>@x.Document</td><td>@x.Party</td><td>@x.Description</td><td>@TurkishNumbers.Money(x.Amount)</td>
+    <td>@if (x.ItemId is not null) { <form method="post" action="/yonetim/muhasebe/projeler/kalem-sil/@project.Id/@x.ItemId" onsubmit="return confirm('Kalem silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form> }</td></tr>
+  }
+  </tbody></table>@if (Model.Costs.Count == 0) { <p class="admin-muted">Henüz maliyet yok.</p> }
+</div>
+<div class="admin-panel" style="overflow-x:auto">
+  <h2>Gelirler</h2>
+  <table class="admin-table"><thead><tr><th>Tarih</th><th>Kaynak</th><th>Belge</th><th>Cari</th><th>Açıklama</th><th>Tutar</th></tr></thead><tbody>
+  @foreach (var x in Model.Revenues)
+  {
+    <tr><td>@x.Date.ToString("dd.MM.yyyy")</td><td><a href="@x.Url">@x.Source</a></td><td>@x.Document</td><td>@x.Party</td><td>@x.Description</td><td>@TurkishNumbers.Money(x.Amount)</td></tr>
+  }
+  </tbody></table>@if (Model.Revenues.Count == 0) { <p class="admin-muted">Bu projeye bağlı onaylı satış faturası yok.</p> }
+</div>
+@if (Model.Costs.Count == 0 && Model.Revenues.Count == 0 && Model.DraftInvoices == 0)
+{
+  <form class="admin-panel" method="post" action="/yonetim/muhasebe/projeler/sil/@project.Id" onsubmit="return confirm('Proje silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Projeyi sil</button></form>
+}

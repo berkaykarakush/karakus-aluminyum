@@ -1,0 +1,17 @@
+@model KarakusAluminyum.Web.Models.Accounting.CostProject
+@using System.Globalization
+@using KarakusAluminyum.Web.Models.Accounting
+@{ var editing = Model.Id != 0; ViewData["Title"] = editing ? "Projeyi düzenle" : "Yeni proje"; var action = editing ? $"/yonetim/muhasebe/projeler/duzenle/{Model.Id}" : "/yonetim/muhasebe/projeler/ekle"; }
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/muhasebe/projeler">Proje analizi</a></div>
+<div class="admin-panel"><form class="admin-form" method="post" action="@action">@Html.AntiForgeryToken()
+  <div asp-validation-summary="All" class="wd-errors"></div>
+  <label asp-for="Name">Proje adı</label><input asp-for="Name" required />
+  <label asp-for="Status">Durum</label><select asp-for="Status">@foreach (var s in Enum.GetValues<CostProjectStatus>()) { <option value="@s">@AccountingLabels.Label(s)</option> }</select>
+  <label asp-for="CustomerId">Cari</label><select asp-for="CustomerId" asp-items="(SelectList)ViewBag.Customers"><option value="">-</option></select>
+  <label asp-for="QuoteId">Teklif</label><select asp-for="QuoteId" asp-items="(SelectList)ViewBag.Quotes"><option value="">-</option></select>
+  <label asp-for="ContractId">Sözleşme</label><select asp-for="ContractId" asp-items="(SelectList)ViewBag.Contracts"><option value="">-</option></select>
+  <label for="TargetMargin">Hedef kâr marjı (satış fiyatının %'si)</label><input id="TargetMargin" name="TargetMargin" type="number" step="0.01" min="0" max="95" value="@Model.TargetMargin.ToString(CultureInfo.InvariantCulture)" required />
+  <label for="VatRate">Fiyat önerisinde KDV %</label><select id="VatRate" name="VatRate">@foreach (var v in AccountingLabels.VatRates) { <option value="@v.ToString(CultureInfo.InvariantCulture)" selected="@(v == Model.VatRate)">%@v.ToString("0")</option> }</select>
+  <label asp-for="Notes">Notlar</label><textarea asp-for="Notes" rows="3"></textarea>
+  <div class="admin-actions"><button class="admin-btn">Kaydet</button></div>
+</form></div>

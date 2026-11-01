@@ -1,5 +1,8 @@
 using KarakusAluminyum.Web.Data;
 using KarakusAluminyum.Web.Models.Accounting;
+using KarakusAluminyum.Web.Models.Crm;
+using KarakusAluminyum.Web.Models.Documents;
+using KarakusAluminyum.Web.Services.Documents;
 using Microsoft.EntityFrameworkCore;
 
 namespace KarakusAluminyum.Web.Services.Accounting;
@@ -25,6 +28,32 @@ public sealed record ProfitRow(decimal Sales, decimal SaleReturns, decimal Purch
     public decimal Revenue => Sales - SaleReturns;
     public decimal Costs => Purchases - PurchaseReturns + Expenses + Salaries;
     public decimal Profit => Revenue - Costs;
+}
+public sealed record CostProjectOption(int Id, string Name);
+public sealed record ProjectEntry(DateOnly Date, string Source, string Group, string Document, string? Party, string Description, decimal Amount, string? Url, int? ItemId = null);
+public sealed record ProjectSummary(CostProject Project, decimal Revenue, decimal Cost)
+{
+    public decimal Profit => Revenue - Cost;
+    public decimal? Margin => ProjectRules.MarginRate(Profit, Revenue);
+}
+public sealed record ProjectAnalysis(CostProject Project, IReadOnlyList<ProjectEntry> Revenues, IReadOnlyList<ProjectEntry> Costs, int DraftInvoices, decimal? AgreedNet, string? AgreedSource)
+{
+    public decimal Revenue => Revenues.Sum(x => x.Amount);
+    public decimal Cost => Costs.Sum(x => x.Amount);
+    public decimal Profit => Revenue - Cost;
+    public decimal? Margin => ProjectRules.MarginRate(Profit, Revenue);
+    public decimal SuggestedNet => ProjectRules.SuggestedPrice(Cost, Project.TargetMargin);
+    public decimal SuggestedGross => InvoiceRules.Money(SuggestedNet * (1 + Project.VatRate / 100m));
+    public decimal? AgreedProfit => AgreedNet - Cost;
+    public decimal? AgreedMargin => AgreedNet is null ? null : ProjectRules.MarginRate(AgreedNet.Value - Cost, AgreedNet.Value);
+}
+public static class ProjectRules
+{
+    // Marj satış fiyatının yüzdesidir: 80.000 TL maliyet ve %20 marj 100.000 TL eder, 96.000 TL değil.
+    public static decimal SuggestedPrice(decimal cost, decimal marginRate) => InvoiceRules.Money(cost / (1 - marginRate / 100m));
+    public static decimal? MarginRate(decimal profit, decimal revenue) => revenue > 0 ? decimal.Round(profit / revenue * 100m, 2, MidpointRounding.AwayFromZero) : null;
+    // Sözleşmede KDV oranı tutulmaz; faturaya dönüştürmedeki %20 varsayımının aynısıdır.
+    public static decimal ContractNet(Contract contract) => contract.VatMode == VatMode.Included ? InvoiceRules.Money(contract.TotalAmount / 1.20m) : contract.TotalAmount;
 }
 public sealed record CashFlowRow(DateOnly Date, string Type, string Document, string Party, decimal In, decimal Out, string? Url);
 
@@ -162,6 +191,52 @@ public sealed class AccountingQueries
         return new ProfitRow(Total(InvoiceKind.Sale), Total(InvoiceKind.SaleReturn), Total(InvoiceKind.Purchase), Total(InvoiceKind.PurchaseReturn), expenses.Sum(x => x.Net), salaries,
             expenses.GroupBy(x => x.Name).Select(g => (g.Key, g.Sum(x => x.Net))).OrderByDescending(x => x.Item2).ToList());
     }
+
+    // Analize yalnızca onaylı faturalar ve iptal edilmemiş giderler girer. Tutarlar KDV hariç TL'dir.
+    public async Task<List<ProjectSummary>> ProjectSummariesAsync(CostProjectStatus? status = null)
+    {
+        var query = _db.CostProjects.AsNoTracking().Include(x => x.Customer).AsQueryable();
+        if (status is not null) query = query.Where(x => x.Status == status);
+        var projects = await query.OrderByDescending(x => x.CreatedUtc).ThenByDescending(x => x.Id).Take(1000).ToListAsync();
+        var invoices = await _db.Invoices.AsNoTracking().Where(x => x.ProjectId != null && x.Status == InvoiceStatus.Approved).Select(x => new { ProjectId = x.ProjectId!.Value, x.Kind, x.Net, x.ExchangeRate }).ToListAsync();
+        var expenses = (await _db.Expenses.AsNoTracking().Where(x => x.ProjectId != null && !x.IsCancelled).Select(x => new { ProjectId = x.ProjectId!.Value, x.Net }).ToListAsync()).GroupBy(x => x.ProjectId).ToDictionary(g => g.Key, g => g.Sum(x => x.Net));
+        var items = (await _db.ProjectCostItems.AsNoTracking().Select(x => new { x.ProjectId, x.Total }).ToListAsync()).GroupBy(x => x.ProjectId).ToDictionary(g => g.Key, g => g.Sum(x => x.Total));
+        return projects.Select(p =>
+        {
+            var own = invoices.Where(x => x.ProjectId == p.Id).Select(x => (x.Kind, Amount: Try(x.Net, x.ExchangeRate))).ToList();
+            decimal Side(InvoiceKind main, InvoiceKind back) => own.Where(x => x.Kind == main).Sum(x => x.Amount) - own.Where(x => x.Kind == back).Sum(x => x.Amount);
+            return new ProjectSummary(p, Side(InvoiceKind.Sale, InvoiceKind.SaleReturn), Side(InvoiceKind.Purchase, InvoiceKind.PurchaseReturn) + expenses.GetValueOrDefault(p.Id) + items.GetValueOrDefault(p.Id));
+        }).ToList();
+    }
+
+    public async Task<ProjectAnalysis?> ProjectAnalysisAsync(int id)
+    {
+        var project = await _db.CostProjects.AsNoTracking().Include(x => x.Customer).Include(x => x.Quote).Include(x => x.Contract).Include(x => x.Items).AsSplitQuery().FirstOrDefaultAsync(x => x.Id == id);
+        if (project is null) return null;
+        var invoices = await _db.Invoices.AsNoTracking().Where(x => x.ProjectId == id && x.Status == InvoiceStatus.Approved)
+            .Select(x => new { x.Id, x.Kind, x.Date, x.Number, Party = x.Customer!.Name, x.Net, x.ExchangeRate, LineCount = x.Lines.Count, First = x.Lines.OrderBy(l => l.SortOrder).Select(l => l.Description).FirstOrDefault() }).ToListAsync();
+        var revenues = new List<ProjectEntry>();
+        var costs = new List<ProjectEntry>();
+        foreach (var x in invoices)
+        {
+            var isReturn = x.Kind is InvoiceKind.SaleReturn or InvoiceKind.PurchaseReturn;
+            var description = x.LineCount > 1 ? $"{x.First} (+{x.LineCount - 1} satır)" : x.First ?? "";
+            var entry = new ProjectEntry(x.Date, AccountingLabels.Label(x.Kind), AccountingLabels.IsSaleSide(x.Kind) ? "Satış" : "Alış faturaları", x.Number ?? "", x.Party, description, (isReturn ? -1 : 1) * Try(x.Net, x.ExchangeRate), $"/yonetim/muhasebe/faturalar/detay/{x.Id}");
+            (AccountingLabels.IsSaleSide(x.Kind) ? revenues : costs).Add(entry);
+        }
+        foreach (var x in await _db.Expenses.AsNoTracking().Where(x => x.ProjectId == id && !x.IsCancelled).Select(x => new { x.Date, Category = x.Category!.Name, x.DocumentNumber, Party = x.Customer != null ? x.Customer.Name : null, x.Description, x.Net }).ToListAsync())
+            costs.Add(new ProjectEntry(x.Date, "Gider", x.Category, x.DocumentNumber ?? "", x.Party, x.Description, x.Net, "/yonetim/muhasebe/giderler"));
+        foreach (var x in project.Items)
+            costs.Add(new ProjectEntry(x.Date, "Elle girilen kalem", AccountingLabels.Label(x.Kind), "", null, $"{x.Description} ({x.Quantity.ToString("0.###", TurkishNumbers.Culture)} {x.Unit} x {x.UnitCost.ToString("N2", TurkishNumbers.Culture)})", x.Total, null, x.Id));
+        var drafts = await _db.Invoices.CountAsync(x => x.ProjectId == id && x.Status == InvoiceStatus.Draft);
+        var (agreed, source) = project.Contract is { Status: not ContractStatus.Cancelled } contract ? (ProjectRules.ContractNet(contract), $"Sözleşme {contract.ContractNumber}")
+            : project.Quote is { Status: not (QuoteStatus.Rejected or QuoteStatus.Expired) } quote ? (quote.GrandTotal - quote.TaxAmount, $"Teklif {quote.QuoteNumber}") : ((decimal?)null, (string?)null);
+        return new ProjectAnalysis(project, revenues.OrderBy(x => x.Date).ToList(), costs.OrderBy(x => x.Date).ToList(), drafts, agreed, source);
+    }
+
+    // Belgeleri bağlarken seçilecek projeler: iptal edilenler listelenmez, belgenin mevcut projesi her zaman listede kalır.
+    public Task<List<CostProjectOption>> ProjectOptionsAsync(int? current = null) => _db.CostProjects.AsNoTracking()
+        .Where(x => x.Status != CostProjectStatus.Cancelled || x.Id == current).OrderBy(x => x.Name).Select(x => new CostProjectOption(x.Id, x.Name)).ToListAsync();
 
     // Vadesi gelecek faturalar ve portföydeki çek/senetler. Vadesi geçenler bugüne yazılır.
     public async Task<List<CashFlowRow>> CashFlowAsync(DateOnly today, DateOnly until)

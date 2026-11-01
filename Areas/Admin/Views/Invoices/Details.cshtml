@@ -67,6 +67,14 @@
     </tbody></table>
   </div>
 }
+@if (Model.Status != InvoiceStatus.Cancelled)
+{
+  <div class="admin-panel">
+    <h2>Proje</h2>
+    <p class="admin-muted">Fatura seçilen projenin analizine yazılır. Tutarları ve resmi kaydı değiştirmez.</p>
+    <form class="admin-actions" method="post" action="/yonetim/muhasebe/faturalar/proje/@Model.Id">@Html.AntiForgeryToken()<select name="projectId" aria-label="Proje"><option value="">Projesiz</option>@foreach (var p in (List<CostProjectOption>)ViewBag.Projects) { <option value="@p.Id" selected="@(p.Id == Model.ProjectId)">@p.Name</option> }</select><button class="admin-btn">Kaydet</button>@if (Model.ProjectId is not null) { <a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/projeler/detay/@Model.ProjectId">Proje analizi</a> }</form>
+  </div>
+}
 @if (Model.Status == InvoiceStatus.Approved)
 {
   <div class="admin-panel">

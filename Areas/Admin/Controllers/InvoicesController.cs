@@ -18,7 +18,8 @@ public sealed class InvoicesController : Controller
     private readonly AppDbContext _db;
     private readonly AccountingService _accounting;
     private readonly IAuditService _audit;
-    public InvoicesController(AppDbContext db, AccountingService accounting, IAuditService audit) { _db = db; _accounting = accounting; _audit = audit; }
+    private readonly AccountingQueries _queries;
+    public InvoicesController(AppDbContext db, AccountingService accounting, IAuditService audit, AccountingQueries queries) { _db = db; _accounting = accounting; _audit = audit; _queries = queries; }
 
     [HttpGet("")]
     public async Task<IActionResult> Index(InvoiceKind? tur, InvoiceStatus? durum, string? q, bool acik = false)
@@ -34,9 +35,9 @@ public sealed class InvoicesController : Controller
     }
 
     [HttpGet("ekle")]
-    public async Task<IActionResult> Create(InvoiceKind tur = InvoiceKind.Sale, int? cari = null, int? teklif = null, int? sozlesme = null)
+    public async Task<IActionResult> Create(InvoiceKind tur = InvoiceKind.Sale, int? cari = null, int? teklif = null, int? sozlesme = null, int? proje = null)
     {
-        var input = new InvoiceInputVm { Kind = tur, CustomerId = cari ?? 0 };
+        var input = new InvoiceInputVm { Kind = tur, CustomerId = cari ?? 0, ProjectId = proje };
         if (teklif is not null)
         {
             var quote = await _db.Quotes.AsNoTracking().Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == teklif);
@@ -58,7 +59,10 @@ public sealed class InvoicesController : Controller
             input.Notes = $"Sözleşme: {contract.ContractNumber}";
             input.LinesJson = JsonSerializer.Serialize(new[] { FromDocument(contract.Title, 1, "Adet", contract.TotalAmount, 0, 20m, contract.VatMode) }, Json);
         }
-        await LoadOptions(input.Kind);
+        // Teklif veya sözleşme bir projeye bağlıysa fatura da o projeye yazılır.
+        input.ProjectId ??= input.ContractId is not null ? await _db.CostProjects.Where(x => x.ContractId == input.ContractId).Select(x => (int?)x.Id).FirstOrDefaultAsync() : null;
+        input.ProjectId ??= input.QuoteId is not null ? await _db.CostProjects.Where(x => x.QuoteId == input.QuoteId).Select(x => (int?)x.Id).FirstOrDefaultAsync() : null;
+        await LoadOptions(input.Kind, input.ProjectId);
         return View("Editor", input);
     }
 
@@ -75,7 +79,7 @@ public sealed class InvoicesController : Controller
     {
         input.Id = 0;
         var invoice = new Invoice { Kind = input.Kind };
-        if (!await ApplyAsync(invoice, input)) { await LoadOptions(input.Kind); return View("Editor", input); }
+        if (!await ApplyAsync(invoice, input)) { await LoadOptions(input.Kind, input.ProjectId); return View("Editor", input); }
         _db.Invoices.Add(invoice);
         await _db.SaveChangesAsync();
         await _audit.RecordAsync("create", "Invoice", invoice.Id.ToString(), $"{AccountingLabels.Label(invoice.Kind)}; {invoice.PayableTry} TL");
@@ -88,11 +92,11 @@ public sealed class InvoicesController : Controller
         var row = await _db.Invoices.AsNoTracking().Include(x => x.Lines).FirstOrDefaultAsync(x => x.Id == id);
         if (row is null) return NotFound();
         if (row.Status != InvoiceStatus.Draft) { TempData["Notice"] = "Yalnızca taslak fatura düzenlenebilir."; return RedirectToAction(nameof(Details), new { id }); }
-        await LoadOptions(row.Kind);
+        await LoadOptions(row.Kind, row.ProjectId);
         return View("Editor", new InvoiceInputVm
         {
             Id = row.Id, Kind = row.Kind, CustomerId = row.CustomerId, Date = row.Date, DueDate = row.DueDate, Currency = row.Currency, ExchangeRate = row.ExchangeRate, Number = row.Number,
-            EDocumentNumber = row.EDocumentNumber, Notes = row.Notes, QuoteId = row.QuoteId, ContractId = row.ContractId,
+            EDocumentNumber = row.EDocumentNumber, Notes = row.Notes, QuoteId = row.QuoteId, ContractId = row.ContractId, ProjectId = row.ProjectId,
             LinesJson = JsonSerializer.Serialize(row.Lines.OrderBy(x => x.SortOrder).Select(x => new InvoiceLineInput { ProductId = x.ProductId, Description = x.Description, Quantity = x.Quantity, Unit = x.Unit, UnitPrice = x.UnitPrice, DiscountRate = x.DiscountRate, VatRate = x.VatRate, WithholdingRate = x.WithholdingRate }), Json)
         });
     }
@@ -105,7 +109,7 @@ public sealed class InvoicesController : Controller
         if (invoice.Status != InvoiceStatus.Draft) { TempData["Notice"] = "Yalnızca taslak fatura düzenlenebilir."; return RedirectToAction(nameof(Details), new { id }); }
         input.Id = id;
         input.Kind = invoice.Kind; // tür sonradan değişmez
-        if (!await ApplyAsync(invoice, input)) { await LoadOptions(input.Kind); return View("Editor", input); }
+        if (!await ApplyAsync(invoice, input)) { await LoadOptions(input.Kind, input.ProjectId); return View("Editor", input); }
         await _db.SaveChangesAsync();
         await _audit.RecordAsync("update", "Invoice", id.ToString(), $"{invoice.PayableTry} TL");
         return RedirectToAction(nameof(Details), new { id });
@@ -115,7 +119,9 @@ public sealed class InvoicesController : Controller
     public async Task<IActionResult> Details(int id)
     {
         var row = await Load(id);
-        return row is null ? NotFound() : View(row);
+        if (row is null) return NotFound();
+        ViewBag.Projects = await _queries.ProjectOptionsAsync(row.ProjectId);
+        return View(row);
     }
 
     [HttpGet("yazdir/{id:int}")]
@@ -145,6 +151,23 @@ public sealed class InvoicesController : Controller
         await _db.SaveChangesAsync();
         await _audit.RecordAsync("e-document", "Invoice", id.ToString(), row.EDocumentNumber ?? "");
         TempData["Notice"] = "e-Belge numarası kaydedildi.";
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    // Proje bağlantısı resmi kayda dokunmaz; bu yüzden onaylı faturada da değiştirilebilir.
+    [HttpPost("proje/{id:int}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetProject(int id, int? projectId)
+    {
+        var row = await _db.Invoices.FindAsync(id);
+        if (row is null) return NotFound();
+        if (projectId is not null && !await _db.CostProjects.AnyAsync(x => x.Id == projectId)) TempData["Notice"] = "Proje bulunamadı.";
+        else
+        {
+            row.ProjectId = projectId;
+            await _db.SaveChangesAsync();
+            await _audit.RecordAsync("project", "Invoice", id.ToString(), projectId?.ToString() ?? "kaldırıldı");
+            TempData["Notice"] = "Proje bağlantısı kaydedildi.";
+        }
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -178,6 +201,7 @@ public sealed class InvoicesController : Controller
         foreach (var error in InvoiceRules.Validate(lines, input.ExchangeRate, input.Currency, input.Date, input.DueDate)) ModelState.AddModelError(string.Empty, error);
         var productIds = lines.Where(x => x.ProductId is not null).Select(x => x.ProductId!.Value).Distinct().ToList();
         if (await _db.Products.CountAsync(x => productIds.Contains(x.Id)) != productIds.Count) ModelState.AddModelError(string.Empty, "Satırlardaki ürünlerden biri bulunamadı.");
+        if (input.ProjectId is not null && !await _db.CostProjects.AnyAsync(x => x.Id == input.ProjectId)) ModelState.AddModelError(nameof(input.ProjectId), "Proje bulunamadı.");
         if (!ModelState.IsValid) return false;
 
         invoice.CustomerId = input.CustomerId;
@@ -190,6 +214,7 @@ public sealed class InvoicesController : Controller
         invoice.Notes = input.Notes?.Trim();
         invoice.QuoteId = input.QuoteId;
         invoice.ContractId = input.ContractId;
+        invoice.ProjectId = input.ProjectId;
         invoice.UpdatedUtc = DateTime.UtcNow;
         invoice.Lines.Clear();
         invoice.Lines.AddRange(lines.Select((x, i) => new InvoiceLine
@@ -201,8 +226,9 @@ public sealed class InvoicesController : Controller
         return true;
     }
 
-    private async Task LoadOptions(InvoiceKind kind)
+    private async Task LoadOptions(InvoiceKind kind, int? projectId)
     {
+        ViewBag.Projects = new SelectList(await _queries.ProjectOptionsAsync(projectId), "Id", "Name");
         ViewBag.Customers = new SelectList(await _db.Customers.AsNoTracking().Where(x => x.Status != CustomerStatus.Passive).OrderBy(x => x.Name).Select(x => new { x.Id, x.Name }).ToListAsync(), "Id", "Name");
         ViewBag.Products = await _db.Products.AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.Name).Select(x => new { id = x.Id, name = x.Name, unit = x.Unit, price = AccountingLabels.IsSaleSide(kind) ? x.SalePrice : x.PurchasePrice, vat = x.VatRate }).ToListAsync();
     }

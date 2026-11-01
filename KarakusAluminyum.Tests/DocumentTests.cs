@@ -560,6 +560,9 @@ public sealed class DocumentTemplateTests(PostgresFixture postgres)
         {
             first.NewClient();
             await first.WithDbAsync(db => db.Database.ExecuteSqlRawAsync("""
+                ALTER TABLE "Invoices" DROP COLUMN "ProjectId";
+                ALTER TABLE "Expenses" DROP COLUMN "ProjectId";
+                DROP TABLE "ProjectCostItems"; DROP TABLE "CostProjects";
                 DROP TABLE "Contracts"; DROP TABLE "DocumentTemplates"; DROP TABLE "TemplateClauses";
                 ALTER TABLE "Quotes" DROP COLUMN "DocumentDate", DROP COLUMN "VatMode", DROP COLUMN "DocumentJson", DROP COLUMN "SnapshotJson";
                 ALTER TABLE "QuoteItems" DROP COLUMN "BlockName", DROP COLUMN "SortOrder";

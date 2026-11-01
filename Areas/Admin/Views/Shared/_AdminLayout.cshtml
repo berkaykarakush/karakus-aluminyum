@@ -17,7 +17,7 @@
     if (seesAccounting) groups.Insert(accountantOnly ? 0 : 1, ("accounting", "Ön muhasebe", new()
     {
         ("Genel bakış", "/yonetim/muhasebe", "/muhasebe$", 0), ("Faturalar", "/yonetim/muhasebe/faturalar", "/muhasebe/faturalar", 0), ("Cari hesaplar", "/yonetim/muhasebe/cariler", "/muhasebe/cariler", 0),
-        ("Kasa ve banka", "/yonetim/muhasebe/kasa-banka", "/muhasebe/kasa-banka", 0), ("Çek ve senet", "/yonetim/muhasebe/cek-senet", "/muhasebe/cek-senet", 0), ("Giderler", "/yonetim/muhasebe/giderler", "/muhasebe/giderler", 0),
+        ("Kasa ve banka", "/yonetim/muhasebe/kasa-banka", "/muhasebe/kasa-banka", 0), ("Çek ve senet", "/yonetim/muhasebe/cek-senet", "/muhasebe/cek-senet", 0), ("Giderler", "/yonetim/muhasebe/giderler", "/muhasebe/giderler", 0), ("Proje analizi", "/yonetim/muhasebe/projeler", "/muhasebe/projeler", 0),
         ("Ürün ve stok", "/yonetim/muhasebe/urunler", "/muhasebe/urunler", 0), ("Personel", "/yonetim/muhasebe/personel", "/muhasebe/personel", 0), ("Raporlar", "/yonetim/muhasebe/raporlar/kar-zarar", "/muhasebe/raporlar", 0), ("Veri aktarımı", "/yonetim/muhasebe/aktar", "/muhasebe/aktar", 0)
     }));
     bool Active(string match) => match.EndsWith('$') ? currentPath == "/yonetim" + match.TrimEnd('$') : currentPath.StartsWith("/yonetim" + match);

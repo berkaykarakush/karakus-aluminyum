@@ -632,11 +632,12 @@ public sealed class AccountingFlowTests(PostgresFixture postgres)
 
     private static async Task<int> CategoryAsync(AppFactory app) => await app.WithDbAsync(db => db.ExpenseCategories.Select(x => x.Id).FirstAsync());
 
-    private static Task<HttpResponseMessage> ExpenseAsync(HttpClient client, string token, int category, decimal net, int? account, int? supplier, string? description = null, string date = "2026-03-10", decimal vat = 20)
+    private static Task<HttpResponseMessage> ExpenseAsync(HttpClient client, string token, int category, decimal net, int? account, int? supplier, string? description = null, string date = "2026-03-10", decimal vat = 20, int? project = null)
     {
         var fields = new List<(string, string)> { ("CategoryId", category.ToString()), ("Description", description ?? Tag()), ("Date", date), ("DueDate", date), ("Net", net.ToString(System.Globalization.CultureInfo.InvariantCulture)), ("VatRate", vat.ToString(System.Globalization.CultureInfo.InvariantCulture)) };
         if (account is not null) fields.Add(("AccountId", account.ToString()!));
         if (supplier is not null) fields.Add(("CustomerId", supplier.ToString()!));
+        if (project is not null) fields.Add(("ProjectId", project.ToString()!));
         return client.PostFormAsync("/yonetim/muhasebe/giderler/ekle", token, fields.ToArray());
     }
 
@@ -900,6 +901,7 @@ public sealed class AccountingFlowTests(PostgresFixture postgres)
     [InlineData("/yonetim/muhasebe/kasa-banka")]
     [InlineData("/yonetim/muhasebe/cek-senet")]
     [InlineData("/yonetim/muhasebe/giderler")]
+    [InlineData("/yonetim/muhasebe/projeler")]
     [InlineData("/yonetim/muhasebe/urunler")]
     [InlineData("/yonetim/muhasebe/personel")]
     [InlineData("/yonetim/muhasebe/raporlar/kdv")]
@@ -959,6 +961,7 @@ public sealed class AccountingFlowTests(PostgresFixture postgres)
                 await db.SaveChangesAsync();
                 await db.Database.ExecuteSqlRawAsync("""
                     DROP TABLE "PaymentAllocations"; DROP TABLE "CashTransactions"; DROP TABLE "Cheques"; DROP TABLE "Expenses"; DROP TABLE "ExpenseCategories"; DROP TABLE "StockMovements"; DROP TABLE "InvoiceLines"; DROP TABLE "Invoices";
+                    DROP TABLE "ProjectCostItems"; DROP TABLE "CostProjects";
                     DROP TABLE "Products"; DROP TABLE "FinanceAccounts"; DROP TABLE "Employees"; DROP TABLE "CariAdjustments"; DROP TABLE "AccountingSequences";
                     ALTER TABLE "Customers" DROP COLUMN "PartyType";
                     DELETE FROM "SiteSettingRecords" WHERE "Key" = 'AccountingSeeded';
@@ -975,5 +978,158 @@ public sealed class AccountingFlowTests(PostgresFixture postgres)
         Assert.True(await second.WithDbAsync(db => db.ExpenseCategories.AnyAsync()));
         await ApprovedAsync(second, client, token, customer.Id);
         Assert.Equal(1200m, await BalanceAsync(second, customer.Id));
+
+        // Canlı veritabanında proje tabloları ve fatura/gider bağlantısı sonradan oluşur.
+        var project = await ProjectAsync(second, client, token);
+        var invoice = await ApprovedAsync(second, client, token, customer.Id);
+        await client.PostFormAsync($"/yonetim/muhasebe/faturalar/proje/{invoice}", token, ("projectId", project.ToString()));
+        Assert.Equal(1000m, (await QueryAsync(second, q => q.ProjectAnalysisAsync(project)))!.Revenue);
+    }
+
+    private static async Task<int> ProjectAsync(AppFactory app, HttpClient client, string token, string margin = "20", params (string, string)[] extra)
+    {
+        var name = Tag();
+        var fields = new List<(string, string)> { ("Name", name), ("Status", "Active"), ("TargetMargin", margin), ("VatRate", "20") };
+        fields.AddRange(extra);
+        var response = await client.PostFormAsync("/yonetim/muhasebe/projeler/ekle", token, fields.ToArray());
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        return await app.WithDbAsync(db => db.CostProjects.Where(x => x.Name == name).Select(x => x.Id).SingleAsync());
+    }
+
+    private static Task<HttpResponseMessage> ProjectItemAsync(HttpClient client, string token, int project, string quantity, string unitCost, string kind = "Labor", string description = "Montaj ekibi") =>
+        client.PostFormAsync($"/yonetim/muhasebe/projeler/kalem/{project}", token, ("date", "2026-03-10"), ("kind", kind), ("description", description), ("quantity", quantity), ("unit", "Gün"), ("unitCost", unitCost));
+
+    [Theory]
+    [InlineData(80000, 20, 100000)] // %20 marj satış fiyatının içindedir: 96.000 değil
+    [InlineData(1000, 0, 1000)]
+    [InlineData(0, 20, 0)]
+    [InlineData(100, 95, 2000)]
+    public void SuggestedPrice_TreatsMarginAsShareOfSalePrice(decimal cost, decimal margin, decimal expected) => Assert.Equal(expected, ProjectRules.SuggestedPrice(cost, margin));
+
+    [Fact]
+    public void Margin_IsEmptyWithoutRevenue_AndContractNetRemovesIncludedVat()
+    {
+        Assert.Null(ProjectRules.MarginRate(-100, 0));
+        Assert.Equal(25m, ProjectRules.MarginRate(25, 100));
+        Assert.Equal(1000m, ProjectRules.ContractNet(new KarakusAluminyum.Web.Models.Documents.Contract { TotalAmount = 1200, VatMode = VatMode.Included }));
+        Assert.Equal(1200m, ProjectRules.ContractNet(new KarakusAluminyum.Web.Models.Documents.Contract { TotalAmount = 1200, VatMode = VatMode.Added }));
+    }
+
+    [Fact]
+    public async Task ProjectAnalysis_CollectsInvoicesExpensesAndItems_AndSuggestsPrice()
+    {
+        await using var app = postgres.CreateApp("accounting_project");
+        var (client, token) = await AdminAsync(app);
+        var customer = await CustomerAsync(app);
+        var supplier = await CustomerAsync(app, PartyType.Supplier);
+        var account = await AccountAsync(app, opening: 10000);
+        var category = await CategoryAsync(app);
+        var project = await ProjectAsync(app, client, token);
+        async Task Link(int invoice) => Assert.Equal(HttpStatusCode.Redirect, (await client.PostFormAsync($"/yonetim/muhasebe/faturalar/proje/{invoice}", token, ("projectId", project.ToString()))).StatusCode);
+
+        var purchase = await ApprovedAsync(app, client, token, supplier, InvoiceKind.Purchase, lines: Lines(Line(1, 1000, 20)));
+        var balance = await BalanceAsync(app, supplier);
+        var cash = await CashAsync(app, account);
+        await Link(purchase); // onaylı faturaya sonradan bağlanır, cari değişmez
+        Assert.Equal(balance, await BalanceAsync(app, supplier));
+        await Link(await ApprovedAsync(app, client, token, supplier, InvoiceKind.PurchaseReturn, lines: Lines(Line(1, 100, 20))));
+        await Link(await ApprovedAsync(app, client, token, customer, lines: Lines(Line(1, 100, 20)), currency: "USD", rate: 30));
+        await Link(await ApprovedAsync(app, client, token, customer, InvoiceKind.SaleReturn, lines: Lines(Line(1, 500, 20))));
+
+        var cancelled = await ApprovedAsync(app, client, token, supplier, InvoiceKind.Purchase, lines: Lines(Line(1, 7777, 20)));
+        await Link(cancelled);
+        await client.PostFormAsync($"/yonetim/muhasebe/faturalar/iptal/{cancelled}", token, ("reason", "Yanlış"));
+        await Link(await DraftAsync(app, client, token, supplier, InvoiceKind.Purchase, lines: Lines(Line(1, 8888, 20)), number: Tag()));
+        await ApprovedAsync(app, client, token, supplier, InvoiceKind.Purchase, lines: Lines(Line(1, 9999, 20))); // projesiz
+
+        Assert.Equal(HttpStatusCode.Redirect, (await ExpenseAsync(client, token, category, 200, account, null, project: project)).StatusCode); // KDV hariç sayılır
+        var dropped = Tag();
+        await ExpenseAsync(client, token, category, 6666, account, null, dropped, project: project);
+        var droppedId = await app.WithDbAsync(db => db.Expenses.Where(x => x.Description == dropped).Select(x => x.Id).SingleAsync());
+        await client.PostFormAsync($"/yonetim/muhasebe/giderler/iptal/{droppedId}", token, ("reason", "Yanlış"));
+        cash = await CashAsync(app, account);
+
+        await ProjectItemAsync(client, token, project, "2.5", "100");
+        Assert.Equal(cash, await CashAsync(app, account)); // elle girilen kalem kasayı etkilemez
+
+        var result = (await QueryAsync(app, q => q.ProjectAnalysisAsync(project)))!;
+        Assert.Equal((2500m, 1350m, 1150m, 46m), (result.Revenue, result.Cost, result.Profit, result.Margin));
+        Assert.Equal((1687.50m, 2025m, 1), (result.SuggestedNet, result.SuggestedGross, result.DraftInvoices));
+        Assert.Equal(-100m, result.Costs.Single(x => x.Source == "Alış iadesi").Amount);
+
+        var summary = (await QueryAsync(app, q => q.ProjectSummariesAsync())).Single(x => x.Project.Id == project);
+        Assert.Equal((result.Revenue, result.Cost), (summary.Revenue, summary.Cost));
+        Assert.Empty(await QueryAsync(app, q => q.ProjectSummariesAsync(CostProjectStatus.Completed)));
+
+        var page = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/muhasebe/projeler/detay/{project}"));
+        Assert.Contains("1.687,50 TL", page);
+        Assert.Contains("1 taslak fatura", page);
+        Assert.DoesNotContain("Projeyi sil", page);
+        Assert.Contains("Montaj ekibi", await client.GetStringAsync($"/yonetim/muhasebe/projeler/detay/{project}?csv=true"));
+
+        await client.PostFormAsync($"/yonetim/muhasebe/projeler/sil/{project}", token); // bağlı kaydı varken silinmez
+        Assert.True(await app.WithDbAsync(db => db.CostProjects.AnyAsync(x => x.Id == project)));
+    }
+
+    [Fact]
+    public async Task ProjectItem_ValidatesInput_AndCanBeDeleted_ThenEmptyProjectCanBeDeleted()
+    {
+        var app = postgres.Shared;
+        var (client, token) = await AdminAsync(app);
+        var project = await ProjectAsync(app, client, token);
+        Task<int> Count() => app.WithDbAsync(db => db.ProjectCostItems.CountAsync(x => x.ProjectId == project));
+
+        await ProjectItemAsync(client, token, project, "0", "100");
+        await ProjectItemAsync(client, token, project, "1", "0");
+        await ProjectItemAsync(client, token, project, "1", "100", description: " ");
+        await ProjectItemAsync(client, token, project, "1", "100", kind: "99");
+        Assert.Equal(0, await Count());
+        Assert.Equal(HttpStatusCode.NotFound, (await ProjectItemAsync(client, token, 999999, "1", "100")).StatusCode);
+
+        await ProjectItemAsync(client, token, project, "1", "100");
+        var item = await app.WithDbAsync(db => db.ProjectCostItems.Where(x => x.ProjectId == project).Select(x => x.Id).SingleAsync());
+        var other = await ProjectAsync(app, client, token);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PostFormAsync($"/yonetim/muhasebe/projeler/kalem-sil/{other}/{item}", token)).StatusCode);
+        await client.PostFormAsync($"/yonetim/muhasebe/projeler/sil/{project}", token);
+        Assert.True(await app.WithDbAsync(db => db.CostProjects.AnyAsync(x => x.Id == project)));
+
+        await client.PostFormAsync($"/yonetim/muhasebe/projeler/kalem-sil/{project}/{item}", token);
+        Assert.Equal(0, await Count());
+        await client.PostFormAsync($"/yonetim/muhasebe/projeler/sil/{project}", token);
+        Assert.False(await app.WithDbAsync(db => db.CostProjects.AnyAsync(x => x.Id == project)));
+    }
+
+    [Fact]
+    public async Task Project_LinksQuote_ComparesAgreedPrice_AndNewInvoiceInheritsProject()
+    {
+        var app = postgres.Shared;
+        var (client, token) = await AdminAsync(app);
+        var customer = await CustomerAsync(app);
+        var quote = await app.WithDbAsync(async db =>
+        {
+            var row = new Quote { QuoteNumber = Tag(), CustomerId = customer, Title = "Cephe", GrandTotal = 1200, TaxAmount = 200 };
+            db.Quotes.Add(row);
+            await db.SaveChangesAsync();
+            return row.Id;
+        });
+        var rejected = await client.PostFormAsync("/yonetim/muhasebe/projeler/ekle", token, ("Name", Tag()), ("Status", "Active"), ("TargetMargin", "20"), ("VatRate", "20"), ("QuoteId", quote.ToString()), ("CustomerId", (await CustomerAsync(app)).ToString()));
+        Assert.Equal(HttpStatusCode.OK, rejected.StatusCode); // başka carinin teklifi
+        Assert.Equal(HttpStatusCode.OK, (await client.PostFormAsync("/yonetim/muhasebe/projeler/ekle", token, ("Name", Tag()), ("Status", "Active"), ("TargetMargin", "96"), ("VatRate", "20"))).StatusCode);
+
+        var project = await ProjectAsync(app, client, token, extra: ("QuoteId", quote.ToString()));
+        await ProjectItemAsync(client, token, project, "1", "400");
+        var result = (await QueryAsync(app, q => q.ProjectAnalysisAsync(project)))!;
+        Assert.Equal(customer, result.Project.CustomerId); // cari tekliften alınır
+        Assert.Equal((1000m, 600m, 60m), (result.AgreedNet, result.AgreedProfit, result.AgreedMargin));
+
+        await app.WithDbAsync(db => db.Quotes.Where(x => x.Id == quote).ExecuteUpdateAsync(x => x.SetProperty(q => q.Status, QuoteStatus.Rejected)));
+        Assert.Null((await QueryAsync(app, q => q.ProjectAnalysisAsync(project)))!.AgreedNet); // reddedilen teklif fiyat sayılmaz
+
+        var form = await client.GetStringAsync($"/yonetim/muhasebe/faturalar/ekle?teklif={quote}");
+        Assert.Matches($"<option selected=\"selected\" value=\"{project}\">", form);
+        var expenseForm = await client.GetStringAsync($"/yonetim/muhasebe/giderler/ekle?proje={project}");
+        Assert.Matches($"<option selected=\"selected\" value=\"{project}\">", expenseForm);
+        var bad = await client.PostFormAsync("/yonetim/muhasebe/giderler/ekle", token, ("CategoryId", (await CategoryAsync(app)).ToString()), ("Description", Tag()), ("Date", "2026-03-10"), ("DueDate", "2026-03-10"), ("Net", "10"), ("VatRate", "20"), ("AccountId", (await AccountAsync(app)).ToString()), ("ProjectId", "999999"));
+        Assert.Equal(HttpStatusCode.OK, bad.StatusCode);
     }
 }

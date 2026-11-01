@@ -13,5 +13,6 @@
   <label asp-for="VatRate">KDV %</label><select asp-for="VatRate">@foreach (var v in AccountingLabels.VatRates) { <option value="@v">%@v.ToString("0")</option> }</select>
   <label asp-for="AccountId">Ödenen hesap (peşin)</label><select asp-for="AccountId" asp-items="(SelectList)ViewBag.Accounts"><option value="">Ödenmedi</option></select>
   <label asp-for="CustomerId">Tedarikçi (veresiye veya bilgi)</label><select asp-for="CustomerId" asp-items="(SelectList)ViewBag.Customers"><option value="">-</option></select>
+  <label asp-for="ProjectId">Proje</label><select asp-for="ProjectId" asp-items="(SelectList)ViewBag.Projects"><option value="">Projesiz</option></select>
   <div class="admin-actions"><button class="admin-btn">Kaydet</button></div>
 </form></div>

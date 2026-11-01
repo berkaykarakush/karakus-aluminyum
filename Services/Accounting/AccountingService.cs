@@ -266,6 +266,7 @@ public sealed class AccountingService
         if (input.AccountId is null && input.CustomerId is null) throw new AccountingException("Ödenen hesabı veya veresiye için tedarikçiyi seçin.");
         if (!await _db.ExpenseCategories.AnyAsync(x => x.Id == input.CategoryId)) throw new AccountingException("Kategori seçin.");
         if (input.CustomerId is not null && !await _db.Customers.AnyAsync(x => x.Id == input.CustomerId)) throw new AccountingException("Cari bulunamadı.");
+        if (input.ProjectId is not null && !await _db.CostProjects.AnyAsync(x => x.Id == input.ProjectId)) throw new AccountingException("Proje bulunamadı.");
         await InTransactionAsync(async () =>
         {
         input.Id = 0;

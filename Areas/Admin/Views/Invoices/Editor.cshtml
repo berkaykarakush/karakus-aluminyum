@@ -23,6 +23,7 @@
       <div id="inv-rate-row"><label asp-for="ExchangeRate">Kur (1 birim = TL)</label><input asp-for="ExchangeRate" type="number" step="0.0001" min="0" /></div>
       @if (isPurchaseSide) { <div><label asp-for="Number">Belge numarası *</label><input asp-for="Number" /></div> }
       <div><label asp-for="EDocumentNumber">e-Belge numarası</label><input asp-for="EDocumentNumber" /></div>
+      <div><label asp-for="ProjectId">Proje</label><select asp-for="ProjectId" asp-items="(SelectList)ViewBag.Projects"><option value="">Projesiz</option></select></div>
     </div>
   </section>
   <section class="doc-card">
