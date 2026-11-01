@@ -1,0 +1,56 @@
+@model KarakusAluminyum.Web.Areas.Admin.Controllers.SocialMediaVm
+@{ ViewData["Title"] = "Sosyal medya"; }
+<style>
+.sm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.sm-card{display:flex;flex-direction:column;gap:10px;padding:14px;background:#fff;border:1px solid var(--line);border-radius:var(--radius)}
+.sm-card img{display:block;width:100%;height:auto;aspect-ratio:4/5;border-radius:6px;background:#0d1115}
+.sm-card h2{margin:0;font-size:15px}.sm-card p{margin:0}
+.sm-hl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px;margin-bottom:22px}
+.sm-hl{display:grid;grid-template-columns:96px 1fr;gap:10px 14px;padding:14px;background:#fff;border:1px solid var(--line);border-radius:var(--radius)}
+.sm-hl>a img{display:block;width:96px;height:96px;border-radius:50%}
+.sm-hl h3{margin:0 0 4px;font-size:15px}.sm-hl p{margin:0 0 6px;font-size:13px}
+.sm-hl .admin-actions{grid-column:1/-1;margin:0}
+.sm-card textarea{width:100%;min-height:150px;font:inherit;font-size:13px;resize:vertical}
+</style>
+<div class="admin-actions"><h1>Sosyal medya</h1>@if (Model.Posts.Count > 0) { <a class="admin-btn" href="/yonetim/sosyal-medya/tumunu-indir">Tümünü indir (ZIP)</a> }</div>
+<div class="admin-panel">
+  <h2>Öne çıkanlar</h2>
+  <p class="admin-muted">Önerilen sıra soldan sağa. Instagram'da öne çıkan oluşturmak için önce hikâyeyi paylaşın, ardından profilinizde <strong>+</strong> ile bölümü oluşturup kapağı seçin. Ad yazmayı kapakta değil, öne çıkan adı alanında yapın.</p>
+</div>
+<div class="sm-hl-grid">
+@foreach (var x in Model.Highlights)
+{
+  var cover = $"/yonetim/sosyal-medya/one-cikan/{x.Cover}";
+  var story = $"/yonetim/sosyal-medya/one-cikan/{x.Story}";
+  <article class="sm-hl">
+    <a href="@cover" target="_blank" rel="noopener"><img src="@cover" alt="@x.Name kapağı" loading="lazy" width="96" height="96" /></a>
+    <div><h3>@x.Name</h3><p>@x.Purpose</p><p class="admin-muted">Sonra ekleyin: @x.AddLater</p></div>
+    <div class="admin-actions"><a class="admin-btn" href="@(cover)?indir=true">Kapak</a><a class="admin-btn admin-btn--secondary" href="@(story)?indir=true">Hikâye</a><a class="admin-btn admin-btn--secondary" href="@story" target="_blank" rel="noopener">Önizle</a></div>
+  </article>
+}
+</div>
+<div class="admin-panel"><h2>Gönderiler</h2><p class="admin-muted">Instagram ve Facebook için 1080x1350 (4:5) gönderi görselleri. Her görselin hedef kitlesi ve kullanıma hazır açıklama metni altında yer alır.</p></div>
+<div class="sm-grid">
+@foreach (var x in Model.Posts)
+{
+  var url = $"/yonetim/sosyal-medya/gorsel/{x.File}";
+  <article class="sm-card">
+    <a href="@url" target="_blank" rel="noopener"><img src="@url" alt="@x.Title" loading="lazy" width="1080" height="1350" /></a>
+    <h2>@x.Title</h2>
+    <p class="admin-muted">Hedef kitle: @x.Audience</p>
+    <textarea readonly aria-label="@x.Title açıklama metni">@x.Caption</textarea>
+    <div class="admin-actions"><a class="admin-btn" href="@(url)?indir=true">İndir</a><button type="button" class="admin-btn admin-btn--secondary" data-copy>Metni kopyala</button></div>
+  </article>
+}
+</div>
+@if (Model.Posts.Count == 0) { <div class="admin-panel"><p class="admin-muted">Görsel bulunamadı.</p></div> }
+<script>
+document.querySelectorAll("[data-copy]").forEach(function (button) {
+  button.addEventListener("click", async function () {
+    var text = button.closest(".sm-card").querySelector("textarea");
+    try { await navigator.clipboard.writeText(text.value); }
+    catch { text.select(); document.execCommand("copy"); }
+    var label = button.textContent; button.textContent = "Kopyalandı"; setTimeout(function () { button.textContent = label; }, 1500);
+  });
+});
+</script>

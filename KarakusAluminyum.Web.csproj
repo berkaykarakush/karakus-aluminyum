@@ -8,6 +8,8 @@
     <Compile Remove="KarakusAluminyum.Tests/**/*.cs" />
     <Content Remove="KarakusAluminyum.Tests/**" />
     <None Remove="KarakusAluminyum.Tests/**" />
+    <Content Remove="social media/**" />
+    <None Include="social media/**" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="MailKit" Version="4.18.2" />

@@ -1,0 +1,65 @@
+[
+  {
+    "name": "Hakkımızda",
+    "purpose": "Profili ilk kez görenlere kim olduğunuzu anlatır.",
+    "addLater": "Atölye, ekip ve uygulama anından gerçek fotoğraflar.",
+    "cover": "01-hakkimizda-kapak.jpg",
+    "story": "01-hakkimizda-hikaye.jpg"
+  },
+  {
+    "name": "Doğrama",
+    "purpose": "Alüminyum ve PVC doğrama seçeneklerini toplar.",
+    "addLater": "Bitmiş pencere ve kapılar, profil ve renk örnekleri.",
+    "cover": "02-dograma-kapak.jpg",
+    "story": "02-dograma-hikaye.jpg"
+  },
+  {
+    "name": "Cam Balkon",
+    "purpose": "Katlanır ve sürme cam balkon örneklerini gösterir.",
+    "addLater": "Öncesi ve sonrası fotoğraflar, açılıp kapanma videoları.",
+    "cover": "03-cam-balkon-kapak.jpg",
+    "story": "03-cam-balkon-hikaye.jpg"
+  },
+  {
+    "name": "Giyotin Cam",
+    "purpose": "Teras, kafe ve villa müşterisine hitap eder.",
+    "addLater": "Sistemin açılıp kapandığı kısa videolar.",
+    "cover": "04-giyotin-cam-kapak.jpg",
+    "story": "04-giyotin-cam-hikaye.jpg"
+  },
+  {
+    "name": "Tente & Panjur",
+    "purpose": "Gölgelendirme ve kepenk çözümlerini toplar.",
+    "addLater": "Tente açık ve kapalı fotoğrafları, panjur uygulamaları.",
+    "cover": "05-tente-panjur-kapak.jpg",
+    "story": "05-tente-panjur-hikaye.jpg"
+  },
+  {
+    "name": "Kapı Sistemleri",
+    "purpose": "Fotoselli, endüstriyel, garaj ve bahçe kapılarını toplar.",
+    "addLater": "Çalışır halde kapı videoları, rampa ve bariyer uygulamaları.",
+    "cover": "06-kapi-sistemleri-kapak.jpg",
+    "story": "06-kapi-sistemleri-hikaye.jpg"
+  },
+  {
+    "name": "Ofis Bölme",
+    "purpose": "Şirket ve iç mimar müşterisine hitap eder.",
+    "addLater": "Toplantı odası ve yönetici ofisi uygulamaları.",
+    "cover": "07-ofis-bolme-kapak.jpg",
+    "story": "07-ofis-bolme-hikaye.jpg"
+  },
+  {
+    "name": "Projeler",
+    "purpose": "Tamamlanan işleri gösterir; güven için en önemli bölümdür.",
+    "addLater": "Gerçek uygulama fotoğrafları, izin alınan referans firmalar.",
+    "cover": "08-projeler-kapak.jpg",
+    "story": "08-projeler-hikaye.jpg"
+  },
+  {
+    "name": "Teklif Al",
+    "purpose": "Hazır müşteriyi doğrudan iletişime yönlendirir.",
+    "addLater": "Sık sorulan sorular ve teklif için gereken bilgiler.",
+    "cover": "09-teklif-al-kapak.jpg",
+    "story": "09-teklif-al-hikaye.jpg"
+  }
+]
