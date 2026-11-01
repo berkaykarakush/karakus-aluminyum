@@ -104,17 +104,18 @@
 
 /* Referanslar */
 .references{padding-block:clamp(64px,8vw,110px)}.references .section-heading{margin-bottom:clamp(28px,4vw,48px)}
-.references__viewport{overflow:hidden}.references__viewport--animated{-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
-.references__track{display:flex;justify-content:center}.references__group{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:clamp(16px,2vw,28px);padding-inline:var(--gutter,24px)}
-.references__viewport--animated .references__track{justify-content:flex-start;width:max-content;animation:references-scroll var(--references-duration,40s) linear infinite}
-.references__viewport--animated .references__group{flex-wrap:nowrap;padding-inline:0;padding-right:clamp(16px,2vw,28px)}
+.references__viewport{overflow-x:auto;scrollbar-width:none}.references__viewport::-webkit-scrollbar{display:none}.references__viewport--animated{overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+/* Logolar her durumda tek sıradır: sığmazsa alt satıra inmez, yana kaydırılır. */
+.references__track{display:flex;width:max-content;margin-inline:auto}.references__group{display:flex;flex-wrap:nowrap;align-items:center;gap:clamp(16px,2vw,28px);padding-inline:var(--gutter,24px)}
+.references__viewport--animated .references__track{margin-inline:0;animation:references-scroll var(--references-duration,40s) linear infinite}
+.references__viewport--animated .references__group{padding-inline:0;padding-right:clamp(16px,2vw,28px)}
 .references__viewport--animated:hover .references__track,.references__viewport--animated:focus-within .references__track{animation-play-state:paused}
 .references__item{display:flex;flex:none;align-items:center;justify-content:center;width:clamp(140px,16vw,200px);height:clamp(84px,9vw,108px);padding:16px 22px;background:var(--white);border:1px solid var(--line);border-radius:var(--radius);transition:border-color .3s,transform .3s}
 .references__item img{width:100%;height:100%;object-fit:contain}
 a.references__item:focus-visible{outline:2px solid var(--ink);outline-offset:-2px}
 @media(hover:hover){a.references__item:hover{border-color:var(--steel);transform:translateY(-2px)}}
 @keyframes references-scroll{to{transform:translateX(-50%)}}
-@media(prefers-reduced-motion:reduce){.references__viewport--animated{-webkit-mask-image:none;mask-image:none}.references__viewport--animated .references__track{animation:none;justify-content:center;width:auto}.references__viewport--animated .references__group{flex-wrap:wrap;padding-inline:var(--gutter,24px)}.references__group[aria-hidden],.references__item[aria-hidden]{display:none}}
+@media(prefers-reduced-motion:reduce){.references__viewport--animated{overflow-x:auto;-webkit-mask-image:none;mask-image:none}.references__viewport--animated .references__track{margin-inline:auto;animation:none}.references__viewport--animated .references__group{padding-inline:var(--gutter,24px)}.references__group[aria-hidden],.references__item[aria-hidden]{display:none}}
 
 /* Telefonda dikey alanlarda görselin yalnızca ortası görünür: aynı netlikte, kırpılmış küçük dosya kullanılır. */
 @media(max-aspect-ratio:3/5){.hero:before{background-image:url("/images/hero-villa-mobil.webp")}}
