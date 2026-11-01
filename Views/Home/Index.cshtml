@@ -32,6 +32,8 @@
         </div>
     </div>
 }
+@* Güven unsuru: kapağın hemen ardından görünsün. *@
+<partial name="_References" model="(IReadOnlyList<KarakusAluminyum.Web.Models.ClientReference>)ViewBag.References" />
 <section class="section">
     <div class="container">
         <div class="section-heading"><div><span class="eyebrow">Ürün ve Hizmetler</span><h2>Projenize uygun sistemi keşfedin.</h2></div><p>Kullanım alanlarını ve seçenekleri inceleyin, projeniz için uygun sistemi birlikte belirleyelim.</p></div>
@@ -86,7 +88,6 @@
         </div>
     </section>
 }
-<partial name="_References" model="(IReadOnlyList<KarakusAluminyum.Web.Models.ClientReference>)ViewBag.References" />
 @{ ViewData["FaqHeading"] = "Karar vermenize yardımcı bilgiler."; }
 <partial name="_Faqs" model="(IReadOnlyList<KarakusAluminyum.Web.Models.FaqItem>)ViewBag.Faqs" />
 <section class="section section--soft"><div class="container"><div class="cta-band"><div><h2>@site.CtaTitle</h2><p>@site.CtaText</p></div><a class="button button--silver" href="/iletisim">İletişime geçin ↗</a></div></div></section>

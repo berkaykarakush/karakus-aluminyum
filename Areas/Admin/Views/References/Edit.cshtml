@@ -15,6 +15,8 @@
     <label for="logoFile">Logo @(editing ? "(değiştirmek için seçin)" : "") - şeffaf PNG veya WEBP önerilir</label>
     @if (!string.IsNullOrEmpty(Model.LogoPath)) { <p><img src="@Model.LogoPath" alt="@Model.Name" style="max-width:180px;max-height:72px;object-fit:contain" /></p> }
     <input id="logoFile" type="file" name="logoFile" accept=".png,.jpg,.jpeg,.webp" required="@(!editing && string.IsNullOrEmpty(Model.LogoPath))" />
+    <p class="admin-muted">Yüklenen logonun zemini kaldırılır ve logo otomatik olarak siyaha çevrilir.</p>
+    <p><label><input type="checkbox" name="keepColors" value="true" /> Bu logoyu olduğu gibi kullan (renkleri koru)</label></p>
     <label asp-for="SortOrder">Sıra</label><input asp-for="SortOrder" type="number" />
     <p><label><input asp-for="IsPublished" /> Sitede yayınla</label></p>
     <div class="admin-actions"><button class="admin-btn" type="submit">Kaydet</button><a href="/yonetim/referanslar">İptal</a></div>

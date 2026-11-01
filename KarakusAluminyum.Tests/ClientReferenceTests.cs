@@ -87,6 +87,19 @@ public sealed class ClientReferenceTests(PostgresFixture postgres)
     }
 
     [Fact]
+    public async Task HomePage_ShowsReferencesRightAfterHero_BeforeServices()
+    {
+        await using var app = postgres.CreateApp("references_order");
+        var (client, token) = await AdminAsync(app);
+        await AddAsync(client, token, Tag());
+        var html = await app.NewClient().GetStringAsync("/");
+        var hero = html.IndexOf("class=\"hero\"", StringComparison.Ordinal);
+        var references = html.IndexOf("class=\"section references\"", StringComparison.Ordinal);
+        var services = html.IndexOf("class=\"mosaic", StringComparison.Ordinal);
+        Assert.True(hero < references && references < services, $"{hero} {references} {services}");
+    }
+
+    [Fact]
     public async Task ManyLogos_Scroll_AndCopiesAreHiddenFromKeyboardAndScreenReaders()
     {
         await using var app = postgres.CreateApp("references_marquee");
@@ -157,10 +170,10 @@ public sealed class ClientReferenceTests(PostgresFixture postgres)
         await using var app = postgres.CreateApp("references_size");
         var (client, token) = await AdminAsync(app);
         var name = Tag();
-        await AddAsync(client, token, name);
+        await SaveAsync(client, token, "/yonetim/referanslar/ekle", name, "ornek.com", TestImages.Png(3000, 1500, transparent: true));
         var path = await app.WithDbAsync(db => db.ClientReferences.Where(x => x.Name == name).Select(x => x.LogoPath!).SingleAsync());
         using var bitmap = SKBitmap.Decode(Path.Combine(app.WebRoot, path.TrimStart('/')));
-        Assert.Equal(512, bitmap.Width);
+        Assert.Equal(512, Math.Max(bitmap.Width, bitmap.Height));
     }
 
     [Fact]

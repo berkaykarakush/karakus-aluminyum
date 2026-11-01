@@ -81,7 +81,7 @@ public static class ImageOptimizer
 
     private static bool IsWebp(byte[] input) => input.Length > 12 && input[0] == 'R' && input[1] == 'I' && input[2] == 'F' && input[3] == 'F' && input[8] == 'W' && input[9] == 'E' && input[10] == 'B' && input[11] == 'P';
 
-    private static SKBitmap Decode(byte[] input)
+    internal static SKBitmap Decode(byte[] input)
     {
         using var data = SKData.CreateCopy(input);
         using var codec = SKCodec.Create(data) ?? throw new ImageFormatException("Görsel okunamadı. Dosya bozuk veya desteklenmeyen biçimde olabilir.");
@@ -122,7 +122,7 @@ public static class ImageOptimizer
         return false;
     }
 
-    private static SKBitmap Fit(SKBitmap source, int edge)
+    internal static SKBitmap Fit(SKBitmap source, int edge)
     {
         var longest = Math.Max(source.Width, source.Height);
         if (longest <= edge) return source.Copy();

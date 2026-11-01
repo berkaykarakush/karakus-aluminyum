@@ -14,6 +14,7 @@ public sealed class ReferencesController : Controller
     private readonly AppDbContext _db;
     private readonly IAuditService _audit;
     private readonly IWebHostEnvironment _env;
+    private string? _logoNotice;
     public ReferencesController(AppDbContext db, IAuditService audit, IWebHostEnvironment env) { _db = db; _audit = audit; _env = env; }
 
     [HttpGet("")]
@@ -23,14 +24,14 @@ public sealed class ReferencesController : Controller
     public IActionResult Create() => View("Edit", new ClientReference());
 
     [HttpPost("ekle"), ValidateAntiForgeryToken, RequestSizeLimit(9_000_000)]
-    public async Task<IActionResult> Create(ClientReference input, IFormFile? logoFile)
+    public async Task<IActionResult> Create(ClientReference input, IFormFile? logoFile, bool keepColors = false)
     {
         var row = new ClientReference();
-        if (!await ApplyAsync(row, input, logoFile)) return View("Edit", input);
+        if (!await ApplyAsync(row, input, logoFile, keepColors)) return View("Edit", input);
         _db.ClientReferences.Add(row);
         await _db.SaveChangesAsync();
         await _audit.RecordAsync("create", "ClientReference", row.Id.ToString(), row.Name);
-        TempData["Notice"] = "Referans kaydedildi.";
+        TempData["Notice"] = _logoNotice ?? "Referans kaydedildi.";
         return RedirectToAction(nameof(Index));
     }
 
@@ -42,18 +43,18 @@ public sealed class ReferencesController : Controller
     }
 
     [HttpPost("duzenle/{id:int}"), ValidateAntiForgeryToken, RequestSizeLimit(9_000_000)]
-    public async Task<IActionResult> Edit(int id, ClientReference input, IFormFile? logoFile)
+    public async Task<IActionResult> Edit(int id, ClientReference input, IFormFile? logoFile, bool keepColors = false)
     {
         var row = await _db.ClientReferences.FindAsync(id);
         if (row is null) return NotFound();
         input.Id = id;
         input.LogoPath = row.LogoPath;
         var previousLogo = row.LogoPath;
-        if (!await ApplyAsync(row, input, logoFile)) return View(input);
+        if (!await ApplyAsync(row, input, logoFile, keepColors)) return View(input);
         await _db.SaveChangesAsync();
         if (previousLogo != row.LogoPath) DeleteLogo(previousLogo);
         await _audit.RecordAsync("update", "ClientReference", id.ToString(), row.Name);
-        TempData["Notice"] = "Referans kaydedildi.";
+        TempData["Notice"] = _logoNotice ?? "Referans kaydedildi.";
         return RedirectToAction(nameof(Index));
     }
 
@@ -70,7 +71,7 @@ public sealed class ReferencesController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    private async Task<bool> ApplyAsync(ClientReference row, ClientReference input, IFormFile? logoFile)
+    private async Task<bool> ApplyAsync(ClientReference row, ClientReference input, IFormFile? logoFile, bool keepColors)
     {
         if (!ClientReference.TryNormalizeUrl(input.WebsiteUrl, out var url))
             ModelState.AddModelError(nameof(input.WebsiteUrl), "Geçerli bir web sitesi adresi yazın, örn. https://www.ornek.com");
@@ -79,7 +80,13 @@ public sealed class ReferencesController : Controller
         if (!ModelState.IsValid) return false;
 
         string? uploaded;
-        try { uploaded = await AdminImageUpload.SaveAsync(logoFile, _env, LogoFolder, ImageOptimizer.LogoEdge); }
+        Func<byte[], byte[]>? toBlack = keepColors ? null : bytes =>
+        {
+            var (png, outcome) = LogoNormalizer.Normalize(bytes);
+            if (outcome == LogoOutcome.Grayscale) _logoNotice = "Referans kaydedildi, ancak logonun zemini otomatik ayrılamadı ve gri tonlu kaydedildi. Zemini düz veya şeffaf bir logo yüklemeniz daha iyi sonuç verir.";
+            return png;
+        };
+        try { uploaded = await AdminImageUpload.SaveAsync(logoFile, _env, LogoFolder, ImageOptimizer.LogoEdge, toBlack); }
         catch (InvalidOperationException error)
         {
             ModelState.AddModelError("logoFile", error.Message);
