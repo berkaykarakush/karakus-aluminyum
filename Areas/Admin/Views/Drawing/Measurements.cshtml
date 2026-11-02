@@ -1,0 +1,44 @@
+@model KarakusAluminyum.Web.Models.Drawing.DrawingList
+@using KarakusAluminyum.Web.Models.Drawing
+@{
+    ViewData["Title"] = Model.Name + " ölçü listesi";
+    var items = Model.Items.OrderBy(x => x.SortOrder).ThenBy(x => x.Id).ToList();
+    // Kemerli ve eğimli çizimlerde dış ölçü tek başına yetmez; şekle ait ölçü de yazılır.
+    string? ShapeNote(WindowDesign item) => item.Shape switch
+    {
+        WindowShapes.Arch => $"Kemer yüksekliği {Units.WithLabel(item.ShapeParamMm)}",
+        WindowShapes.SlopeLeft => $"Sol kenar {Units.WithLabel(item.ShapeParamMm)}",
+        WindowShapes.SlopeRight => $"Sağ kenar {Units.WithLabel(item.ShapeParamMm)}",
+        _ => null
+    };
+}
+<link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
+<div class="admin-actions wd-noprint">
+  <h1>Ölçü listesi</h1>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/cizim/detay/@Model.Id">Çizimlere dön</a>
+  <button class="admin-btn" type="button" onclick="window.print()">Yazdır / PDF kaydet</button>
+</div>
+<style>@@page{size:A4;margin:10mm}</style>
+<div class="wd-sheet">
+  <div class="admin-panel">
+    <h2>@Model.Name</h2>
+    <p class="admin-muted">@(Model.Customer is null ? "" : Model.Customer.Name + " · ")@items.Count çizim · @items.Sum(x => x.Quantity) adet</p>
+    <table class="admin-table wd-table wd-measure-table">
+      <thead><tr><th>Sıra</th><th>Çizim</th><th>Ürün</th><th>G × Y (@Units.Code)</th><th>Adet</th></tr></thead>
+      <tbody>
+      @for (var i = 0; i < items.Count; i++)
+      {
+        var item = items[i];
+        var note = ShapeNote(item);
+        <tr>
+          <td>@(i + 1)</td>
+          <td>@item.Name</td>
+          <td>@ProductCategories.Label(item.Category)</td>
+          <td>@Units.Size(item.WidthMm, item.HeightMm)@if (note is not null) { <div class="admin-muted">@note</div> }</td>
+          <td>@item.Quantity</td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  </div>
+</div>

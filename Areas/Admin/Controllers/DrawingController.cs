@@ -111,6 +111,13 @@ public sealed class DrawingController : Controller
         return View(list);
     }
 
+    [HttpGet("olcu-listesi/{id:int}")]
+    public async Task<IActionResult> Measurements(int id)
+    {
+        var list = await _db.DrawingLists.AsNoTracking().Include(x => x.Customer).Include(x => x.Items).AsSplitQuery().FirstOrDefaultAsync(x => x.Id == id);
+        return list is null ? NotFound() : View(list);
+    }
+
     // Listedeki tek çizimin ayrıntılı editörü: açılım, bölme, şekil ve ürün seçimleri.
     [HttpGet("poz/{id:int}")]
     public async Task<IActionResult> EditDrawing(int id)
