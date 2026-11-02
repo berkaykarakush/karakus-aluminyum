@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace KarakusAluminyum.Web.Areas.Admin.Controllers;
 
-// Çizim listeleri: her çizim bir listenin satırıdır. Ölçüye göre şekildir; teklif ve sözleşmelere eklenir. İmalat bölümleri "Üretim detayları" ayarına bağlıdır.
+// Çizim listeleri: her çizim bir listenin satırıdır. Ölçüye göre şekildir; teklif ve sözleşmelere eklenir. Sistem seçilen çizimlerin malzeme ve kesim hesabı çıkar.
 [Area("Admin"), Authorize(Roles = "Admin,Editor"), Route("yonetim/cizim")]
 public sealed class DrawingController : Controller
 {
@@ -22,10 +22,7 @@ public sealed class DrawingController : Controller
     private readonly AppDbContext _db;
     private readonly IAuditService _audit;
     private readonly LengthUnits _units;
-    private readonly SiteSettingsProvider _settings;
-    public DrawingController(AppDbContext db, IAuditService audit, LengthUnits units, SiteSettingsProvider settings) { _db = db; _audit = audit; _units = units; _settings = settings; }
-
-    private async Task<bool> ProductionAsync() => (await _settings.GetAsync()).ProductionDetails;
+    public DrawingController(AppDbContext db, IAuditService audit, LengthUnits units) { _db = db; _audit = audit; _units = units; }
 
     [HttpGet("")]
     public async Task<IActionResult> Index(string? tur)
@@ -102,11 +99,9 @@ public sealed class DrawingController : Controller
         var list = await _db.DrawingLists.AsNoTracking().Include(x => x.Customer).Include(x => x.Items).ThenInclude(x => x.Brand)
             .Include(x => x.Items).ThenInclude(x => x.ProfileSystem).AsSplitQuery().FirstOrDefaultAsync(x => x.Id == id);
         if (list is null) return NotFound();
-        var suggested = new Dictionary<int, decimal>();
-        if (await ProductionAsync())
-            foreach (var item in list.Items.Where(x => x.ProfileSystem is not null))
-                if (DrawingCalculation.Calculate(item, item.ProfileSystem!) is { IsValid: true, UnitPrice: > 0 } calculation) suggested[item.Id] = calculation.UnitPrice;
-        ViewBag.SuggestedPrices = suggested;
+        var materials = DrawingMaterials.Build(list.Items.OrderBy(x => x.SortOrder).ThenBy(x => x.Id));
+        ViewBag.Materials = materials;
+        ViewBag.SuggestedPrices = materials.Calculated.Where(x => x.Calculation.UnitPrice > 0).ToDictionary(x => x.Design.Id, x => x.Calculation.UnitPrice);
         ViewBag.Quotes = await DraftQuotesAsync();
         return View(list);
     }
@@ -143,7 +138,7 @@ public sealed class DrawingController : Controller
         await Validate(input);
         if (!ModelState.IsValid) { await LoadOptions(input.Category); return View(DesignerView(input.Category), input); }
 
-        Apply(row, input, await ProductionAsync());
+        Apply(row, input);
         row.UpdatedUtc = DateTime.UtcNow;
         await _db.DrawingLists.Where(x => x.Id == row.DrawingListId).ExecuteUpdateAsync(x => x.SetProperty(l => l.UpdatedUtc, DateTime.UtcNow));
         await _db.SaveChangesAsync();
@@ -153,7 +148,7 @@ public sealed class DrawingController : Controller
     }
 
     // Editörün canlı özeti: ölçü ve maliyet her zaman sunucuda hesaplanır.
-    [HttpPost("hesapla"), ValidateAntiForgeryToken, RequestSizeLimit(256_000), RequireProductionDetails]
+    [HttpPost("hesapla"), ValidateAntiForgeryToken, RequestSizeLimit(256_000)]
     public async Task<IActionResult> Calculate([FromBody] DesignInputVm input)
     {
         var errors = WindowDrawings.Validate(input.Category, input.WidthMm, input.HeightMm, input.Shape, input.ShapeParamMm, input.Quantity, input.LayoutJson, input.ParamsJson);
@@ -163,7 +158,7 @@ public sealed class DrawingController : Controller
         return calculation is null ? BadRequest(new { errors = new[] { "Profil sistemi veya çizim verisi geçersiz." } }) : Json(ToResponse(calculation));
     }
 
-    [HttpGet("imalat/{id:int}"), RequireProductionDetails]
+    [HttpGet("imalat/{id:int}")]
     public async Task<IActionResult> Manufacturing(int id)
     {
         var row = await _db.WindowDesigns.AsNoTracking().Include(x => x.Customer).Include(x => x.ProfileSystem).Include(x => x.Brand).FirstOrDefaultAsync(x => x.Id == id);
@@ -177,13 +172,13 @@ public sealed class DrawingController : Controller
         if (calculation is null) return BadRequest();
 
         ViewBag.Calculation = calculation;
-        ViewBag.Plans = calculation.IsValid ? BuildPlans(new[] { (row, calculation) }, row.ProfileSystem) : new List<BarPlan>();
+        ViewBag.Plans = calculation.IsValid ? DrawingMaterials.Plans(new[] { (row, calculation) }, row.ProfileSystem) : new List<BarPlan>();
         ViewBag.GlassLists = new SelectList(await _db.GlassLists.AsNoTracking().OrderByDescending(x => x.UpdatedUtc).Take(100).Select(x => new { x.Id, x.Name }).ToListAsync(), "Id", "Name");
         return View(row);
     }
 
     // Birden çok çizimi aynı boy profillerinden keser; sistemler ayrı ayrı planlanır. Sistemsiz çizim atlanır.
-    [HttpGet("optimizasyon"), RequireProductionDetails]
+    [HttpGet("optimizasyon")]
     public async Task<IActionResult> Optimization([FromQuery] int[] ids)
     {
         var rows = await _db.WindowDesigns.AsNoTracking().Include(x => x.ProfileSystem).Where(x => ids.Contains(x.Id) && x.ProfileSystemId != null).ToListAsync();
@@ -203,12 +198,12 @@ public sealed class DrawingController : Controller
                 var calculation = DrawingCalculation.Calculate(row, system);
                 if (calculation is { IsValid: true }) calculated.Add((row, calculation));
             }
-            groups.Add((system, calculated.Select(x => x.Item1).ToList(), BuildPlans(calculated, system)));
+            groups.Add((system, calculated.Select(x => x.Item1).ToList(), DrawingMaterials.Plans(calculated, system)));
         }
         return View(groups);
     }
 
-    // Birim fiyat yazılan çizimler teklife eklenir; üretim detayları açıkken hesaplanan fiyat öneri olarak gelir.
+    // Birim fiyat yazılan çizimler teklife eklenir; hesaplanan fiyat öneri olarak gelir.
     [HttpPost("teklife-ekle/{id:int}"), ValidateAntiForgeryToken]
     public async Task<IActionResult> AddToQuote(int id, int quoteId, Dictionary<int, decimal>? prices)
     {
@@ -290,11 +285,8 @@ public sealed class DrawingController : Controller
             ModelState.AddModelError(nameof(input.CustomerId), "Geçerli bir müşteri seçin.");
         if (!ModelState.IsValid) return false;
 
-        var production = await ProductionAsync();
-        // Üretim detayları açıksa yeni satıra türünün ilk aktif sistemi atanır; çizimden değiştirilebilir.
-        var systems = production
-            ? (await _db.ProfileSystems.AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.Name).ToListAsync()).GroupBy(x => x.Category).ToDictionary(g => g.Key, g => g.First().Id)
-            : new Dictionary<string, int>();
+        // Yeni satıra türünün ilk aktif sistemi atanır; çizimden değiştirilebilir.
+        var systems = (await _db.ProfileSystems.AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.Name).ToListAsync()).GroupBy(x => x.Category).ToDictionary(g => g.Key, g => g.First().Id);
         var brands = await _db.Brands.AsNoTracking().ToDictionaryAsync(x => x.Id, x => x.Category);
         var existing = list.Items.ToDictionary(x => x.Id);
         var used = rows!.Where(x => !string.IsNullOrWhiteSpace(x.Name)).Select(x => x.Name!.Trim()).ToHashSet();
@@ -313,11 +305,12 @@ public sealed class DrawingController : Controller
             var category = current?.Category ?? item.Category;
             var shape = current?.Shape ?? WindowShapes.Rect;
             var shapeParam = current?.ShapeParamMm ?? 0;
-            var systemId = production
-                ? item.ProfileSystemId ?? current?.ProfileSystemId ?? (systems.TryGetValue(category, out var found) ? found : null)
-                : current?.ProfileSystemId;
+            var systemId = item.ProfileSystemId ?? current?.ProfileSystemId ?? (systems.TryGetValue(category, out var found) ? found : null);
+            // Sistemsiz kaydedilmiş eski çizim, otomatik atanan sistemin kuralına uymuyor diye kaydı engellemez; sistemsiz kalır.
+            if (current is { ProfileSystemId: null } && item.ProfileSystemId is null && systemId is not null
+                && (await ErrorsAsync(category, item.WidthMm, item.HeightMm, shape, shapeParam, item.Quantity, item.LayoutJson, item.ParamsJson, systemId)).Count > 0) systemId = null;
 
-            var errors = await ErrorsAsync(category, item.WidthMm, item.HeightMm, shape, shapeParam, item.Quantity, item.LayoutJson, item.ParamsJson, systemId, production);
+            var errors = await ErrorsAsync(category, item.WidthMm, item.HeightMm, shape, shapeParam, item.Quantity, item.LayoutJson, item.ParamsJson, systemId);
             if (item.BrandId is not null && (!brands.TryGetValue(item.BrandId.Value, out var brandCategory) || brandCategory != category)) errors.Add("Bu ürün türüne ait geçerli bir marka seçin.");
             if (!string.IsNullOrEmpty(item.ColorHex) && !Regex.IsMatch(item.ColorHex, "^#[0-9a-fA-F]{6}$")) errors.Add("Geçersiz renk.");
             if (item.Name?.Trim().Length > 160) errors.Add("Ad en fazla 160 karakter olabilir.");
@@ -358,15 +351,15 @@ public sealed class DrawingController : Controller
     {
         if (input.BrandId is not null && !await _db.Brands.AnyAsync(x => x.Id == input.BrandId && x.Category == input.Category))
             ModelState.AddModelError(nameof(input.BrandId), "Bu ürün türüne ait geçerli bir marka seçin.");
-        var errors = await ErrorsAsync(input.Category, input.WidthMm, input.HeightMm, input.Shape, input.ShapeParamMm, input.Quantity, input.LayoutJson, input.ParamsJson, input.ProfileSystemId, await ProductionAsync());
+        var errors = await ErrorsAsync(input.Category, input.WidthMm, input.HeightMm, input.Shape, input.ShapeParamMm, input.Quantity, input.LayoutJson, input.ParamsJson, input.ProfileSystemId);
         foreach (var error in errors) ModelState.AddModelError(string.Empty, error);
     }
 
-    // Şekil her zaman denetlenir; imalat kuralları yalnızca üretim detayları açıkken ve sistem seçiliyken.
-    private async Task<List<string>> ErrorsAsync(string category, int width, int height, string shape, int shapeParam, int quantity, string? layoutJson, string? paramsJson, int? systemId, bool production)
+    // Şekil her zaman denetlenir; imalat kuralları sistem seçiliyken.
+    private async Task<List<string>> ErrorsAsync(string category, int width, int height, string shape, int shapeParam, int quantity, string? layoutJson, string? paramsJson, int? systemId)
     {
         var errors = WindowDrawings.Validate(category, width, height, shape, shapeParam, quantity, layoutJson, paramsJson);
-        if (errors.Count > 0 || !production || systemId is null) return errors;
+        if (errors.Count > 0 || systemId is null) return errors;
         var system = await _db.ProfileSystems.AsNoTracking().FirstOrDefaultAsync(x => x.Id == systemId && x.Category == category);
         if (system is null) { errors.Add("Bu ürün türüne ait geçerli bir profil sistemi seçin."); return errors; }
         var calculation = DrawingCalculation.Calculate(category, width, height, shape, shapeParam, quantity, layoutJson, paramsJson, system);
@@ -375,11 +368,11 @@ public sealed class DrawingController : Controller
         return errors;
     }
 
-    private static void Apply(WindowDesign row, DesignInputVm input, bool production)
+    private static void Apply(WindowDesign row, DesignInputVm input)
     {
         row.Name = input.Name.Trim();
         row.BrandId = input.BrandId;
-        if (production) row.ProfileSystemId = input.ProfileSystemId; // kapalıyken mevcut seçim korunur
+        row.ProfileSystemId = input.ProfileSystemId;
         row.ColorHex = input.ColorHex;
         row.WidthMm = input.WidthMm;
         row.HeightMm = input.HeightMm;
@@ -389,18 +382,6 @@ public sealed class DrawingController : Controller
         row.Notes = input.Notes?.Trim();
         if (ProductCategories.IsWindow(input.Category)) row.LayoutJson = WindowLayout.Serialize(WindowLayout.Parse(input.LayoutJson)!);
         else row.ParamsJson = WindowDrawings.Serialize(WindowDrawings.ParseParams(input.ParamsJson)!);
-    }
-
-    private static List<BarPlan> BuildPlans(IEnumerable<(WindowDesign Design, WindowCalculation Calculation)> items, ProfileSystem system)
-    {
-        var pieces = new Dictionary<string, List<BarPiece>>();
-        foreach (var (design, calculation) in items)
-            foreach (var cut in calculation.Cuts)
-            {
-                if (!pieces.TryGetValue(cut.Profile, out var list)) pieces[cut.Profile] = list = new();
-                for (var i = 0; i < cut.Count * design.Quantity; i++) list.Add(new BarPiece($"{design.Name}: {cut.Label}", cut.LengthMm));
-            }
-        return pieces.OrderBy(x => x.Key).Select(x => BarOptimizer.Optimize(x.Key, x.Value, system.BarLengthMm, system.KerfMm)).ToList();
     }
 
     private static object ToResponse(WindowCalculation c) => new
@@ -423,6 +404,6 @@ public sealed class DrawingController : Controller
     private async Task LoadOptions(string category)
     {
         ViewBag.Brands = await _db.Brands.AsNoTracking().Where(x => x.Category == category).OrderBy(x => x.SortOrder).ThenBy(x => x.Name).ToListAsync();
-        ViewBag.Systems = await ProductionAsync() ? await _db.ProfileSystems.AsNoTracking().Where(x => x.Category == category).OrderBy(x => x.Name).ToListAsync() : new List<ProfileSystem>();
+        ViewBag.Systems = await _db.ProfileSystems.AsNoTracking().Where(x => x.Category == category).OrderBy(x => x.Name).ToListAsync();
     }
 }

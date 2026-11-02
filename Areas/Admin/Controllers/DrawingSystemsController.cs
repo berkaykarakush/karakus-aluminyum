@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace KarakusAluminyum.Web.Areas.Admin.Controllers;
 
-[Area("Admin"), Authorize(Roles = "Admin,Editor"), Route("yonetim/cizim/sistemler"), RequireProductionDetails]
+[Area("Admin"), Authorize(Roles = "Admin,Editor"), Route("yonetim/cizim/sistemler")]
 public sealed class DrawingSystemsController : Controller
 {
     private readonly AppDbContext _db;

@@ -51,8 +51,6 @@ public sealed class SiteSettings
     public string NotifyWhatsAppTo { get; set; } = "";
     public string WhatsAppTemplateName { get; set; } = "";
     public string WhatsAppTemplateLanguage { get; set; } = "tr";
-    public string ProductionDetailsEnabled { get; set; } = "false";
-    public bool ProductionDetails => ProductionDetailsEnabled == "true";
     public string ConsentText { get; set; } = "";
     public string HeroEyebrow { get; set; } = "";
     public string HeroTitle { get; set; } = "";

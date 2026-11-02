@@ -2,9 +2,8 @@
 @using System.Text.Json
 @using KarakusAluminyum.Web.Models.Drawing
 @using KarakusAluminyum.Web.Services.Drawing
-@inject KarakusAluminyum.Web.Services.SiteSettingsProvider SiteSettings
 @{
-    var production = (await SiteSettings.GetAsync()).ProductionDetails;
+    var materials = (MaterialList)ViewBag.Materials;
     var suggested = (Dictionary<int, decimal>)ViewBag.SuggestedPrices;
     ViewData["Title"] = Model.Name;
     var quotes = (SelectList)ViewBag.Quotes;
@@ -17,9 +16,11 @@
   <h1>@Model.Name</h1>
   <a class="admin-btn admin-btn--secondary" href="/yonetim/cizim">Çizim listeleri</a>
   <a class="admin-btn admin-btn--secondary" href="/yonetim/cizim/duzenle/@Model.Id">Listeyi düzenle</a>
-  @if (production && withSystem.Count > 0) { <a class="admin-btn admin-btn--secondary" href="/yonetim/cizim/optimizasyon?@string.Join("&", withSystem.Select(x => $"ids={x.Id}"))">Birlikte optimize et</a> }
+  @if (withSystem.Count > 0) { <a class="admin-btn admin-btn--secondary" href="/yonetim/cizim/optimizasyon?@string.Join("&", withSystem.Select(x => $"ids={x.Id}"))">Birlikte optimize et</a> }
   <a class="admin-btn admin-btn--secondary" href="/yonetim/cizim/olcu-listesi/@Model.Id">Ölçü listesi</a>
-  <button class="admin-btn admin-btn--secondary" type="button" onclick="window.print()">Yazdır / PDF kaydet</button>
+  <button class="admin-btn admin-btn--secondary" type="button" data-print="drawings" data-print-title="@Model.Name - Çizimler">Çizimi yazdır</button>
+  <button class="admin-btn admin-btn--secondary" type="button" data-print="materials" data-print-title="@Model.Name - Malzemeler">Malzemeleri yazdır</button>
+  <button class="admin-btn admin-btn--secondary" type="button" data-print="all" data-print-title="@Model.Name - Çizimler ve malzemeler">Hepsini yazdır</button>
 </div>
 <style>@@page{size:A4;margin:10mm}</style>
 <div class="wd-sheet wd-pages">
@@ -42,7 +43,7 @@
                 <div class="admin-muted">@ProductCategories.Label(item.Category) · @Units.Size(item.WidthMm, item.HeightMm) @Units.Code · @item.Quantity adet</div>
                 <div class="admin-actions wd-noprint wd-pos__links">
                   <a href="/yonetim/cizim/poz/@item.Id">Çizimi aç</a>
-                  @if (production && item.ProfileSystemId is not null) { <a href="/yonetim/cizim/imalat/@item.Id">İmalat föyü</a> }
+                  @if (item.ProfileSystemId is not null) { <a href="/yonetim/cizim/imalat/@item.Id">İmalat föyü</a> }
                 </div>
               </div>
               <partial name="_BrandMark" model="item.Brand" />
@@ -87,6 +88,21 @@
     }
     else { <p class="admin-muted">Taslak durumunda teklif yok. <a href="/yonetim/crm/teklifler/ekle">Yeni teklif oluşturun.</a></p> }
   </div>
+  @* Yazdırma seçilen moda göre çizimleri, malzemeleri veya ikisini basar; Ctrl+P yalnızca çizimleri basar. *@
+  <div class="wd-materials">
+    <header class="wd-materials__head">
+      <h2>Malzeme listesi</h2>
+      <div class="admin-muted">@Model.Name@(Model.Customer is null ? "" : " · " + Model.Customer.Name) · @items.Count çizim · @items.Sum(x => x.Quantity) adet</div>
+    </header>
+    <partial name="_Materials" model="materials" />
+  </div>
 </div>
 <script src="~/js/window-drawing.js" asp-append-version="true"></script>
-<script>document.querySelectorAll("[data-drawing]").forEach((svg) => WindowDrawing.render(svg, JSON.parse(svg.dataset.drawing), { textScale: 2.4 }));</script>
+<script>document.querySelectorAll("[data-drawing]").forEach((svg) => WindowDrawing.render(svg, JSON.parse(svg.dataset.drawing), { textScale: 2.4 }));
+document.querySelectorAll("[data-print]").forEach((button) => button.addEventListener("click", () => {
+  const root = document.documentElement, title = document.title;
+  root.dataset.printMode = button.dataset.print;
+  document.title = button.dataset.printTitle; // kaydedilen PDF'in önerilen adı
+  addEventListener("afterprint", () => { delete root.dataset.printMode; document.title = title; }, { once: true });
+  window.print();
+}));</script>

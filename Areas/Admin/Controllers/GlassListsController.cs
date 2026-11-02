@@ -19,8 +19,7 @@ public sealed class GlassListsController : Controller
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly AppDbContext _db;
     private readonly IAuditService _audit;
-    private readonly SiteSettingsProvider _settings;
-    public GlassListsController(AppDbContext db, IAuditService audit, SiteSettingsProvider settings) { _db = db; _audit = audit; _settings = settings; }
+    public GlassListsController(AppDbContext db, IAuditService audit) { _db = db; _audit = audit; }
 
     [HttpGet("")]
     public async Task<IActionResult> Index()
@@ -96,7 +95,7 @@ public sealed class GlassListsController : Controller
         ViewBag.Quotes = new SelectList(await _db.Quotes.AsNoTracking().Where(x => x.Status == QuoteStatus.Draft)
             .OrderByDescending(x => x.CreatedUtc).Select(x => new { x.Id, Text = x.QuoteNumber + " - " + x.Title }).ToListAsync(), "Id", "Text");
         // AsNoTracking her satır için ayrı nesne üretir; gruplama nesneye değil kimliğe göre yapılmalıdır.
-        if ((await _settings.GetAsync()).ProductionDetails) ViewBag.Plans = row.Items.GroupBy(i => i.GlassTypeId).Select(group =>
+        ViewBag.Plans = row.Items.GroupBy(i => i.GlassTypeId).Select(group =>
         {
             var type = group.First().GlassType!;
             var pieces = group.SelectMany(i => Enumerable.Range(0, i.Quantity).Select(_ => (string.IsNullOrWhiteSpace(i.Position) ? "Cam" : i.Position!, i.WidthMm, i.HeightMm)));
@@ -139,7 +138,7 @@ public sealed class GlassListsController : Controller
     }
 
     // Doğrama çiziminden yalnızca cam ölçüleri alınır; sonrasında liste bağımsızdır.
-    [HttpPost("cizimden/{designId:int}"), ValidateAntiForgeryToken, RequireProductionDetails]
+    [HttpPost("cizimden/{designId:int}"), ValidateAntiForgeryToken]
     public async Task<IActionResult> FromDesign(int designId, int? listId)
     {
         var design = await _db.WindowDesigns.AsNoTracking().Include(x => x.ProfileSystem).FirstOrDefaultAsync(x => x.Id == designId);
@@ -232,12 +231,6 @@ public sealed class GlassListsController : Controller
         input.Id = id;
         if (!await _db.GlassTypes.AnyAsync(x => x.Id == id)) return NotFound();
         if (!ModelState.IsValid) return View(input);
-        if (!(await _settings.GetAsync()).ProductionDetails)
-        {
-            // Form plaka alanlarını göstermiyor; kayıtlı değerler korunur.
-            var sheet = await _db.GlassTypes.AsNoTracking().Where(x => x.Id == id).Select(x => new { x.SheetWidthMm, x.SheetHeightMm, x.CutGapMm }).SingleAsync();
-            (input.SheetWidthMm, input.SheetHeightMm, input.CutGapMm) = (sheet.SheetWidthMm, sheet.SheetHeightMm, sheet.CutGapMm);
-        }
         _db.GlassTypes.Update(input);
         await _db.SaveChangesAsync();
         await _audit.RecordAsync("update", "GlassType", id.ToString(), input.Name);

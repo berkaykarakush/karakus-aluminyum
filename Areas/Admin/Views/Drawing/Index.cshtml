@@ -1,14 +1,12 @@
 @model List<KarakusAluminyum.Web.Models.Drawing.DrawingList>
 @using KarakusAluminyum.Web.Models.Drawing
-@inject KarakusAluminyum.Web.Services.SiteSettingsProvider SiteSettings
 @{
-    var production = (await SiteSettings.GetAsync()).ProductionDetails;
     ViewData["Title"] = "Çizim listeleri";
     var current = ViewBag.Category as string;
     var newUrl = ProductCategories.All.Contains(current) ? $"/yonetim/cizim/ekle?tur={current}" : "/yonetim/cizim/ekle";
 }
 <link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
-<div class="admin-actions"><h1>Çizim listeleri</h1><a class="admin-btn" href="@newUrl">+ Yeni liste</a><a class="admin-btn" href="/yonetim/markalar">Markalar</a>@if (production) { <a class="admin-btn" href="/yonetim/cizim/sistemler">Sistemler</a> }<a class="admin-btn" href="/yonetim/camlar">Cam listeleri</a></div>
+<div class="admin-actions"><h1>Çizim listeleri</h1><a class="admin-btn" href="@newUrl">+ Yeni liste</a><a class="admin-btn" href="/yonetim/markalar">Markalar</a><a class="admin-btn" href="/yonetim/cizim/sistemler">Sistemler</a><a class="admin-btn" href="/yonetim/camlar">Cam listeleri</a></div>
 <nav class="wd-tabs" aria-label="Ürün türü">
   <a class="@(ProductCategories.All.Contains(current) ? "" : "is-active")" href="/yonetim/cizim">Tümü</a>
   @foreach (var category in ProductCategories.All) { <a class="@(current == category ? "is-active" : "")" href="/yonetim/cizim?tur=@category">@ProductCategories.Label(category)</a> }

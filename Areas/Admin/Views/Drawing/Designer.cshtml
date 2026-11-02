@@ -1,8 +1,6 @@
 @model KarakusAluminyum.Web.Models.Drawing.DesignInputVm
 @using KarakusAluminyum.Web.Models.Drawing
-@inject KarakusAluminyum.Web.Services.SiteSettingsProvider SiteSettings
 @{
-    var production = (await SiteSettings.GetAsync()).ProductionDetails;
     var label = ProductCategories.Label(Model.Category);
     ViewData["Title"] = "Çizim: " + label;
     var action = $"/yonetim/cizim/poz/{Model.Id}";
@@ -10,7 +8,7 @@
     var openings = new[] { ("fixed", "Sabit"), ("left", "Sola menteşe"), ("right", "Sağa menteşe"), ("tilt", "Vasistas"), ("tiltLeft", "Açılır-devrilir sol"), ("tiltRight", "Açılır-devrilir sağ"), ("slideLeft", "Sürme sola"), ("slideRight", "Sürme sağa"), ("doorLeft", "Kapı sol"), ("doorRight", "Kapı sağ") };
 }
 <link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
-<div class="admin-actions wd-noprint"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/cizim/duzenle/@Model.DrawingListId">Listeye dön</a><a class="admin-btn" href="/yonetim/cizim/detay/@Model.DrawingListId">Çizimleri görüntüle</a>@if (production && Model.ProfileSystemId is not null) { <a class="admin-btn" href="/yonetim/cizim/imalat/@Model.Id">İmalat föyü</a> }</div>
+<div class="admin-actions wd-noprint"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/cizim/duzenle/@Model.DrawingListId">Listeye dön</a><a class="admin-btn" href="/yonetim/cizim/detay/@Model.DrawingListId">Çizimleri görüntüle</a>@if (Model.ProfileSystemId is not null) { <a class="admin-btn" href="/yonetim/cizim/imalat/@Model.Id">İmalat föyü</a> }</div>
 <form id="wd-form" method="post" action="@action">
   @Html.AntiForgeryToken()
   <input type="hidden" asp-for="LayoutJson" />
@@ -31,14 +29,11 @@
           <option value="">Marka yok</option>
           @foreach (var b in ((List<Brand>)ViewBag.Brands).Where(b => b.IsActive || b.Id == Model.BrandId)) { <option value="@b.Id" data-logo="@b.LogoPath">@b.Name</option> }
         </select>
-        @if (production)
-        {
-          <label asp-for="ProfileSystemId">Profil sistemi</label>
-          <select asp-for="ProfileSystemId">
-            <option value="">Seçilmedi</option>
-            @foreach (var s in ((List<ProfileSystem>)ViewBag.Systems).Where(s => s.IsActive || s.Id == Model.ProfileSystemId)) { <option value="@s.Id">@s.Name</option> }
-          </select>
-        }
+        <label asp-for="ProfileSystemId">Profil sistemi</label>
+        <select asp-for="ProfileSystemId">
+          <option value="">Seçilmedi</option>
+          @foreach (var s in ((List<ProfileSystem>)ViewBag.Systems).Where(s => s.IsActive || s.Id == Model.ProfileSystemId)) { <option value="@s.Id">@s.Name</option> }
+        </select>
       </div>
       <div class="wd-panel">
         <p class="wd-step"><b>2</b> Tip seçin</p>
@@ -87,12 +82,9 @@
             <button class="admin-btn" type="submit">Kaydet</button>
           </div>
         </div>
-        @if (production)
-        {
-          <div id="wd-alerts"></div>
-          <p id="wd-summary" class="admin-muted" style="margin:8px 2px 0"></p>
-          <div id="wd-result"></div>
-        }
+        <div id="wd-alerts"></div>
+        <p id="wd-summary" class="admin-muted" style="margin:8px 2px 0"></p>
+        <div id="wd-result"></div>
       </div>
     </div>
   </div>
@@ -100,4 +92,4 @@
 <script src="~/js/window-drawing.js" asp-append-version="true"></script>
 <script src="~/js/window-designer.js" asp-append-version="true"></script>
 <script src="~/js/drawing-brand.js" asp-append-version="true"></script>
-@if (production) { <script src="~/js/drawing-production.js" asp-append-version="true"></script> }
+<script src="~/js/drawing-production.js" asp-append-version="true"></script>

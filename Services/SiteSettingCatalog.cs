@@ -16,10 +16,9 @@ public static class SiteSettingCatalog
     public const string HomeGroup = "Ana sayfa metinleri";
     public const string AboutGroup = "Kurumsal sayfa metinleri";
     public const string FooterGroup = "Alt bilgi";
-    public const string DrawingGroup = "Çizim ve üretim";
     public const string NotificationGroup = "Teklif bildirimleri";
 
-    public static readonly string[] Groups = { ContactGroup, SeoGroup, AnalyticsGroup, HomeGroup, AboutGroup, FooterGroup, NotificationGroup, DrawingGroup };
+    public static readonly string[] Groups = { ContactGroup, SeoGroup, AnalyticsGroup, HomeGroup, AboutGroup, FooterGroup, NotificationGroup };
 
     private const string UrlPattern = "^https?://[^\\s\"'<>]+$";
     private const string UrlError = "http:// veya https:// ile başlayan geçerli bir adres yazın.";
@@ -62,8 +61,6 @@ public static class SiteSettingCatalog
         new("NotifyWhatsAppTo", NotificationGroup, "WhatsApp bildirim numaraları", "", Help: "Ülke koduyla, örn. 905xxxxxxxxx. Virgülle ayırarak birden çok numara yazabilirsiniz.", Pattern: "^\\+?[0-9]{10,15}(\\s*,\\s*\\+?[0-9]{10,15})*$", PatternError: "Numaraları ülke koduyla, virgülle ayırarak yazın."),
         new("WhatsAppTemplateName", NotificationGroup, "WhatsApp şablon adı", "", Help: "Meta'da onaylanan şablonun adı. Kurulum için Bildirimler sayfasına bakın.", Pattern: "^[a-z0-9_]{1,512}$", PatternError: "Yalnızca küçük harf, rakam ve alt çizgi kullanın."),
         new("WhatsAppTemplateLanguage", NotificationGroup, "WhatsApp şablon dili", "tr", Pattern: "^[a-z]{2}(_[A-Z]{2})?$", PatternError: "Örn. tr"),
-
-        new("ProductionDetailsEnabled", DrawingGroup, "Üretim detaylarını göster", "false", SettingKind.Toggle),
 
         new("HeroEyebrow", HomeGroup, "Üst başlık", "Mimari Alüminyum Sistemleri"),
         new("HeroTitle", HomeGroup, "Büyük başlık", "Mimariye değer katan"),

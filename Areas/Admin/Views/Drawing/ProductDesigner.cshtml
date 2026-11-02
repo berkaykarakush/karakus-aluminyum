@@ -1,15 +1,13 @@
 @model KarakusAluminyum.Web.Models.Drawing.DesignInputVm
 @using KarakusAluminyum.Web.Models.Drawing
-@inject KarakusAluminyum.Web.Services.SiteSettingsProvider SiteSettings
 @{
-    var production = (await SiteSettings.GetAsync()).ProductionDetails;
     var label = ProductCategories.Label(Model.Category);
     ViewData["Title"] = "Çizim: " + label;
     var action = $"/yonetim/cizim/poz/{Model.Id}";
     var isRailing = Model.Category == ProductCategories.Railing;
 }
 <link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
-<div class="admin-actions wd-noprint"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/cizim/duzenle/@Model.DrawingListId">Listeye dön</a><a class="admin-btn" href="/yonetim/cizim/detay/@Model.DrawingListId">Çizimleri görüntüle</a>@if (production && Model.ProfileSystemId is not null) { <a class="admin-btn" href="/yonetim/cizim/imalat/@Model.Id">İmalat föyü</a> }</div>
+<div class="admin-actions wd-noprint"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/cizim/duzenle/@Model.DrawingListId">Listeye dön</a><a class="admin-btn" href="/yonetim/cizim/detay/@Model.DrawingListId">Çizimleri görüntüle</a>@if (Model.ProfileSystemId is not null) { <a class="admin-btn" href="/yonetim/cizim/imalat/@Model.Id">İmalat föyü</a> }</div>
 <form id="pd-form" method="post" action="@action">
   @Html.AntiForgeryToken()
   <input type="hidden" asp-for="ParamsJson" />
@@ -30,14 +28,11 @@
           <option value="">Marka yok</option>
           @foreach (var b in ((List<Brand>)ViewBag.Brands).Where(b => b.IsActive || b.Id == Model.BrandId)) { <option value="@b.Id" data-logo="@b.LogoPath">@b.Name</option> }
         </select>
-        @if (production)
-        {
-          <label asp-for="ProfileSystemId">Profil sistemi</label>
-          <select asp-for="ProfileSystemId">
-            <option value="">Seçilmedi</option>
-            @foreach (var s in ((List<ProfileSystem>)ViewBag.Systems).Where(s => s.IsActive || s.Id == Model.ProfileSystemId)) { <option value="@s.Id">@s.Name</option> }
-          </select>
-        }
+        <label asp-for="ProfileSystemId">Profil sistemi</label>
+        <select asp-for="ProfileSystemId">
+          <option value="">Seçilmedi</option>
+          @foreach (var s in ((List<ProfileSystem>)ViewBag.Systems).Where(s => s.IsActive || s.Id == Model.ProfileSystemId)) { <option value="@s.Id">@s.Name</option> }
+        </select>
       </div>
       <div class="wd-panel">
         <p class="wd-step"><b>2</b> Seçenekler</p>
@@ -50,7 +45,7 @@
         {
           <label for="pd-infill">Dolgu</label>
           <select id="pd-infill" data-param="infill"><option value="glass">Camlı</option><option value="bars">Emniyet çubuklu</option></select>
-          <label for="pd-spacing">Dikme aralığı (boşsa @(production ? "sistem değeri" : "120 cm"))</label>
+          <label for="pd-spacing">Dikme aralığı (boşsa sistem değeri)</label>
           <input id="pd-spacing" type="number" min="0" data-param="postSpacingMm" data-mm="postSpacing" />
         }
         else
@@ -73,12 +68,9 @@
       <div class="wd-canvas-panel"><span id="wd-brand-mark" class="wd-brand wd-brand--canvas" hidden></span>
                 <svg id="pd-canvas" style="display:block;width:100%;height:min(66vh,640px);background:linear-gradient(#f7f9fc,#eef2f7);border-radius:8px" role="img" aria-label="@label çizimi"></svg>
         <div class="wd-summary-bar"><span></span><button class="admin-btn" type="submit">Kaydet</button></div>
-        @if (production)
-        {
-          <div id="wd-alerts"></div>
-          <p id="wd-summary" class="admin-muted" style="margin:8px 2px 0"></p>
-          <div id="wd-result"></div>
-        }
+        <div id="wd-alerts"></div>
+        <p id="wd-summary" class="admin-muted" style="margin:8px 2px 0"></p>
+        <div id="wd-result"></div>
       </div>
     </div>
   </div>
@@ -86,4 +78,4 @@
 <script src="~/js/window-drawing.js" asp-append-version="true"></script>
 <script src="~/js/product-designer.js" asp-append-version="true"></script>
 <script src="~/js/drawing-brand.js" asp-append-version="true"></script>
-@if (production) { <script src="~/js/drawing-production.js" asp-append-version="true"></script> }
+<script src="~/js/drawing-production.js" asp-append-version="true"></script>
