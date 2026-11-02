@@ -596,6 +596,42 @@ public sealed class DrawingPageTests(PostgresFixture postgres)
         Assert.Contains("Liste notu burada", html[html.IndexOf("wd-page-notes", StringComparison.Ordinal)..]);
     }
 
+    [Fact]
+    public async Task MeasurementList_ShowsOnlySizes_InListOrder()
+    {
+        await using var app = postgres.CreateApp("drawing_measurements");
+        var (client, token) = await AdminAsync(app);
+        await DrawingLists.PostAsync(client, token, "Ölçülü", DrawingLists.Rows(
+            DrawingLists.Row("Salon", width: 1500, height: 1200, quantity: 3),
+            DrawingLists.Row("Mutfak", width: 800, height: 600, quantity: 2),
+            DrawingLists.Row("Banyo", width: 500, height: 700, quantity: 1)), ("Notes", "Liste notu burada"));
+        var id = await DrawingLists.ListIdAsync(app, "Ölçülü");
+        await app.WithDbAsync(async db =>
+        {
+            await db.WindowDesigns.Where(d => d.Name == "Mutfak").ExecuteUpdateAsync(s => s.SetProperty(d => d.Shape, WindowShapes.Arch).SetProperty(d => d.ShapeParamMm, 200));
+            return 0;
+        });
+
+        Assert.Contains($"/yonetim/cizim/olcu-listesi/{id}", await client.GetStringAsync($"/yonetim/cizim/detay/{id}"));
+        var html = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/cizim/olcu-listesi/{id}"));
+
+        Assert.Contains("window.print()", html);
+        Assert.Contains("3 çizim · 6 adet", html);
+        Assert.Contains("150 × 120", html);
+        Assert.Contains("Kemer yüksekliği 20 cm", html);
+        Assert.True(html.IndexOf("Salon", StringComparison.Ordinal) < html.IndexOf("Mutfak", StringComparison.Ordinal));
+        Assert.True(html.IndexOf("Mutfak", StringComparison.Ordinal) < html.IndexOf("Banyo", StringComparison.Ordinal));
+        Assert.DoesNotContain("data-drawing", html);
+        Assert.DoesNotContain("Liste notu burada", html);
+    }
+
+    [Fact]
+    public async Task MeasurementList_ReturnsNotFound_ForMissingList()
+    {
+        var (client, _) = await AdminAsync(postgres.Shared);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/yonetim/cizim/olcu-listesi/999999")).StatusCode);
+    }
+
     private static async Task<(HttpClient Client, string Token)> AdminAsync(AppFactory app)
     {
         var client = app.NewClient();
