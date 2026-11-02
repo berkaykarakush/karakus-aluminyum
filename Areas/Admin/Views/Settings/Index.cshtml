@@ -21,10 +21,6 @@
       {
         <p class="admin-muted" id="bildirimler">Alıcı yazılmazsa sunucu ayarındaki adres kullanılır. SMTP parolası ve WhatsApp anahtarı güvenlik için sunucu ortam değişkenlerinde tutulur. Gönderim durumunu <a href="/yonetim/bildirimler">Bildirimler</a> sayfasından izleyebilirsiniz.</p>
       }
-      @if (group == SiteSettingCatalog.DrawingGroup)
-      {
-        <p class="admin-muted">Açıkken kesim listesi, profil sistemleri, boy optimizasyonu, maliyet hesabı, imalat föyü ve cam plaka yerleşimi görünür. Kapalıyken çizimler yalnızca ölçülü şekildir. Kapatmak veri silmez.</p>
-      }
       @foreach (var definition in SiteSettingCatalog.All.Where(d => d.Group == group && values.ContainsKey(d.Key)))
       {
         var id = "setting-" + definition.Key;

@@ -115,4 +115,14 @@
 }
 .wd-pos__head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px}
 .wd-pos__links{gap:12px;margin:4px 0 0;font-size:13px}
-.wd-measure-table tr{break-inside:avoid}
+.wd-measure-table tr,.wd-materials tr{break-inside:avoid}
+.wd-materials{max-width:1000px}
+.wd-materials__head{margin:0 0 12px}
+.wd-materials__head h2{margin:0}
+.wd-bar span{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+@media print{
+  .wd-materials{display:none;max-width:none}
+  html[data-print-mode=materials] .wd-page,html[data-print-mode=materials] .wd-page-notes{display:none}
+  html[data-print-mode=materials] .wd-materials,html[data-print-mode=all] .wd-materials{display:block}
+  html[data-print-mode=all] .wd-materials{break-before:page}
+}

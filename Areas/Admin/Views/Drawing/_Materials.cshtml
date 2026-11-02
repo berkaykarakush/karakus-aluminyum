@@ -1,0 +1,67 @@
+@model KarakusAluminyum.Web.Services.Drawing.MaterialList
+@using KarakusAluminyum.Web.Services.Documents
+@if (Model.WithoutSystem.Count > 0)
+{
+  <div class="admin-panel">
+    <h3>Profil sistemi seçilmemiş çizimler</h3>
+    <p class="wd-warnings" style="list-style:none">Bu çizimler malzeme hesabına dahil değildir: @string.Join(", ", Model.WithoutSystem.Select(x => x.Name))</p>
+    <p class="admin-muted wd-noprint">Çizimi açıp sistem seçin. Listeyi düzenleyip kaydederseniz sistemsiz çizimlere türünün ilk aktif sistemi atanır.</p>
+  </div>
+}
+@if (Model.Invalid.Count > 0)
+{
+  <div class="admin-panel">
+    <h3>Hesaplanamayan çizimler</h3>
+    <ul class="wd-errors">@foreach (var x in Model.Invalid) { <li><strong>@x.Design.Name:</strong> @string.Join(" ", x.Errors)</li> }</ul>
+  </div>
+}
+@foreach (var group in Model.Systems)
+{
+  <div class="admin-panel">
+    <h3>@group.System.Name: profil ihtiyacı</h3>
+    <table class="admin-table wd-table">
+      <thead><tr><th>Profil</th><th>Boy sayısı</th><th>Boy uzunluğu</th><th>Toplam fire</th><th>Verim</th></tr></thead>
+      <tbody>
+      @foreach (var plan in group.Plans)
+      {
+        <tr><td>@plan.Profile</td><td><strong>@plan.Bars.Count</strong></td><td>@Units.WithLabel(plan.BarLengthMm)</td><td>@Units.WithLabel(plan.TotalWasteMm)</td><td>%@plan.UtilisationPercent</td></tr>
+      }
+      <tr><td><strong>Toplam</strong></td><td><strong>@group.Plans.Sum(x => x.Bars.Count)</strong></td><td></td><td></td><td></td></tr>
+      </tbody>
+    </table>
+  </div>
+}
+@foreach (var (title, rows) in new[] { ("Cam listesi", Model.Glass), ("Panel listesi", Model.Panels) })
+{
+  if (rows.Count == 0) { continue; }
+  <div class="admin-panel">
+    <h3>@title</h3>
+    <table class="admin-table wd-table">
+      <thead><tr><th>G × Y (@Units.Code)</th><th>Adet</th><th>m²</th></tr></thead>
+      <tbody>
+      @foreach (var x in rows)
+      {
+        <tr><td>@Units.Size(x.WidthMm, x.HeightMm)@(x.Shaped ? " (şablon)" : "")</td><td>@x.Count</td><td>@x.AreaM2.ToString("N2", TurkishNumbers.Culture)</td></tr>
+      }
+      <tr><td><strong>Toplam</strong></td><td><strong>@rows.Sum(x => x.Count)</strong></td><td><strong>@rows.Sum(x => x.AreaM2).ToString("N2", TurkishNumbers.Culture)</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+}
+@if (Model.Hardware.Count > 0)
+{
+  <div class="admin-panel">
+    <h3>Donanım</h3>
+    <table class="admin-table wd-table">
+      <thead><tr><th>Donanım</th><th>Adet</th></tr></thead>
+      <tbody>@foreach (var x in Model.Hardware) { <tr><td>@x.Name</td><td>@x.Count</td></tr> }</tbody>
+    </table>
+  </div>
+}
+@foreach (var group in Model.Systems)
+{
+  <div class="admin-panel">
+    <h3>@group.System.Name: kesim planı</h3>
+    <partial name="_BarPlans" model="group.Plans" />
+  </div>
+}
