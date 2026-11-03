@@ -6,6 +6,8 @@ public sealed record SystemMaterials(ProfileSystem System, IReadOnlyList<BarPlan
 public sealed record GlassTotal(string Name, decimal WidthMm, decimal HeightMm, bool Shaped, int Count, decimal AreaM2);
 public sealed record HardwareTotal(string Name, int Count);
 public sealed record SkippedDrawing(WindowDesign Design, IReadOnlyList<string> Errors);
+// Hesaplanan çizimlerin adetlerle çarpılmış maliyeti; camlar fiyata dahil değildir (imalat föyündeki gibi).
+public sealed record MaterialCost(decimal Profile, decimal Panel, decimal Hardware, decimal Labor, decimal Cost, decimal Price);
 
 public sealed record MaterialList(
     IReadOnlyList<(WindowDesign Design, WindowCalculation Calculation)> Calculated,
@@ -14,7 +16,8 @@ public sealed record MaterialList(
     IReadOnlyList<GlassTotal> Panels,
     IReadOnlyList<HardwareTotal> Hardware,
     IReadOnlyList<WindowDesign> WithoutSystem,
-    IReadOnlyList<SkippedDrawing> Invalid);
+    IReadOnlyList<SkippedDrawing> Invalid,
+    MaterialCost Cost);
 
 // Listedeki çizimlerin toplam malzemesi: kaç boy profil, hangi cam ve panel, ne kadar donanım. Adetler dahildir.
 public static class DrawingMaterials
@@ -39,7 +42,9 @@ public static class DrawingMaterials
             .OrderBy(x => x.System.Name).ToList();
         var hardware = calculated.SelectMany(x => x.Calculation.Hardware.Select(h => (h.Name, Count: h.Count * x.Design.Quantity)))
             .GroupBy(x => x.Name).Select(g => new HardwareTotal(g.Key, g.Sum(x => x.Count))).OrderBy(x => x.Name).ToList();
-        return new MaterialList(calculated, systems, Totals(calculated, c => c.Glass), Totals(calculated, c => c.Panels), hardware, withoutSystem, invalid);
+        decimal Sum(Func<WindowCalculation, decimal> unit) => calculated.Sum(x => unit(x.Calculation) * x.Design.Quantity);
+        var cost = new MaterialCost(Sum(c => c.ProfileCost), Sum(c => c.PanelCost), Sum(c => c.HardwareCost), Sum(c => c.LaborCost), Sum(c => c.UnitCost), Sum(c => c.UnitPrice));
+        return new MaterialList(calculated, systems, Totals(calculated, c => c.Glass), Totals(calculated, c => c.Panels), hardware, withoutSystem, invalid, cost);
     }
 
     public static List<BarPlan> Plans(IEnumerable<(WindowDesign Design, WindowCalculation Calculation)> items, ProfileSystem system)

@@ -100,7 +100,7 @@ public static class SeedData
 
 
     // Tek seferlik seed'lerin işaretçileri; site ayarları ekranında gösterilmez.
-    public static readonly string[] InternalSettingKeys = { GallerySeededKey, HomeFaqsSeededKey, DrawingSeededKey, ClausesSeededKey, ContentSeed.VersionKey, ProductSystemsSeededKey, BrandsSeededKey, AccountingSeededKey, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.KeySetting, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.MarkerSetting };
+    public static readonly string[] InternalSettingKeys = { GallerySeededKey, HomeFaqsSeededKey, DrawingSeededKey, ClausesSeededKey, ContentSeed.VersionKey, ProductSystemsSeededKey, BrandsSeededKey, AccountingSeededKey, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.KeySetting, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.MarkerSetting, KarakusAluminyum.Web.Services.Drawing.LegacyDrawingSystems.MarkerKey };
 
     public static async Task InitializeAsync(IServiceProvider services, IConfiguration config)
     {
