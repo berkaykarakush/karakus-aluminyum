@@ -1,0 +1,18 @@
+@model List<KarakusAluminyum.Web.Areas.Admin.Controllers.SocialMediaPost>
+@{ ViewData["Title"] = "Sosyal medya - Bilgi içerikleri"; }
+<partial name="_Nav" />
+<div class="admin-panel"><p class="admin-muted">Instagram ve Facebook için 1080×1350 (4:5) bilgilendirici gönderiler. Her görselin hedef kitlesi ve kullanıma hazır açıklama metni altında yer alır.</p></div>
+<div class="sm-grid">
+@foreach (var x in Model)
+{
+  var url = $"/yonetim/sosyal-medya/gorsel/{x.File}";
+  <article class="sm-card">
+    <a href="@url" target="_blank" rel="noopener"><img src="@url" alt="@x.Title" loading="lazy" width="1080" height="1350" /></a>
+    <h2>@x.Title</h2>
+    <p class="admin-muted">Hedef kitle: @x.Audience</p>
+    <textarea readonly aria-label="@x.Title açıklama metni">@x.Caption</textarea>
+    <div class="admin-actions"><a class="admin-btn" href="@(url)?indir=true">İndir</a><button type="button" class="admin-btn admin-btn--secondary" data-copy>Metni kopyala</button></div>
+  </article>
+}
+</div>
+@if (Model.Count == 0) { <div class="admin-panel"><p class="admin-muted">Görsel bulunamadı.</p></div> }
