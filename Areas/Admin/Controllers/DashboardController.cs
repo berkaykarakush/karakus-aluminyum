@@ -56,9 +56,10 @@ public class DashboardController : Controller
             new("Google Analytics bağlantısı", "/yonetim/ayarlar", !string.IsNullOrWhiteSpace(settings.Ga4MeasurementId)),
             new("Meta Pixel bağlantısı", "/yonetim/ayarlar", !string.IsNullOrWhiteSpace(settings.MetaPixelId)),
             new("Sözleşme imza yetkilisi", "/yonetim/sablonlar/contract", !string.IsNullOrWhiteSpace(contractTemplate.Signatory)),
-            new("Cam tipi fiyatları", "/yonetim/camlar/tipler", await _db.GlassTypes.AnyAsync(x => x.IsActive && x.PricePerM2 > 0))
+            new("Cam tipi fiyatları", "/yonetim/camlar/tipler", await _db.GlassTypes.AnyAsync(x => x.IsActive && x.PricePerM2 > 0 && !x.Name.Contains(SampleSystemValues.EstimateTag)))
         };
-        setup.Add(new("Doğrama sistemi fiyatları", "/yonetim/cizim/sistemler", await _db.ProfileSystems.AnyAsync(x => x.IsActive && x.FramePricePerM > 0)));
+        setup.Add(new("Doğrama sistemi fiyatları", "/yonetim/cizim/sistemler", await _db.ProfileSystems.AnyAsync(x => x.IsActive && x.FramePricePerM > 0 && !x.Name.Contains(SampleSystemValues.EstimateTag))));
+        // Tahmini başlangıç değerleri gerçek fiyat sayılmaz; kayıt yeniden adlandırılınca tamamlanır.
 
         var messages = await _db.ContactMessages.AsNoTracking().OrderByDescending(x => x.CreatedUtc).Take(5).ToListAsync();
         var quotes = await _db.Quotes.AsNoTracking().Include(x => x.Customer).OrderByDescending(x => x.CreatedUtc).Take(5).ToListAsync();

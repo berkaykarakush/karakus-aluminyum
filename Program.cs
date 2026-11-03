@@ -132,7 +132,8 @@ await using (var scope = app.Services.CreateAsyncScope())
     try { await KarakusAluminyum.Web.Services.ImageMigration.RunAsync(db, app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot"), app.Logger); }
     catch (Exception error) when (error is not OperationCanceledException) { app.Logger.LogError(error, "Görsel geçişi tamamlanamadı."); }
     await SeedData.InitializeAsync(scope.ServiceProvider, app.Configuration);
-    // Seed sistemleri oluşturduktan sonra çalışmalı.
+    await SampleSystemValues.ApplyAsync(db);
+    // Seed sistemleri oluşturup değerlerini yazdıktan sonra çalışmalı.
     await KarakusAluminyum.Web.Services.Drawing.LegacyDrawingSystems.RunAsync(db);
 }
 

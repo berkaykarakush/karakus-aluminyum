@@ -654,19 +654,57 @@ public sealed class DrawingPageTests(PostgresFixture postgres)
     });
 
     [Fact]
-    public async Task Seed_CreatesPricelessExamples_AndBrandsWithoutLogos()
+    public async Task Seed_CreatesEstimatedExamples_AndBrandsWithoutLogos()
     {
         var app = postgres.Shared;
         app.NewClient();
-        Assert.Equal(0m, (await app.WithDbAsync(db => db.GlassTypes.FirstAsync(g => g.Name.StartsWith("Örnek")))).PricePerM2);
-        var systems = await app.WithDbAsync(db => db.ProfileSystems.Where(p => p.Name.StartsWith("Örnek")).ToListAsync());
+        Assert.Equal(1400m, (await app.WithDbAsync(db => db.GlassTypes.SingleAsync(g => g.Name == "Isıcam 4+16+4 (tahmini fiyat)"))).PricePerM2);
+        var systems = await app.WithDbAsync(db => db.ProfileSystems.Where(p => p.Name.EndsWith("(tahmini değerler)")).ToListAsync());
         Assert.All(ProductCategories.All, category => Assert.Contains(systems, p => p.Category == category));
-        Assert.All(systems, p => Assert.Equal(0m, p.FramePricePerM));
+        Assert.False(await app.WithDbAsync(db => db.ProfileSystems.AnyAsync(p => p.Name.StartsWith("Örnek"))));
+        var aluminum = Assert.Single(systems, p => p.Category == ProductCategories.Aluminum);
+        Assert.Equal((325m, 6000m, 0m), (aluminum.FramePricePerM, aluminum.BarLengthMm, aluminum.WeldAllowanceMm));
+        var pvc = Assert.Single(systems, p => p.Category == ProductCategories.Pvc);
+        Assert.Equal((6500m, 3m), (pvc.BarLengthMm, pvc.WeldAllowanceMm));
+        Assert.Equal(3650m, WindowDrawings.ParseSettings(Assert.Single(systems, p => p.Category == ProductCategories.Shutter).SettingsJson).LamellaPricePerM2);
 
         var brands = await app.WithDbAsync(db => db.Brands.AsNoTracking().ToListAsync());
         Assert.Equal(ProductCategories.Aluminum, Assert.Single(brands, b => b.Name == "Linea Rossa").Category);
         foreach (var name in new[] { "Winer", "Egepen", "Winsa" }) Assert.Equal(ProductCategories.Pvc, Assert.Single(brands, b => b.Name == name).Category);
         foreach (var name in new[] { "Linea Rossa", "Winer", "Egepen", "Winsa" }) Assert.Null(Assert.Single(brands, b => b.Name == name).LogoPath);
+    }
+
+    [Fact]
+    public async Task SampleValues_UpdateOnlyUntouchedExamples_Once()
+    {
+        await using var app = postgres.CreateApp("sample_values");
+        app.NewClient();
+        var (untouched, edited) = await app.WithDbAsync(async db =>
+        {
+            var a = new ProfileSystem { Name = SampleSystemValues.LegacyName(ProductCategories.Pvc), Category = ProductCategories.Pvc };
+            var b = new ProfileSystem { Name = "Kendi PVC sistemim", Category = ProductCategories.Pvc, FramePricePerM = 999 };
+            db.ProfileSystems.AddRange(a, b);
+            await db.SiteSettingRecords.Where(x => x.Key == SampleSystemValues.MarkerKey).ExecuteDeleteAsync(); // önceki sürüm: işaret yok
+            await db.SaveChangesAsync();
+            await SampleSystemValues.ApplyAsync(db);
+            return (a.Id, b.Id);
+        });
+
+        var rows = await app.WithDbAsync(db => db.ProfileSystems.AsNoTracking().Where(x => x.Id == untouched || x.Id == edited).ToDictionaryAsync(x => x.Id));
+        Assert.Equal("PVC 70 mm 5 odacıklı (tahmini değerler)", rows[untouched].Name);
+        Assert.Equal(150m, rows[untouched].FramePricePerM);
+        Assert.Equal(("Kendi PVC sistemim", 999m), (rows[edited].Name, rows[edited].FramePricePerM));
+
+        // Aynı sürüm ikinci kez uygulanmaz: sonradan örnek adıyla eklenen kayıt olduğu gibi kalır.
+        var later = await app.WithDbAsync(async db =>
+        {
+            var c = new ProfileSystem { Name = SampleSystemValues.LegacyName(ProductCategories.Pvc), Category = ProductCategories.Pvc };
+            db.ProfileSystems.Add(c);
+            await db.SaveChangesAsync();
+            await SampleSystemValues.ApplyAsync(db);
+            return c.Id;
+        });
+        Assert.Equal(0m, await app.WithDbAsync(db => db.ProfileSystems.Where(x => x.Id == later).Select(x => x.FramePricePerM).SingleAsync()));
     }
 
     [Fact]
