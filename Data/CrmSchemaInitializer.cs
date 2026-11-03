@@ -593,6 +593,16 @@ CREATE TABLE IF NOT EXISTS "SocialProjectPosts" (
   "CreatedUtc" timestamp with time zone NOT NULL,
   "UpdatedUtc" timestamp with time zone NOT NULL
 );
+ALTER TABLE "Quotes" ADD COLUMN IF NOT EXISTS "DrawingListId" integer REFERENCES "DrawingLists"("Id") ON DELETE SET NULL;
+ALTER TABLE "Quotes" ADD COLUMN IF NOT EXISTS "GlassTypeId" integer REFERENCES "GlassTypes"("Id") ON DELETE SET NULL;
+ALTER TABLE "Quotes" ADD COLUMN IF NOT EXISTS "MarginPercent" numeric(6,2) NOT NULL DEFAULT 0;
+ALTER TABLE "Quotes" ADD COLUMN IF NOT EXISTS "CostTotal" numeric(18,2) NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS "IX_Quotes_DrawingListId" ON "Quotes" ("DrawingListId");
+CREATE INDEX IF NOT EXISTS "IX_Quotes_GlassTypeId" ON "Quotes" ("GlassTypeId");
+ALTER TABLE "QuoteItems" ADD COLUMN IF NOT EXISTS "WindowDesignId" integer;
+ALTER TABLE "QuoteItems" ADD COLUMN IF NOT EXISTS "UnitCost" numeric(18,2) NOT NULL DEFAULT 0;
+ALTER TABLE "QuoteItems" ADD COLUMN IF NOT EXISTS "ManualBaseCost" numeric(18,2);
+ALTER TABLE "QuoteItems" ADD COLUMN IF NOT EXISTS "ManualGlassCost" numeric(18,2);
 
 """;
 }

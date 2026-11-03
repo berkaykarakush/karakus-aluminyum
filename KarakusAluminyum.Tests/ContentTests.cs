@@ -73,10 +73,10 @@ public sealed class ContentTests(PostgresFixture postgres)
         await using var app = postgres.CreateApp("content_services");
         app.NewClient();
         var services = await app.WithDbAsync(db => db.Services.AsNoTracking().ToListAsync());
-        Assert.Equal(13, services.Count);
-        Assert.Equal(13, services.Select(x => x.Intro).Distinct().Count());
-        Assert.Equal(13, services.Select(x => x.SeoDescription).Distinct().Count());
-        Assert.Equal(13, services.Select(x => x.BenefitsJson).Distinct().Count());
+        Assert.Equal(12, services.Count);
+        Assert.Equal(12, services.Select(x => x.Intro).Distinct().Count());
+        Assert.Equal(12, services.Select(x => x.SeoDescription).Distinct().Count());
+        Assert.Equal(12, services.Select(x => x.BenefitsJson).Distinct().Count());
         Assert.All(services, x => Assert.InRange(x.SeoDescription.Length, 80, 165));
         Assert.All(services, x => Assert.InRange(x.SeoTitle.Length, 20, 70));
         Assert.All(services, x => Assert.True(x.Intro.Length > 250));

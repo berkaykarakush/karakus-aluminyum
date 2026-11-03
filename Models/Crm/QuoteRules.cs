@@ -26,6 +26,19 @@ public static class QuoteRules
         }
     }
 
+    // Maliyetten marjla satış fiyatı: kuruşa yuvarlanır.
+    public static decimal PriceFromCost(decimal unitCost, decimal marginPercent)
+        => decimal.Round(unitCost * (1 + marginPercent / 100m), 2, MidpointRounding.AwayFromZero);
+
+    // İç kâr özeti: iskonto sonrası KDV hariç satıştan maliyet düşülür. Maliyetler KDV hariçtir.
+    public static (decimal NetSales, decimal Profit, decimal? MarginPercent) Profit(Quote quote)
+    {
+        var net = quote.Subtotal - quote.DiscountAmount;
+        if (quote.VatMode == VatMode.Included) net = decimal.Round(net - quote.TaxAmount, 2, MidpointRounding.AwayFromZero);
+        var profit = net - quote.CostTotal;
+        return (net, profit, quote.CostTotal > 0 ? decimal.Round(profit / quote.CostTotal * 100m, 1, MidpointRounding.AwayFromZero) : null);
+    }
+
     public static bool CanTransition(QuoteStatus current, QuoteStatus next) => (current, next) switch
     {
         (QuoteStatus.Draft, QuoteStatus.Sent) => true,

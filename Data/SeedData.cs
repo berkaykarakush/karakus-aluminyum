@@ -59,10 +59,6 @@ public static class SeedData
             "endustriyel-ve-garaj-kapi-sistemleri", 
             "Endüstriyel alanlar ve garajlar için kapı sistemi çözümleri.",
             "/images/endustriyel-ve-garaj-kapi-sistemleri.webp"),
-        new("Rampa ve Körük Sistemleri", 
-            "rampa-ve-koruk-sistemleri", 
-            "Yükleme alanlarında kullanılmak üzere rampa ve körük sistemi çözümleri.",
-            "/images/rampa-ve-koruk-sistemleri.webp"),
         new("Bahçe Kapısı ve Bariyer Sistemleri", 
             "bahce-kapisi-ve-bariyer-sistemleri", 
             "Araç ve yaya girişleri için bahçe kapısı ve bariyer sistemleri.",
@@ -70,7 +66,12 @@ public static class SeedData
     };
 
     // Görselleri sonradan eklenen hizmetler: genel görselde kalmışsa kendi görseline geçer.
-    private static readonly string[] DedicatedImageSlugs = { "endustriyel-ve-garaj-kapi-sistemleri", "rampa-ve-koruk-sistemleri", "bahce-kapisi-ve-bariyer-sistemleri" };
+    private static readonly string[] DedicatedImageSlugs = { "endustriyel-ve-garaj-kapi-sistemleri", "bahce-kapisi-ve-bariyer-sistemleri" };
+
+    // Artık sunulmayan hizmetler: önceden seed edilmiş veritabanlarından bir kez kaldırılır (SSS ve galeri görselleri de silinir).
+    private static readonly string[] RetiredServiceSlugs = { "rampa-ve-koruk-sistemleri" };
+    public const string RetiredServicesKey = "RetiredServicesRemoved";
+    private const string RetiredServicesVersion = "1";
 
     public static string? OriginalDescription(string slug) => Services.FirstOrDefault(x => x.Slug == slug)?.Description;
 
@@ -100,7 +101,7 @@ public static class SeedData
 
 
     // Tek seferlik seed'lerin işaretçileri; site ayarları ekranında gösterilmez.
-    public static readonly string[] InternalSettingKeys = { GallerySeededKey, HomeFaqsSeededKey, DrawingSeededKey, ClausesSeededKey, ContentSeed.VersionKey, ProductSystemsSeededKey, BrandsSeededKey, AccountingSeededKey, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.KeySetting, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.MarkerSetting, KarakusAluminyum.Web.Services.Drawing.LegacyDrawingSystems.MarkerKey, SampleSystemValues.MarkerKey };
+    public static readonly string[] InternalSettingKeys = { GallerySeededKey, HomeFaqsSeededKey, DrawingSeededKey, ClausesSeededKey, ContentSeed.VersionKey, ProductSystemsSeededKey, BrandsSeededKey, AccountingSeededKey, RetiredServicesKey, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.KeySetting, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.MarkerSetting, KarakusAluminyum.Web.Services.Drawing.LegacyDrawingSystems.MarkerKey, SampleSystemValues.MarkerKey };
 
     public static async Task InitializeAsync(IServiceProvider services, IConfiguration config)
     {
@@ -137,6 +138,15 @@ public static class SeedData
                 if (!roleResult.Succeeded)
                     throw new InvalidOperationException("Admin rolü atanamadı: " + string.Join("; ", roleResult.Errors.Select(e => e.Description)));
             }
+        }
+
+        // Listeden çıkarılan hizmetler bir kez silinir; yönetici aynı adla sonradan yeniden eklerse dokunulmaz.
+        var retiredMarker = await db.SiteSettingRecords.FirstOrDefaultAsync(x => x.Key == RetiredServicesKey);
+        if (retiredMarker?.Value != RetiredServicesVersion)
+        {
+            await db.Services.Where(x => RetiredServiceSlugs.Contains(x.Slug)).ExecuteDeleteAsync();
+            if (retiredMarker is null) db.SiteSettingRecords.Add(new SiteSettingRecord { Key = RetiredServicesKey, Value = RetiredServicesVersion, Description = "Kaldırılan hizmetler silindi" });
+            else retiredMarker.Value = RetiredServicesVersion;
         }
 
         // Eksik hizmetleri ekle. Mevcut yönetici içeriğini koru; yalnızca boş/placeholder görsel yolunu düzelt.
@@ -344,8 +354,6 @@ public static class SeedData
                 AddImages(id, null, "/images/ofis-bolme-sistemleri.webp");
             if (serviceIds.TryGetValue("endustriyel-ve-garaj-kapi-sistemleri", out id))
                 AddImages(id, null, "/images/endustriyel-ve-garaj-kapi-sistemleri.webp");
-            if (serviceIds.TryGetValue("rampa-ve-koruk-sistemleri", out id))
-                AddImages(id, null, "/images/rampa-ve-koruk-sistemleri.webp");
             if (serviceIds.TryGetValue("bahce-kapisi-ve-bariyer-sistemleri", out id))
                 AddImages(id, null, "/images/bahce-kapisi-ve-bariyer-sistemleri.webp");
 

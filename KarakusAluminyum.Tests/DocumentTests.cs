@@ -174,7 +174,7 @@ public sealed class QuoteDocumentTests(PostgresFixture postgres)
         var html = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/crm/teklifler/yazdir/{quote.Id}"));
         Assert.Contains("TEKLİFTİR", html);
         Assert.Contains("A Blok", html);
-        Assert.Contains("1.785.000,00 TL", html);
+        Assert.DoesNotContain("1.785.000,00 TL", html); // kalem tutarları basılmaz, blok toplamı basılır
         Assert.Contains("3.750.000,00 TL", html);
         Assert.Contains("ÜçMilyonYediYüzElliBinTürkLirası", html);
         Assert.Contains("3.050.000,00 TL", html);
@@ -241,7 +241,7 @@ public sealed class QuoteDocumentTests(PostgresFixture postgres)
         });
 
         var html = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/crm/teklifler/yazdir/{id}"));
-        Assert.Contains("Eski kalem", html);
+        Assert.DoesNotContain("Eski kalem", html); // çıktıda kalemler değil yalnızca toplam basılır
         Assert.Contains("120,00 TL", html);
     }
 }
@@ -588,8 +588,9 @@ public sealed class DocumentTemplateTests(PostgresFixture postgres)
                 ALTER TABLE "Expenses" DROP COLUMN "ProjectId";
                 DROP TABLE "ProjectCostItems"; DROP TABLE "CostProjects";
                 DROP TABLE "Contracts"; DROP TABLE "DocumentTemplates"; DROP TABLE "TemplateClauses";
-                ALTER TABLE "Quotes" DROP COLUMN "DocumentDate", DROP COLUMN "VatMode", DROP COLUMN "DocumentJson", DROP COLUMN "SnapshotJson";
-                ALTER TABLE "QuoteItems" DROP COLUMN "BlockName", DROP COLUMN "SortOrder";
+                ALTER TABLE "Quotes" DROP COLUMN "DocumentDate", DROP COLUMN "VatMode", DROP COLUMN "DocumentJson", DROP COLUMN "SnapshotJson",
+                  DROP COLUMN "DrawingListId", DROP COLUMN "GlassTypeId", DROP COLUMN "MarginPercent", DROP COLUMN "CostTotal";
+                ALTER TABLE "QuoteItems" DROP COLUMN "BlockName", DROP COLUMN "SortOrder", DROP COLUMN "WindowDesignId", DROP COLUMN "UnitCost", DROP COLUMN "ManualBaseCost", DROP COLUMN "ManualGlassCost";
                 """));
         }
 

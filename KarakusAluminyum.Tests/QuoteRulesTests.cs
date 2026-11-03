@@ -5,6 +5,25 @@ namespace KarakusAluminyum.Tests;
 
 public sealed class QuoteRulesTests
 {
+    [Theory]
+    [InlineData(1000, 25, 1250)]
+    [InlineData(333.33, 30, 433.33)]
+    [InlineData(0, 40, 0)]
+    public void PriceFromCost_AddsMarginAndRounds(decimal cost, decimal margin, decimal price)
+        => Assert.Equal(price, QuoteRules.PriceFromCost(cost, margin));
+
+    [Fact]
+    public void Profit_UsesNetSalesWithoutVat()
+    {
+        var quote = new Quote { Subtotal = 12000m, DiscountAmount = 1200m, TaxAmount = 1800m, CostTotal = 6000m, VatMode = VatMode.Included };
+        var (net, profit, margin) = QuoteRules.Profit(quote);
+        Assert.Equal((9000m, 3000m, 50m), (net, profit, margin!.Value));
+
+        quote.VatMode = VatMode.Added;
+        Assert.Equal(4800m, QuoteRules.Profit(quote).Profit);
+        Assert.Null(QuoteRules.Profit(new Quote { Subtotal = 100m }).MarginPercent);
+    }
+
     [Fact]
     public void Calculate_AppliesDiscountBeforeTax()
     {

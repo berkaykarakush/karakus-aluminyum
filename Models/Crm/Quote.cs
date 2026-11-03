@@ -29,6 +29,13 @@ public sealed class Quote
     [Column(TypeName = "numeric(18,2)")] public decimal DiscountAmount { get; set; }
     [Column(TypeName = "numeric(18,2)")] public decimal TaxAmount { get; set; }
     [Column(TypeName = "numeric(18,2)")] public decimal GrandTotal { get; set; }
+    // İç fiyatlandırma: müşteri çıktısında görünmez.
+    public int? DrawingListId { get; set; }
+    public Drawing.DrawingList? DrawingList { get; set; }
+    public int? GlassTypeId { get; set; }
+    public Drawing.GlassType? GlassType { get; set; }
+    [Column(TypeName = "numeric(6,2)")] public decimal MarginPercent { get; set; }
+    [Column(TypeName = "numeric(18,2)")] public decimal CostTotal { get; set; }
     public ICollection<QuoteItem> Items { get; set; } = new List<QuoteItem>();
 }
 
@@ -44,4 +51,9 @@ public sealed class QuoteItem
     [StringLength(20)] public string Unit { get; set; } = "Adet";
     [Column(TypeName = "numeric(18,2)")] public decimal UnitPrice { get; set; }
     [Column(TypeName = "numeric(18,2)")] public decimal LineTotal { get; set; }
+    public int? WindowDesignId { get; set; } // çizimden gelen kalem; maliyeti çizimden hesaplanır
+    [Column(TypeName = "numeric(18,2)")] public decimal UnitCost { get; set; }
+    // Taşerona verilen parça: dolu ise sistem hesabı yerine bu birim maliyet kullanılır.
+    [Column(TypeName = "numeric(18,2)")] public decimal? ManualBaseCost { get; set; } // doğrama/panjur imalatı
+    [Column(TypeName = "numeric(18,2)")] public decimal? ManualGlassCost { get; set; } // cam
 }

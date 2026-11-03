@@ -106,7 +106,6 @@ public sealed class DocumentContent
 public sealed class DocumentBlock
 {
     public string? Name { get; set; }
-    public bool ShowLines { get; set; } = true;
     public string? Footer { get; set; }
     public Dictionary<string, string> Variables { get; set; } = new();
     public List<BlockClause> Clauses { get; set; } = new();
@@ -125,6 +124,11 @@ public sealed class BlockItem
     public decimal Quantity { get; set; } = 1;
     public string? Unit { get; set; } = "Adet";
     public decimal UnitPrice { get; set; }
+    public int? DesignId { get; set; }
+    public decimal UnitCost { get; set; }
+    public bool ManualPrice { get; set; } // fiyat elle yazıldıysa marj değişince korunur
+    public decimal? ManualBaseCost { get; set; } // taşeron imalat maliyeti (birim)
+    public decimal? ManualGlassCost { get; set; } // taşeron cam maliyeti (birim)
 }
 
 public static class PaymentKinds

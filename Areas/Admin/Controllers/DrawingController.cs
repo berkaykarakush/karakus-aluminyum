@@ -101,8 +101,7 @@ public sealed class DrawingController : Controller
         if (list is null) return NotFound();
         var materials = DrawingMaterials.Build(list.Items.OrderBy(x => x.SortOrder).ThenBy(x => x.Id));
         ViewBag.Materials = materials;
-        ViewBag.SuggestedPrices = materials.Calculated.Where(x => x.Calculation.UnitPrice > 0).ToDictionary(x => x.Design.Id, x => x.Calculation.UnitPrice);
-        ViewBag.Quotes = await DraftQuotesAsync();
+        ViewBag.Quotes = await _db.Quotes.AsNoTracking().Where(x => x.DrawingListId == id).OrderByDescending(x => x.CreatedUtc).ToListAsync();
         return View(list);
     }
 
@@ -201,41 +200,6 @@ public sealed class DrawingController : Controller
             groups.Add((system, calculated.Select(x => x.Item1).ToList(), DrawingMaterials.Plans(calculated, system)));
         }
         return View(groups);
-    }
-
-    // Birim fiyat yazılan çizimler teklife eklenir; hesaplanan fiyat öneri olarak gelir.
-    [HttpPost("teklife-ekle/{id:int}"), ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddToQuote(int id, int quoteId, Dictionary<int, decimal>? prices)
-    {
-        var list = await _db.DrawingLists.AsNoTracking().Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == id);
-        if (list is null) return NotFound();
-        var back = $"/yonetim/cizim/detay/{id}";
-        var quote = await _db.Quotes.Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == quoteId);
-        if (quote is null || quote.Status != QuoteStatus.Draft)
-        {
-            TempData["Notice"] = "Çizim yalnızca taslak durumundaki teklife eklenebilir.";
-            return Redirect(back);
-        }
-        var priced = list.Items.OrderBy(x => x.SortOrder).ThenBy(x => x.Id)
-            .Select(x => (Row: x, Price: prices is not null && prices.TryGetValue(x.Id, out var price) ? price : 0m)).Where(x => x.Price > 0).ToList();
-        if (priced.Count == 0)
-        {
-            TempData["Notice"] = "Teklife eklemek için en az bir çizime birim fiyat yazın.";
-            return Redirect(back);
-        }
-
-        foreach (var (row, price) in priced)
-        {
-            var description = $"{row.Name} - {_units.Format(row.WidthMm)}x{_units.Format(row.HeightMm)} {_units.Code} ({ProductCategories.Label(row.Category)})";
-            quote.Items.Add(new QuoteItem { Description = description.Length > 200 ? description[..200] : description, Quantity = row.Quantity, Unit = "Adet", UnitPrice = price, SortOrder = quote.Items.Count });
-        }
-        var totals = QuoteRules.Calculate(quote.Items, quote.DiscountRate, quote.TaxRate, quote.VatMode);
-        quote.Subtotal = totals.Subtotal; quote.DiscountAmount = totals.DiscountAmount;
-        quote.TaxAmount = totals.TaxAmount; quote.GrandTotal = totals.GrandTotal;
-        await _db.SaveChangesAsync();
-        await _audit.RecordAsync("add-drawings", "Quote", quote.Id.ToString(), $"{quote.QuoteNumber}; list={id}; {priced.Count} çizim; total={quote.GrandTotal}");
-        TempData["Notice"] = $"{priced.Count} çizim teklife eklendi.";
-        return Redirect($"/yonetim/crm/teklifler/detay/{quote.Id}");
     }
 
     [HttpPost("kopyala/{id:int}"), ValidateAntiForgeryToken]
@@ -390,10 +354,6 @@ public sealed class DrawingController : Controller
         profileCost = c.ProfileCost, panelCost = c.PanelCost, hardwareCost = c.HardwareCost, laborCost = c.LaborCost,
         unitCost = c.UnitCost, unitPrice = c.UnitPrice, totalPrice = c.TotalPrice
     };
-
-    private async Task<SelectList> DraftQuotesAsync()
-        => new(await _db.Quotes.AsNoTracking().Where(x => x.Status == QuoteStatus.Draft).OrderByDescending(x => x.CreatedUtc)
-            .Select(x => new { x.Id, Text = x.QuoteNumber + " - " + x.Title }).ToListAsync(), "Id", "Text");
 
     private async Task LoadListOptions()
     {
