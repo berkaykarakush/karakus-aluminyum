@@ -2,16 +2,24 @@
 @foreach (var plan in Model)
 {
     <h3>@plan.Profile: @plan.Bars.Count boy (@Units.WithLabel(plan.BarLengthMm)), verim %@plan.UtilisationPercent, toplam fire @Units.WithLabel(plan.TotalWasteMm)</h3>
-    @for (var i = 0; i < plan.Bars.Count; i++)
+    @* Aynı ölçülerle kesilen ardışık boylar tek satırda gösterilir; parça adları yalnızca ipucunda kalır. *@
+    var start = 0;
+    while (start < plan.Bars.Count)
     {
-        var bar = plan.Bars[i];
-        <div class="admin-muted">Boy @(i + 1): fire @Units.WithLabel(bar.WasteMm)</div>
+        var bar = plan.Bars[start];
+        var end = start + 1;
+        while (end < plan.Bars.Count && plan.Bars[end].Pieces.Select(p => p.LengthMm).SequenceEqual(bar.Pieces.Select(p => p.LengthMm))) { end++; }
+        var group = plan.Bars.Skip(start).Take(end - start).ToList();
+        <div class="admin-muted">@(group.Count == 1 ? $"Boy {start + 1}" : $"Boy {start + 1}–{end} ({group.Count} boy)"): @(group.Count == 1 ? "fire" : "her boyda fire") @Units.WithLabel(bar.WasteMm)</div>
         <div class="wd-bar">
-            @foreach (var piece in bar.Pieces)
+            @for (var i = 0; i < bar.Pieces.Count; i++)
             {
+                var piece = bar.Pieces[i];
+                var labels = string.Join(", ", group.Select(b => b.Pieces[i].Label).Distinct());
                 var percent = (piece.LengthMm / plan.BarLengthMm * 100m).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
-                <span style="width:@(percent)%" title="@piece.Label: @Units.WithLabel(piece.LengthMm)">@Units.Format(piece.LengthMm)</span>
+                <span style="width:@(percent)%" title="@labels: @Units.WithLabel(piece.LengthMm)">@Units.Format(piece.LengthMm)</span>
             }
         </div>
+        start = end;
     }
 }

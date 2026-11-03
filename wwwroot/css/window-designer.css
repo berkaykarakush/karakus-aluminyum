@@ -125,4 +125,6 @@
   html[data-print-mode=materials] .wd-page,html[data-print-mode=materials] .wd-page-notes{display:none}
   html[data-print-mode=materials] .wd-materials,html[data-print-mode=all] .wd-materials{display:block}
   html[data-print-mode=all] .wd-materials{break-before:page}
+  .wd-materials .wd-cutplan{break-inside:auto}
+  .wd-bar{break-before:avoid;break-inside:avoid}
 }

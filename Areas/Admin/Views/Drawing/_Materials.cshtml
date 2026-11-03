@@ -58,9 +58,27 @@
     </table>
   </div>
 }
+@if (Model.Calculated.Count > 0)
+{
+  string Money(decimal value) => value.ToString("N2", TurkishNumbers.Culture) + " ₺";
+  <div class="admin-panel">
+    <h3>Maliyet (camlar hariç)</h3>
+    <table class="admin-table wd-table">
+      <tbody>
+        <tr><td>Profil</td><td>@Money(Model.Cost.Profile)</td></tr>
+        @if (Model.Cost.Panel > 0) { <tr><td>Panel</td><td>@Money(Model.Cost.Panel)</td></tr> }
+        <tr><td>Donanım</td><td>@Money(Model.Cost.Hardware)</td></tr>
+        <tr><td>İşçilik</td><td>@Money(Model.Cost.Labor)</td></tr>
+        <tr><td>Toplam maliyet</td><td>@Money(Model.Cost.Cost)</td></tr>
+        <tr><td><strong>Toplam satış</strong></td><td><strong>@Money(Model.Cost.Price)</strong></td></tr>
+      </tbody>
+    </table>
+    @if (Model.WithoutSystem.Count + Model.Invalid.Count > 0) { <p class="admin-muted">Sistemsiz ve hesaplanamayan çizimler toplama dahil değildir.</p> }
+  </div>
+}
 @foreach (var group in Model.Systems)
 {
-  <div class="admin-panel">
+  <div class="admin-panel wd-cutplan">
     <h3>@group.System.Name: kesim planı</h3>
     <partial name="_BarPlans" model="group.Plans" />
   </div>

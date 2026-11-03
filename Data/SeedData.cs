@@ -100,7 +100,7 @@ public static class SeedData
 
 
     // Tek seferlik seed'lerin işaretçileri; site ayarları ekranında gösterilmez.
-    public static readonly string[] InternalSettingKeys = { GallerySeededKey, HomeFaqsSeededKey, DrawingSeededKey, ClausesSeededKey, ContentSeed.VersionKey, ProductSystemsSeededKey, BrandsSeededKey, AccountingSeededKey, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.KeySetting, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.MarkerSetting };
+    public static readonly string[] InternalSettingKeys = { GallerySeededKey, HomeFaqsSeededKey, DrawingSeededKey, ClausesSeededKey, ContentSeed.VersionKey, ProductSystemsSeededKey, BrandsSeededKey, AccountingSeededKey, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.KeySetting, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.MarkerSetting, KarakusAluminyum.Web.Services.Drawing.LegacyDrawingSystems.MarkerKey, SampleSystemValues.MarkerKey };
 
     public static async Task InitializeAsync(IServiceProvider services, IConfiguration config)
     {
@@ -252,22 +252,22 @@ public static class SeedData
                 new FaqItem { Question = "İzmir dışında hizmet veriyor musunuz?", Answer = "Hizmet verdiğiniz il ve ilçeleri gerçek operasyon kapsamınıza göre burada belirtin.", SortOrder = 2, IsPublished = false });
         }
 
-        // Çizim modülü başlangıç tanımları: ölçüler yer tutucu örnektir, fiyatlar bilerek boştur.
+        // Çizim modülü başlangıç tanımları; değerleri SampleSystemValues doldurur.
         if (!await db.SiteSettingRecords.AnyAsync(s => s.Key == DrawingSeededKey))
         {
             db.SiteSettingRecords.Add(new SiteSettingRecord { Key = DrawingSeededKey, Value = "true", Description = "Çizim modülü seed'i uygulandı" });
-            db.ProfileSystems.Add(new ProfileSystem { Name = "Örnek Sistem (kendi profil değerlerinizi girin)" });
-            db.GlassTypes.Add(new GlassType { Name = "Örnek Isıcam 4+16+4 (fiyat girin)" });
+            db.ProfileSystems.Add(new ProfileSystem { Name = SampleSystemValues.LegacyAluminumName });
+            db.GlassTypes.Add(new GlassType { Name = SampleSystemValues.LegacyGlassName });
         }
 
-        // Ürün türü başına başlangıç sistemi: ölçüler yer tutucu örnektir, fiyatlar bilerek boştur.
+        // Ürün türü başına başlangıç sistemi; değerleri SampleSystemValues doldurur.
         if (!await db.SiteSettingRecords.AnyAsync(s => s.Key == ProductSystemsSeededKey))
         {
             db.SiteSettingRecords.Add(new SiteSettingRecord { Key = ProductSystemsSeededKey, Value = "true", Description = "Ürün türü sistemleri eklendi" });
             await db.SaveChangesAsync(); // üstteki örnek sistem aşağıdaki kontrolde görünsün
             foreach (var category in ProductCategories.All)
                 if (!await db.ProfileSystems.AnyAsync(p => p.Category == category))
-                    db.ProfileSystems.Add(new ProfileSystem { Name = $"Örnek {ProductCategories.Label(category)} (değerleri girin)", Category = category, Material = ProductCategories.Label(category) });
+                    db.ProfileSystems.Add(new ProfileSystem { Name = SampleSystemValues.LegacyName(category), Category = category, Material = ProductCategories.Label(category) });
         }
 
         // Başlangıç markaları: logolar panelden yüklenir, o zamana kadar marka adı yazılır.

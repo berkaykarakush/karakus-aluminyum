@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using KarakusAluminyum.Web.Data;
 using KarakusAluminyum.Web.Models.Crm;
 using KarakusAluminyum.Web.Models.Drawing;
 using KarakusAluminyum.Web.Services.Drawing;
@@ -653,19 +654,57 @@ public sealed class DrawingPageTests(PostgresFixture postgres)
     });
 
     [Fact]
-    public async Task Seed_CreatesPricelessExamples_AndBrandsWithoutLogos()
+    public async Task Seed_CreatesEstimatedExamples_AndBrandsWithoutLogos()
     {
         var app = postgres.Shared;
         app.NewClient();
-        Assert.Equal(0m, (await app.WithDbAsync(db => db.GlassTypes.FirstAsync(g => g.Name.StartsWith("Örnek")))).PricePerM2);
-        var systems = await app.WithDbAsync(db => db.ProfileSystems.Where(p => p.Name.StartsWith("Örnek")).ToListAsync());
+        Assert.Equal(1400m, (await app.WithDbAsync(db => db.GlassTypes.SingleAsync(g => g.Name == "Isıcam 4+16+4 (tahmini fiyat)"))).PricePerM2);
+        var systems = await app.WithDbAsync(db => db.ProfileSystems.Where(p => p.Name.EndsWith("(tahmini değerler)")).ToListAsync());
         Assert.All(ProductCategories.All, category => Assert.Contains(systems, p => p.Category == category));
-        Assert.All(systems, p => Assert.Equal(0m, p.FramePricePerM));
+        Assert.False(await app.WithDbAsync(db => db.ProfileSystems.AnyAsync(p => p.Name.StartsWith("Örnek"))));
+        var aluminum = Assert.Single(systems, p => p.Category == ProductCategories.Aluminum);
+        Assert.Equal((325m, 6000m, 0m), (aluminum.FramePricePerM, aluminum.BarLengthMm, aluminum.WeldAllowanceMm));
+        var pvc = Assert.Single(systems, p => p.Category == ProductCategories.Pvc);
+        Assert.Equal((6500m, 3m), (pvc.BarLengthMm, pvc.WeldAllowanceMm));
+        Assert.Equal(3650m, WindowDrawings.ParseSettings(Assert.Single(systems, p => p.Category == ProductCategories.Shutter).SettingsJson).LamellaPricePerM2);
 
         var brands = await app.WithDbAsync(db => db.Brands.AsNoTracking().ToListAsync());
         Assert.Equal(ProductCategories.Aluminum, Assert.Single(brands, b => b.Name == "Linea Rossa").Category);
         foreach (var name in new[] { "Winer", "Egepen", "Winsa" }) Assert.Equal(ProductCategories.Pvc, Assert.Single(brands, b => b.Name == name).Category);
         foreach (var name in new[] { "Linea Rossa", "Winer", "Egepen", "Winsa" }) Assert.Null(Assert.Single(brands, b => b.Name == name).LogoPath);
+    }
+
+    [Fact]
+    public async Task SampleValues_UpdateOnlyUntouchedExamples_Once()
+    {
+        await using var app = postgres.CreateApp("sample_values");
+        app.NewClient();
+        var (untouched, edited) = await app.WithDbAsync(async db =>
+        {
+            var a = new ProfileSystem { Name = SampleSystemValues.LegacyName(ProductCategories.Pvc), Category = ProductCategories.Pvc };
+            var b = new ProfileSystem { Name = "Kendi PVC sistemim", Category = ProductCategories.Pvc, FramePricePerM = 999 };
+            db.ProfileSystems.AddRange(a, b);
+            await db.SiteSettingRecords.Where(x => x.Key == SampleSystemValues.MarkerKey).ExecuteDeleteAsync(); // önceki sürüm: işaret yok
+            await db.SaveChangesAsync();
+            await SampleSystemValues.ApplyAsync(db);
+            return (a.Id, b.Id);
+        });
+
+        var rows = await app.WithDbAsync(db => db.ProfileSystems.AsNoTracking().Where(x => x.Id == untouched || x.Id == edited).ToDictionaryAsync(x => x.Id));
+        Assert.Equal("PVC 70 mm 5 odacıklı (tahmini değerler)", rows[untouched].Name);
+        Assert.Equal(150m, rows[untouched].FramePricePerM);
+        Assert.Equal(("Kendi PVC sistemim", 999m), (rows[edited].Name, rows[edited].FramePricePerM));
+
+        // Aynı sürüm ikinci kez uygulanmaz: sonradan örnek adıyla eklenen kayıt olduğu gibi kalır.
+        var later = await app.WithDbAsync(async db =>
+        {
+            var c = new ProfileSystem { Name = SampleSystemValues.LegacyName(ProductCategories.Pvc), Category = ProductCategories.Pvc };
+            db.ProfileSystems.Add(c);
+            await db.SaveChangesAsync();
+            await SampleSystemValues.ApplyAsync(db);
+            return c.Id;
+        });
+        Assert.Equal(0m, await app.WithDbAsync(db => db.ProfileSystems.Where(x => x.Id == later).Select(x => x.FramePricePerM).SingleAsync()));
     }
 
     [Fact]
@@ -680,7 +719,7 @@ public sealed class DrawingPageTests(PostgresFixture postgres)
     }
 
     [Fact]
-    public async Task SingleDrawing_IsSavedAsOneRowList_AndShownWithMaterialsButNoCost()
+    public async Task SingleDrawing_IsSavedAsOneRowList_AndShownWithMaterialsAndCost()
     {
         var app = postgres.Shared;
         var (client, token) = await AdminAsync(app);
@@ -695,7 +734,7 @@ public sealed class DrawingPageTests(PostgresFixture postgres)
         Assert.Contains("\"opening\":\"tiltRight\"", page);
         Assert.Contains("100 × 100 cm", page);
         Assert.Contains("Malzeme listesi", page);
-        Assert.DoesNotContain("Maliyet", page);
+        Assert.Contains("Maliyet (camlar hariç)", page);
         Assert.Contains(name, WebUtility.HtmlDecode(await client.GetStringAsync("/yonetim/cizim")));
 
         var designId = await DrawingLists.DesignIdAsync(app, name);
@@ -1314,6 +1353,70 @@ public sealed class ProductionDetailsTests(PostgresFixture postgres)
         Assert.Equal(single.Hardware.Sum(h => h.Count) * 5, expected.Hardware.Sum(h => h.Count));
         var pieces = single.Cuts.Sum(c => c.Count) * 5;
         Assert.Equal(pieces, plans.Sum(p => p.Bars.Sum(b => b.Pieces.Count)));
+
+        // Maliyet adetlerle çarpılır; camlar dahil değildir.
+        Assert.Equal(single.UnitPrice * 5, expected.Cost.Price);
+        Assert.Equal(single.ProfileCost * 5, expected.Cost.Profile);
+        Assert.Contains("Maliyet (camlar hariç)", html);
+        Assert.Contains(expected.Cost.Price.ToString("N2", KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture) + " ₺", html);
+    }
+
+    [Fact]
+    public async Task CutPlan_GroupsBarsCutTheSameWay()
+    {
+        var (app, client, token) = await OpenAsync("prod_cut_groups");
+        await using var _ = app;
+        var system = await SystemAsync(app);
+        var list = Name();
+        await DrawingLists.PostAsync(client, token, list, DrawingLists.Rows(DrawingLists.Row("Salon", width: 1000, height: 1000, quantity: 6, system: system)));
+        var designs = await app.WithDbAsync(db => db.WindowDesigns.AsNoTracking().Include(d => d.ProfileSystem).Where(d => d.DrawingList!.Name == list).ToListAsync());
+        var html = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/cizim/detay/{designs[0].DrawingListId}"));
+
+        foreach (var plan in DrawingMaterials.Build(designs).Systems.Single().Plans)
+        {
+            var lengths = (CutBar bar) => string.Join("|", bar.Pieces.Select(p => p.LengthMm));
+            var same = plan.Bars.TakeWhile(b => lengths(b) == lengths(plan.Bars[0])).Count();
+            Assert.Contains(same == 1 ? "Boy 1: fire" : $"Boy 1–{same} ({same} boy): her boyda fire", html);
+            if (same > 1) Assert.DoesNotContain("Boy 2: fire", html);
+        }
+    }
+
+    [Fact]
+    public async Task LegacyDrawings_GetFirstActiveSystemOnce()
+    {
+        const string database = "legacy_systems";
+        int fits, breaks;
+        await using (var first = postgres.CreateApp(database))
+        {
+            first.NewClient();
+            (fits, breaks) = await first.WithDbAsync(async db =>
+            {
+                var list = new DrawingList { Name = Name(), Items =
+                {
+                    new WindowDesign { Name = "Eski poz", WidthMm = 1000, HeightMm = 1000, LayoutJson = Layout },
+                    new WindowDesign { Name = "Kurala uymayan", WidthMm = 9000, HeightMm = 1000, LayoutJson = Layout } // boy profilinden uzun
+                } };
+                db.DrawingLists.Add(list);
+                await db.SiteSettingRecords.Where(x => x.Key == LegacyDrawingSystems.MarkerKey).ExecuteDeleteAsync(); // eski kurulum: işaret yok
+                await db.SaveChangesAsync();
+                return (list.Items[0].Id, list.Items[1].Id);
+            });
+        }
+
+        int? SystemOf(AppDbContext db, int id) => db.WindowDesigns.Where(d => d.Id == id).Select(d => d.ProfileSystemId).Single();
+        await using (var second = postgres.CreateApp(database, schemaMode: "existing"))
+        {
+            second.NewClient();
+            var expected = await second.WithDbAsync(db => db.ProfileSystems.Where(x => x.IsActive && x.Category == "aluminum").OrderBy(x => x.Name).Select(x => x.Id).FirstAsync());
+            Assert.Equal(expected, await second.WithDbAsync(db => Task.FromResult(SystemOf(db, fits))));
+            Assert.Null(await second.WithDbAsync(db => Task.FromResult(SystemOf(db, breaks))));
+            // Sonradan bilerek "Seçilmedi" bırakılan çizim sonraki açılışta değişmez.
+            await second.WithDbAsync(db => db.WindowDesigns.Where(d => d.Id == fits).ExecuteUpdateAsync(x => x.SetProperty(d => d.ProfileSystemId, (int?)null)));
+        }
+
+        await using var third = postgres.CreateApp(database, schemaMode: "existing");
+        third.NewClient();
+        Assert.Null(await third.WithDbAsync(db => Task.FromResult(SystemOf(db, fits))));
     }
 
     [Fact]
