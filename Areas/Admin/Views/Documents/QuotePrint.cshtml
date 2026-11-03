@@ -37,20 +37,9 @@
         }
         <p>@TemplateText.ToHtml(c.Closing, block.Variables, c.Variables, system)</p>
 
+        @* Kalemler, maliyet ve marj müşteriye basılmaz: yalnızca işin toplam tutarı, iskonto ve KDV. *@
         <div class="doc-prices">
           @if (!string.IsNullOrWhiteSpace(block.Name)) { <p class="doc-block-name">@block.Name</p> }
-          @if (block.ShowLines && view.Items.Count > 0)
-          {
-            <table class="doc-lines"><tbody>
-              @foreach (var item in view.Items)
-              {
-                <tr>
-                  <td>@item.Description @(item.Quantity != 1 ? $"({item.Quantity:0.###} {item.Unit})" : "")</td>
-                  <td class="doc-amount">@TurkishNumbers.Money(item.LineTotal)</td>
-                </tr>
-              }
-            </tbody></table>
-          }
           <table class="doc-lines doc-total"><tbody>
             <tr>
               <td>İşin Toplam Tutarı</td>

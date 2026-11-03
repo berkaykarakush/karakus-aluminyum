@@ -748,60 +748,117 @@ public sealed class DrawingPageTests(PostgresFixture postgres)
     }
 
     [Fact]
-    public async Task AddToQuote_AddsPricedRowsOnly_AndRecalculatesDraft_ButNotOtherStatuses()
+    public async Task QuoteFromList_PricesFromDrawingCost_KeepsManualPrices_AndHidesCostOnPrint()
     {
         var app = postgres.Shared;
         var (client, token) = await AdminAsync(app);
+        var system = await app.WithDbAsync(db => db.ProfileSystems.Where(p => p.Category == ProductCategories.Aluminum && p.Name.EndsWith("(tahmini değerler)")).Select(p => p.Id).SingleAsync());
+        var glass = await app.WithDbAsync(db => db.GlassTypes.SingleAsync(g => g.Name == "Isıcam 4+16+4 (tahmini fiyat)"));
         var list = Name();
         string[] names = [Name(), Name()];
-        await DrawingLists.PostAsync(client, token, list, DrawingLists.Rows(DrawingLists.Row(names[0]), DrawingLists.Row(names[1])));
+        await DrawingLists.PostAsync(client, token, list, DrawingLists.Rows(DrawingLists.Row(names[0], system: system), DrawingLists.Row(names[1])));
         var listId = await DrawingLists.ListIdAsync(app, list);
         var first = await DrawingLists.DesignIdAsync(app, names[0]);
         var second = await DrawingLists.DesignIdAsync(app, names[1]);
 
-        var draft = await NewQuoteAsync(app, QuoteStatus.Draft);
-        await client.PostFormAsync($"/yonetim/cizim/teklife-ekle/{listId}", token, ("quoteId", draft.ToString()), ($"prices[{first}]", "1250.50"), ($"prices[{second}]", ""));
-        var quote = await app.WithDbAsync(db => db.Quotes.AsNoTracking().Include(q => q.Items).SingleAsync(q => q.Id == draft));
-        var line = Assert.Single(quote.Items);
-        Assert.Contains(names[0], line.Description);
-        Assert.Contains("100x100 cm", line.Description);
-        Assert.Equal(2m, line.Quantity);
-        Assert.Equal(1250.50m, line.UnitPrice);
-        Assert.Equal(line.LineTotal, quote.Subtotal);
-        Assert.True(quote.GrandTotal > quote.Subtotal);
+        var editor = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/crm/teklifler/ekle?liste={listId}"));
+        Assert.Contains($"\"designId\":{first}", editor);
+        Assert.Contains("Fiyatlandırma", editor);
+        Assert.Contains($"value=\"{listId}\"", editor);
 
-        var sent = await NewQuoteAsync(app, QuoteStatus.Sent);
-        await client.PostFormAsync($"/yonetim/cizim/teklife-ekle/{listId}", token, ("quoteId", sent.ToString()), ($"prices[{first}]", "100"));
-        Assert.False(await app.WithDbAsync(db => db.QuoteItems.AnyAsync(i => i.QuoteId == sent)));
-    }
+        async Task<decimal> CostAsync(int id) => KarakusAluminyum.Web.Services.Documents.QuotePricing.Cost(
+            await app.WithDbAsync(db => db.WindowDesigns.AsNoTracking().Include(d => d.ProfileSystem).SingleAsync(d => d.Id == id))).UnitCost(glass.PricePerM2);
+        var expectedCost = await CostAsync(first);
+        var secondCost = await CostAsync(second);
+        Assert.True(expectedCost > 0);
 
-    [Theory]
-    [InlineData("0")]
-    [InlineData("-5")]
-    [InlineData("")]
-    public async Task AddToQuote_RejectsMissingPrice(string price)
-    {
-        var app = postgres.Shared;
-        var (client, token) = await AdminAsync(app);
-        var name = Name();
-        await DrawingLists.PostAsync(client, token, name, DrawingLists.Rows(DrawingLists.Row(name)));
-        var quoteId = await NewQuoteAsync(app, QuoteStatus.Draft);
+        var customer = await app.WithDbAsync(async db => { var c = new Customer { Name = "Teklif müşteri " + Guid.NewGuid().ToString("N")[..6] }; db.Customers.Add(c); await db.SaveChangesAsync(); return c.Id; });
+        var title = Name();
+        var json = JsonSerializer.Serialize(new
+        {
+            designIds = new[] { first, second },
+            blocks = new[] { new { name = "", items = new object[]
+            {
+                new { description = "Poz 1", quantity = 2, unit = "Adet", designId = (int?)first, unitCost = 1m, unitPrice = 1m, manualPrice = false }, // tarayıcıdan gelen maliyet yok sayılır
+                new { description = "Poz 2", quantity = 2, unit = "Adet", designId = (int?)second, unitCost = 500m, unitPrice = 900m, manualPrice = true }, // elle yazılan fiyat korunur, maliyet yine çizimden
+                new { description = "Montaj ve nakliye", quantity = 1, unit = "Adet", designId = (int?)null, unitCost = 100m, unitPrice = 150m, manualPrice = true }
+            } } }
+        });
+        await client.PostFormAsync("/yonetim/crm/teklifler/ekle", token, ("CustomerId", customer.ToString()), ("Title", title), ("DocumentDate", "2026-11-03"), ("VatMode", "Added"), ("TaxRate", "20"),
+            ("DiscountRate", "10"), ("MarginPercent", "25"), ("GlassTypeId", glass.Id.ToString()), ("DrawingListId", listId.ToString()), ("DocumentJson", json));
 
-        await client.PostFormAsync($"/yonetim/cizim/teklife-ekle/{await DrawingLists.ListIdAsync(app, name)}", token, ("quoteId", quoteId.ToString()), ($"prices[{await DrawingLists.DesignIdAsync(app, name)}]", price));
-        Assert.False(await app.WithDbAsync(db => db.QuoteItems.AnyAsync(i => i.QuoteId == quoteId)));
+        var quote = await app.WithDbAsync(db => db.Quotes.AsNoTracking().Include(q => q.Items).SingleAsync(q => q.Title == title));
+        var items = quote.Items.OrderBy(i => i.SortOrder).ToList();
+        Assert.Equal((listId, glass.Id, 25m), (quote.DrawingListId!.Value, quote.GlassTypeId!.Value, quote.MarginPercent));
+        Assert.Equal((first, expectedCost, QuoteRules.PriceFromCost(expectedCost, 25m)), (items[0].WindowDesignId!.Value, items[0].UnitCost, items[0].UnitPrice));
+        Assert.Equal((second, secondCost, 900m), (items[1].WindowDesignId!.Value, items[1].UnitCost, items[1].UnitPrice));
+        Assert.Equal((null, 100m, 150m), (items[2].WindowDesignId, items[2].UnitCost, items[2].UnitPrice));
+        Assert.Equal(expectedCost * 2 + secondCost * 2 + 100m, quote.CostTotal);
+        Assert.Equal(decimal.Round(quote.Subtotal * 0.1m, 2, MidpointRounding.AwayFromZero), quote.DiscountAmount);
+        Assert.Equal(quote.Subtotal - quote.DiscountAmount - quote.CostTotal, QuoteRules.Profit(quote).Profit);
+
+        var print = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/crm/teklifler/yazdir/{quote.Id}"));
+        Assert.Contains("İskonto (%10)", print);
+        Assert.Contains(names[0], print); // çizim eki
+        Assert.DoesNotContain("Montaj ve nakliye", print);
+        Assert.DoesNotContain("maliyet", print, StringComparison.OrdinalIgnoreCase);
+
+        var details = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/crm/teklifler/detay/{quote.Id}"));
+        Assert.Contains("İç fiyatlandırma", details);
+        Assert.Contains(quote.QuoteNumber, WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/cizim/detay/{listId}")));
+
+        // Düzenlemede elle yazılan fiyat korunur, marj fiyatı yalnızca elle yazılmamış kalemde değiştirir.
+        var edit = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/crm/teklifler/duzenle/{quote.Id}"));
+        Assert.Contains("\"manualPrice\":true", edit);
     }
 
     [Fact]
-    public async Task AddToQuote_IgnoresDrawingsOfOtherLists()
+    public async Task QuoteFromList_SubcontractedParts_UseManualCost_OthersStayCalculated()
     {
         var app = postgres.Shared;
         var (client, token) = await AdminAsync(app);
-        string[] names = [Name(), Name()];
-        foreach (var name in names) await DrawingLists.PostAsync(client, token, name, DrawingLists.Rows(DrawingLists.Row(name)));
-        var quoteId = await NewQuoteAsync(app, QuoteStatus.Draft);
+        var system = await app.WithDbAsync(db => db.ProfileSystems.Where(p => p.Category == ProductCategories.Aluminum && p.Name.EndsWith("(tahmini değerler)")).Select(p => p.Id).SingleAsync());
+        var glass = await app.WithDbAsync(db => db.GlassTypes.SingleAsync(g => g.Name == "Isıcam 4+16+4 (tahmini fiyat)"));
+        var list = Name();
+        string[] names = [Name(), Name(), Name()];
+        await DrawingLists.PostAsync(client, token, list, DrawingLists.Rows(names.Select(n => DrawingLists.Row(n, system: system)).ToArray()));
+        var listId = await DrawingLists.ListIdAsync(app, list);
+        var ids = new List<int>();
+        foreach (var n in names) ids.Add(await DrawingLists.DesignIdAsync(app, n));
+        var cost = KarakusAluminyum.Web.Services.Documents.QuotePricing.Cost(
+            await app.WithDbAsync(db => db.WindowDesigns.AsNoTracking().Include(d => d.ProfileSystem).SingleAsync(d => d.Id == ids[0])));
+        var glassCost = cost.GlassAreaM2 * glass.PricePerM2;
+        Assert.True(glassCost > 0);
 
-        await client.PostFormAsync($"/yonetim/cizim/teklife-ekle/{await DrawingLists.ListIdAsync(app, names[0])}", token, ("quoteId", quoteId.ToString()), ($"prices[{await DrawingLists.DesignIdAsync(app, names[1])}]", "100"));
-        Assert.False(await app.WithDbAsync(db => db.QuoteItems.AnyAsync(i => i.QuoteId == quoteId)));
+        var customer = await app.WithDbAsync(async db => { var c = new Customer { Name = "Taşeron müşteri " + Guid.NewGuid().ToString("N")[..6] }; db.Customers.Add(c); await db.SaveChangesAsync(); return c.Id; });
+        var title = Name();
+        var json = JsonSerializer.Serialize(new
+        {
+            blocks = new[] { new { name = "", items = new object[]
+            {
+                new { description = "Doğrama taşeron", quantity = 1, unit = "Adet", designId = ids[0], unitCost = 0m, unitPrice = 0m, manualBaseCost = (decimal?)3000m, manualGlassCost = (decimal?)null },
+                new { description = "Cam taşeron", quantity = 1, unit = "Adet", designId = ids[1], unitCost = 0m, unitPrice = 0m, manualBaseCost = (decimal?)null, manualGlassCost = (decimal?)450m },
+                new { description = "Hepsi taşeron", quantity = 1, unit = "Adet", designId = ids[2], unitCost = 0m, unitPrice = 0m, manualBaseCost = (decimal?)2000m, manualGlassCost = (decimal?)-1m }
+            } } }
+        });
+        (string, string)[] form = [("CustomerId", customer.ToString()), ("Title", title), ("DocumentDate", "2026-11-03"), ("VatMode", "Added"), ("TaxRate", "20"), ("DiscountRate", "0"),
+            ("MarginPercent", "20"), ("GlassTypeId", glass.Id.ToString()), ("DrawingListId", listId.ToString()), ("DocumentJson", json)];
+        await client.PostFormAsync("/yonetim/crm/teklifler/ekle", token, form);
+        Assert.False(await app.WithDbAsync(db => db.Quotes.AnyAsync(q => q.Title == title))); // eksi maliyet reddedilir
+
+        await client.PostFormAsync("/yonetim/crm/teklifler/ekle", token, form.Select(f => f.Item1 == "DocumentJson" ? (f.Item1, f.Item2.Replace("-1", "700")) : f).ToArray());
+        var items = (await app.WithDbAsync(db => db.Quotes.AsNoTracking().Include(q => q.Items).SingleAsync(q => q.Title == title))).Items.OrderBy(i => i.SortOrder).ToList();
+        var round = (decimal v) => decimal.Round(v, 2, MidpointRounding.AwayFromZero);
+        Assert.Equal(round(3000m + glassCost), items[0].UnitCost);   // imalat taşeron, cam sistemden
+        Assert.Equal(round(cost.BaseCost + 450m), items[1].UnitCost); // imalat sistemden, cam taşeron
+        Assert.Equal(2700m, items[2].UnitCost);
+        Assert.Equal(QuoteRules.PriceFromCost(2700m, 20m), items[2].UnitPrice);
+        Assert.Equal((3000m, (decimal?)null), (items[0].ManualBaseCost!.Value, items[0].ManualGlassCost));
+
+        // Düzenlemede taşeron tutarları korunur.
+        var quoteId = items[0].QuoteId;
+        Assert.Contains("\"manualGlassCost\":450", WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/crm/teklifler/duzenle/{quoteId}")));
+        Assert.Contains("taşeron: imalat, cam", WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/crm/teklifler/detay/{quoteId}")));
     }
 
     [Fact]
@@ -828,7 +885,7 @@ public sealed class DrawingPageTests(PostgresFixture postgres)
         await using (var first = postgres.CreateApp("drawing_upgrade"))
         {
             first.NewClient();
-            await first.WithDbAsync(db => db.Database.ExecuteSqlRawAsync("DROP TABLE \"WindowDesigns\"; DROP TABLE \"DrawingLists\"; DROP TABLE \"Brands\"; DROP TABLE \"GlassListItems\"; DROP TABLE \"GlassLists\"; DROP TABLE \"GlassTypes\""));
+            await first.WithDbAsync(db => db.Database.ExecuteSqlRawAsync("ALTER TABLE \"Quotes\" DROP COLUMN \"DrawingListId\", DROP COLUMN \"GlassTypeId\"; DROP TABLE \"WindowDesigns\"; DROP TABLE \"DrawingLists\"; DROP TABLE \"Brands\"; DROP TABLE \"GlassListItems\"; DROP TABLE \"GlassLists\"; DROP TABLE \"GlassTypes\""));
         }
 
         await using var second = postgres.CreateApp("drawing_upgrade", schemaMode: "existing");
@@ -860,6 +917,7 @@ public sealed class DrawingPageTests(PostgresFixture postgres)
                 await db.Database.ExecuteSqlRawAsync("""
                     ALTER TABLE "WindowDesigns" ALTER COLUMN "ProfileSystemId" DROP NOT NULL;
                     ALTER TABLE "WindowDesigns" DROP COLUMN "DrawingListId", DROP COLUMN "BrandId", DROP COLUMN "SortOrder";
+                    ALTER TABLE "Quotes" DROP COLUMN "DrawingListId";
                     DROP TABLE "DrawingLists"; DROP TABLE "Brands";
                     """);
                 return (system.Id, design.Id, customer.Id);
@@ -1462,15 +1520,9 @@ public sealed class ProductionDetailsTests(PostgresFixture postgres)
         var design = await app.WithDbAsync(db => db.WindowDesigns.AsNoTracking().Include(d => d.ProfileSystem).SingleAsync(d => d.Id == id));
         var price = DrawingCalculation.Calculate(design, design.ProfileSystem!)!.UnitPrice;
         Assert.True(price > 0);
-        await app.WithDbAsync(async db =>
-        {
-            var customer = new Customer { Name = Name() };
-            db.Customers.Add(customer);
-            await db.SaveChangesAsync();
-            db.Quotes.Add(new Quote { QuoteNumber = "P-" + Guid.NewGuid().ToString("N")[..10], Title = "Taslak", CustomerId = customer.Id });
-            return await db.SaveChangesAsync();
-        });
-        Assert.Contains($"value=\"{price.ToString(System.Globalization.CultureInfo.InvariantCulture)}\"", await client.GetStringAsync($"/yonetim/cizim/detay/{await DrawingLists.ListIdAsync(app, name)}"));
+        // Fiyat artık çizim sayfasında değil, listeden hazırlanan teklifte marjla hesaplanır.
+        var listId = await DrawingLists.ListIdAsync(app, name);
+        Assert.Contains($"/yonetim/crm/teklifler/ekle?liste={listId}", await client.GetStringAsync($"/yonetim/cizim/detay/{listId}"));
     }
 
     [Fact]

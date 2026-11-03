@@ -7,6 +7,8 @@
     ViewData["Title"] = editing ? "Teklifi düzenle" : "Yeni teklif";
     var action = editing ? $"/yonetim/crm/teklifler/duzenle/{Model.Id}" : "/yonetim/crm/teklifler/ekle";
     var customers = ViewBag.Customers as List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> ?? new();
+    var glassTypes = (List<KarakusAluminyum.Web.Services.Documents.GlassOption>)ViewBag.GlassTypes;
+    var web = new JsonSerializerOptions(JsonSerializerDefaults.Web);
     var clauses = ((List<TemplateClause>)ViewBag.Clauses).Select(c => new { id = c.Id, name = c.Name, quoteText = c.QuoteText, contractText = c.ContractText });
 }
 <link rel="stylesheet" href="~/css/document-editor.css" asp-append-version="true" />
@@ -26,7 +28,6 @@
       <div><label asp-for="VatMode">KDV gösterimi</label>
         <select asp-for="VatMode"><option value="@VatMode.Included">Fiyatlar KDV dahil</option><option value="@VatMode.None">KDV belirtilmesin</option><option value="@VatMode.Added">KDV toplama eklensin</option></select></div>
       <div><label asp-for="TaxRate">KDV oranı (%)</label><input asp-for="TaxRate" type="number" step="0.01" min="0" max="100" /></div>
-      <div><label asp-for="DiscountRate">İskonto (%)</label><input asp-for="DiscountRate" type="number" step="0.01" min="0" max="100" /></div>
     </div>
   </section>
 
@@ -46,9 +47,26 @@
 
   <section class="doc-card">
     <h2>Bloklar</h2>
-    <p class="admin-muted">Her blok ayrı sayfada basılır. Aynı metinleri tekrar yazmamak için bloğu kopyalayın.</p>
+    <p class="admin-muted">Her blok ayrı sayfada basılır. Çıktıda kalemler yazmaz, yalnızca işin toplam tutarı basılır. Maliyet ve marj sütunları sadece bu ekranda görünür.</p>
     <div id="doc-blocks"></div>
     <div class="doc-row"><button type="button" class="doc-btn" id="doc-add-block">+ Blok ekle</button><strong id="doc-total"></strong></div>
+  </section>
+
+  <section class="doc-card doc-pricing">
+    <h2>Fiyatlandırma <small class="admin-muted">(müşteri çıktısında görünmez)</small></h2>
+    <input type="hidden" asp-for="DrawingListId" />
+    @if (ViewBag.ListName is string listName) { <p class="admin-muted">Çizim listesi: <a href="/yonetim/cizim/detay/@Model.DrawingListId" target="_blank" rel="noopener">@listName</a>. Pozların maliyeti çizimlerden hesaplanır.</p> }
+    <div class="doc-grid">
+      <div><label asp-for="MarginPercent">Kâr marjı (%)</label><input asp-for="MarginPercent" type="number" step="0.01" min="0" max="500" /></div>
+      <div><label asp-for="GlassTypeId">Cam tipi (maliyete eklenir)</label>
+        <select asp-for="GlassTypeId"><option value="">Cam maliyete eklenmesin</option>
+          @foreach (var g in glassTypes.Where(g => g.Active || g.Id == Model.GlassTypeId)) { <option value="@g.Id">@g.Name (@g.PricePerM2.ToString("N2", KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture) ₺/m²)</option> }
+        </select></div>
+      <div><label asp-for="DiscountRate">İskonto (%)</label><input asp-for="DiscountRate" type="number" step="0.01" min="0" max="100" /></div>
+    </div>
+    <p class="admin-muted">Marjı değiştirince elle yazılmamış tüm fiyatlar yeniden hesaplanır. Elle yazdığınız fiyatın yanında ↺ çıkar, tıklarsanız fiyat marja döner. İskonto çıktıda ayrı satır olarak basılır.</p>
+    <p class="admin-muted">İmalatı veya camı taşerona verdiğiniz pozda kalemin maliyet hücresinde <strong>Taşeron</strong> kutusunu işaretleyip taşeronun birim fiyatını yazın. İşaretli parça sistemden hesaplanmaz, çizim ve ölçüler yine sistemden gelir.</p>
+    <table class="doc-summary-table" id="doc-pricing-summary"></table>
   </section>
 
   <section class="doc-card">
@@ -60,5 +78,7 @@
   <div class="doc-actions"><button class="admin-btn" type="submit">@(editing ? "Değişiklikleri kaydet" : "Teklifi oluştur")</button><a class="admin-btn" href="/yonetim/crm/teklifler">İptal</a></div>
 </form>
 <script type="application/json" id="doc-clauses">@Html.Raw(JsonSerializer.Serialize(clauses))</script>
+<script type="application/json" id="doc-glass-types">@Html.Raw(JsonSerializer.Serialize(glassTypes, web))</script>
+<script type="application/json" id="doc-design-costs">@Html.Raw(JsonSerializer.Serialize((List<KarakusAluminyum.Web.Services.Documents.DesignCostOption>)ViewBag.DesignCosts, web))</script>
 <script type="application/json" id="doc-designs">@Html.Raw(JsonSerializer.Serialize(ViewBag.Designs))</script>
 <script src="~/js/document-editor.js" asp-append-version="true"></script>

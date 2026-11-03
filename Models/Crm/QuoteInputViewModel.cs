@@ -12,5 +12,8 @@ public sealed class QuoteInputViewModel
     public VatMode VatMode { get; set; } = VatMode.Included;
     [Range(0, 100)] public decimal TaxRate { get; set; } = 20m;
     [Range(0, 100)] public decimal DiscountRate { get; set; }
+    public int? DrawingListId { get; set; }
+    public int? GlassTypeId { get; set; }
+    [Range(0, 500, ErrorMessage = "Kâr marjı %0 ile %500 arasında olmalıdır.")] public decimal MarginPercent { get; set; }
     public string DocumentJson { get; set; } = "{}";
 }

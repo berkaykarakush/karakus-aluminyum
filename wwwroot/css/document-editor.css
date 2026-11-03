@@ -39,3 +39,24 @@
 .doc-editor>*{min-width:0}
 .doc-card{min-width:0}
 .doc-editor{grid-template-columns:minmax(0,1fr)}
+/* Fiyatlandırılmış kalem tablosu ve iç kâr özeti */
+.doc-items--priced td:nth-child(2){width:80px}
+.doc-items--priced td:nth-child(3){width:70px}
+.doc-items--priced td:nth-child(4){width:130px}
+.doc-items--priced td:nth-child(5){width:160px}
+.doc-items--priced td:nth-child(6){width:120px}
+.doc-items--priced td:nth-child(7){width:60px}
+.doc-items--priced td:nth-child(8){width:40px}
+.doc-num{text-align:right;white-space:nowrap;font-size:13px;vertical-align:middle}
+.doc-price-cell{display:flex;gap:4px;align-items:center}
+.doc-manual{border-color:#a35200!important;background:#fff8f0}
+.doc-summary-table{border-collapse:collapse;min-width:340px;margin-top:8px}
+.doc-summary-table td{padding:5px 10px;border-bottom:1px solid #e3e8f0;font-size:14px}
+.doc-summary-table td:last-child{text-align:right;font-weight:600;white-space:nowrap}
+.doc-summary-table tr.doc-ok td,.doc-summary-table tr.doc-warn td{margin:0;font-size:14px}
+@media(max-width:800px){.doc-items--priced td{width:auto!important}.doc-price-cell{display:flex}.doc-summary-table{min-width:0;width:100%}}
+.doc-items--priced td:nth-child(4){width:250px}
+.doc-cost-part{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:6px;align-items:center;margin-bottom:4px;font-size:12px}
+.doc-cost-part .doc-check{margin:0;font-size:11px;white-space:nowrap}
+.doc-cost-part input[type=number]{padding:4px 6px}
+.doc-cost-total{font-size:12px;font-weight:600;text-align:right}

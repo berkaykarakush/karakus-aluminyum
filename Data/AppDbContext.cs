@@ -73,6 +73,8 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<Quote>().HasIndex(x => x.QuoteNumber).IsUnique();
         builder.Entity<Quote>().HasOne(x => x.Customer).WithMany(x => x.Quotes)
             .HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<Quote>().HasOne(x => x.DrawingList).WithMany().HasForeignKey(x => x.DrawingListId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<Quote>().HasOne(x => x.GlassType).WithMany().HasForeignKey(x => x.GlassTypeId).OnDelete(DeleteBehavior.SetNull);
         builder.Entity<AuditLog>().HasIndex(x => x.CreatedUtc);
         builder.Entity<AuditLog>().HasIndex(x => new { x.EntityType, x.EntityId });
         builder.Entity<QuoteItem>().HasOne(x => x.Quote).WithMany(x => x.Items)
