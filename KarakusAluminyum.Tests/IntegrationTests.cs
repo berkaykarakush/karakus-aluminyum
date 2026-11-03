@@ -67,14 +67,49 @@ public sealed class SeedAndSchemaTests(PostgresFixture postgres)
     }
 
     [Fact]
-    public async Task Restart_RepairsServiceImagesThatDoNotExist()
+    public async Task RetiredService_IsRemovedOnce_FromSeededDatabase()
     {
         const string slug = "rampa-ve-koruk-sistemleri";
+        await using (var first = postgres.CreateApp("retired_service"))
+        {
+            first.NewClient();
+            Assert.False(await first.WithDbAsync(db => db.Services.AnyAsync(s => s.Slug == slug))); // yeni kurulumda hiç eklenmez
+            // Önceki sürümden kalan kayıt: işaret yok, hizmet SSS ve görseliyle duruyor.
+            await first.WithDbAsync(async db =>
+            {
+                var service = new ServiceContent { Name = "Rampa ve Körük Sistemleri", Slug = slug, ShortDescription = "Eski", Intro = "Eski", SortOrder = 99 };
+                db.Services.Add(service);
+                await db.SaveChangesAsync();
+                db.FaqItems.Add(new FaqItem { ServiceId = service.Id, Question = "Soru?", Answer = "Cevap", IsPublished = true });
+                db.GalleryImages.Add(new GalleryImage { ServiceId = service.Id, ImagePath = "/images/rampa-ve-koruk-sistemleri.webp", IsPublished = true });
+                await db.SiteSettingRecords.Where(x => x.Key == KarakusAluminyum.Web.Data.SeedData.RetiredServicesKey).ExecuteDeleteAsync();
+                return await db.SaveChangesAsync();
+            });
+        }
+
+        await using (var second = postgres.CreateApp("retired_service"))
+        {
+            var client = second.NewClient();
+            Assert.False(await second.WithDbAsync(db => db.Services.AnyAsync(s => s.Slug == slug)));
+            Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/urunler/{slug}")).StatusCode);
+            // Yönetici aynı hizmeti yeniden eklerse sonraki açılışta silinmez.
+            await second.WithDbAsync(async db => { db.Services.Add(new ServiceContent { Name = "Rampa", Slug = slug, ShortDescription = "Yeni", Intro = "Yeni" }); return await db.SaveChangesAsync(); });
+        }
+
+        await using var third = postgres.CreateApp("retired_service");
+        third.NewClient();
+        Assert.True(await third.WithDbAsync(db => db.Services.AnyAsync(s => s.Slug == slug)));
+    }
+
+    [Fact]
+    public async Task Restart_RepairsServiceImagesThatDoNotExist()
+    {
+        const string slug = "bahce-kapisi-ve-bariyer-sistemleri";
         await using (var first = postgres.CreateApp("image_repair"))
         {
             first.NewClient();
             await first.WithDbAsync(db => db.Services.Where(s => s.Slug == slug)
-                .ExecuteUpdateAsync(s => s.SetProperty(x => x.Image, "/images/rampa-ve-koruk-sistemleri.webp")));
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.Image, "/images/bahce-kapisi-ve-bariyer-sistemleri.webp")));
         }
 
         await using var second = postgres.CreateApp("image_repair");
