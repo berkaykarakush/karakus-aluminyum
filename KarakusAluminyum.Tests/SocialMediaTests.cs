@@ -21,7 +21,7 @@ public sealed class SocialMediaTests(PostgresFixture postgres)
     public async Task Panel_ListsTenPosts_WithAudienceAndCaption()
     {
         var html = WebUtility.HtmlDecode(await (await AdminAsync(postgres.Shared)).GetStringAsync("/yonetim/sosyal-medya"));
-        Assert.Equal(10, System.Text.RegularExpressions.Regex.Matches(html, "class=\"sm-card\"").Count);
+        Assert.Equal(12, System.Text.RegularExpressions.Regex.Matches(html, "class=\"sm-card\"").Count);
         Assert.Contains("Hedef kitle: Kafe, restoran ve otel işletmecileri", html);
         Assert.Contains("#KarakuşAlüminyum", html);
         Assert.Contains(">Sosyal medya<", html);
@@ -33,7 +33,7 @@ public sealed class SocialMediaTests(PostgresFixture postgres)
         var client = await AdminAsync(postgres.Shared);
         var html = await client.GetStringAsync("/yonetim/sosyal-medya");
         var urls = System.Text.RegularExpressions.Regex.Matches(html, "<img src=\"(/yonetim/sosyal-medya/gorsel/[^\"]+)\"").Select(x => x.Groups[1].Value).ToList();
-        Assert.Equal(10, urls.Count);
+        Assert.Equal(12, urls.Count);
         foreach (var url in urls)
         {
             var response = await client.GetAsync(url);
@@ -77,7 +77,7 @@ public sealed class SocialMediaTests(PostgresFixture postgres)
         var zip = await client.GetAsync("/yonetim/sosyal-medya/tumunu-indir");
         Assert.Equal("application/zip", zip.Content.Headers.ContentType?.MediaType);
         using var archive = new ZipArchive(await zip.Content.ReadAsStreamAsync());
-        Assert.Equal(10, archive.Entries.Count(x => x.FullName.EndsWith(".jpg") && !x.FullName.Contains('/')));
+        Assert.Equal(12, archive.Entries.Count(x => x.FullName.EndsWith(".jpg") && !x.FullName.Contains('/')));
         Assert.Equal(18, archive.Entries.Count(x => x.FullName.StartsWith("one-cikanlar/")));
         using var reader = new StreamReader(archive.GetEntry("aciklamalar.txt")!.Open());
         Assert.Contains("Hedef kitle: Site yöneticileri", await reader.ReadToEndAsync());
