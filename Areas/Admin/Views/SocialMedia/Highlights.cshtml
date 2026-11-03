@@ -1,0 +1,26 @@
+@model List<KarakusAluminyum.Web.Areas.Admin.Controllers.SocialMediaHighlight>
+@{ ViewData["Title"] = "Sosyal medya - Öne çıkanlar"; }
+<partial name="_Nav" />
+<style>
+.sm-hl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.sm-hl{display:grid;grid-template-columns:96px 1fr;gap:10px 14px;padding:14px;background:#fff;border:1px solid var(--line);border-radius:var(--radius)}
+.sm-hl>a img{display:block;width:96px;height:96px;border-radius:50%}
+.sm-hl h3{margin:0 0 4px;font-size:15px}.sm-hl p{margin:0 0 6px;font-size:13px}
+.sm-hl .admin-actions{grid-column:1/-1;margin:0}
+</style>
+<div class="admin-panel">
+  <p class="admin-muted">Profilde öne çıkanlar için daire kapaklar (1080×1080) ve hikâye görselleri (1080×1920). Önerilen sıra soldan sağa. Önce hikâyeyi paylaşın, ardından profilinizde <strong>+</strong> ile öne çıkanı oluşturup kapağı seçin. Adı kapağa değil, öne çıkan adı alanına yazın.</p>
+</div>
+<div class="sm-hl-grid">
+@foreach (var x in Model)
+{
+  var cover = $"/yonetim/sosyal-medya/one-cikan/{x.Cover}";
+  var story = $"/yonetim/sosyal-medya/one-cikan/{x.Story}";
+  <article class="sm-hl">
+    <a href="@cover" target="_blank" rel="noopener"><img src="@cover" alt="@x.Name kapağı" loading="lazy" width="96" height="96" /></a>
+    <div><h3>@x.Name</h3><p>@x.Purpose</p><p class="admin-muted">Sonra ekleyin: @x.AddLater</p></div>
+    <div class="admin-actions"><a class="admin-btn" href="@(cover)?indir=true">Kapak</a><a class="admin-btn admin-btn--secondary" href="@(story)?indir=true">Hikâye</a><a class="admin-btn admin-btn--secondary" href="@story" target="_blank" rel="noopener">Önizle</a></div>
+  </article>
+}
+</div>
+@if (Model.Count == 0) { <div class="admin-panel"><p class="admin-muted">Öne çıkan görseli bulunamadı.</p></div> }

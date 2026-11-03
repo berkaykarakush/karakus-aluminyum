@@ -1,0 +1,60 @@
+@model KarakusAluminyum.Web.Models.SocialProjectPost
+@using System.Globalization
+@{
+    var editing = Model.Id != 0;
+    ViewData["Title"] = editing ? "Referans projeyi düzenle" : "Yeni referans proje";
+    var action = editing ? $"/yonetim/sosyal-medya/referans-projeler/duzenle/{Model.Id}" : "/yonetim/sosyal-medya/referans-projeler/ekle";
+    string N(double value) => value.ToString("0.####", CultureInfo.InvariantCulture);
+}
+<partial name="_Nav" />
+<link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
+<style>
+@@font-face{font-family:"SmManrope";src:url("/fonts/manrope-latin.woff2") format("woff2");font-weight:200 800;unicode-range:U+0000-00FF,U+0131,U+2000-206F}
+@@font-face{font-family:"SmManrope";src:url("/fonts/manrope-latin-ext.woff2") format("woff2");font-weight:200 800;unicode-range:U+0100-02BA,U+1E00-1EFF}
+.sp-layout{display:grid;grid-template-columns:minmax(0,520px) minmax(280px,1fr);gap:24px;align-items:start}
+.sp-stage{position:relative}
+.sp-stage canvas{display:block;width:100%;height:auto;aspect-ratio:4/5;border-radius:8px;background:#0d1115;touch-action:none;cursor:grab}
+.sp-stage canvas.is-text{cursor:move}
+.sp-empty{position:absolute;inset:0;display:grid;place-items:center;padding:24px;color:#c6ccd0;text-align:center;pointer-events:none}
+.sp-empty[hidden]{display:none}
+.sp-presets{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:6px 0 4px}
+.sp-presets button{padding:8px 6px;font-size:13px}
+@@media(max-width:900px){.sp-layout{grid-template-columns:1fr}}
+</style>
+<div class="admin-actions"><h2 style="margin:0">@ViewData["Title"]</h2><a href="/yonetim/sosyal-medya/referans-projeler">Listeye dön</a></div>
+<form class="admin-form" method="post" action="@action" enctype="multipart/form-data" data-project-editor>
+  @Html.AntiForgeryToken()
+  <div asp-validation-summary="All" class="wd-errors"></div>
+  <div class="sp-layout">
+    <div class="admin-panel sp-stage">
+      <canvas width="1080" height="1350" data-canvas aria-label="Gönderi önizlemesi"></canvas>
+      <div class="sp-empty" data-empty hidden>Önizleme için proje fotoğrafını seçin.</div>
+      <p class="admin-muted" style="margin:10px 0 0">Yazıyı sürükleyerek taşıyın. Fotoğrafın başka bir yerinden sürüklerseniz kadraj kayar.</p>
+    </div>
+    <div class="admin-panel">
+      <label for="photo">Proje fotoğrafı @(editing ? "(değiştirmek için seçin)" : "")</label>
+      <input id="photo" type="file" name="photo" accept=".jpg,.jpeg,.png,.webp" required="@(!editing)" data-photo-input />
+      <label asp-for="Name">Proje adı</label>
+      <input asp-for="Name" required maxlength="120" autocomplete="off" data-name />
+      <label>Yazının yeri</label>
+      <div class="sp-presets">
+        <button type="button" class="admin-btn admin-btn--secondary" data-preset="0,0">Sol üst</button>
+        <button type="button" class="admin-btn admin-btn--secondary" data-preset="1,0">Sağ üst</button>
+        <button type="button" class="admin-btn admin-btn--secondary" data-preset="0,1">Sol alt</button>
+        <button type="button" class="admin-btn admin-btn--secondary" data-preset="1,1">Sağ alt</button>
+      </div>
+      <label for="TextScale">Yazı boyutu</label>
+      <input id="TextScale" name="TextScale" type="range" min="0.6" max="1.4" step="0.05" value="@N(Model.TextScale)" data-scale />
+      <input type="hidden" name="TextX" value="@N(Model.TextX)" data-text-x />
+      <input type="hidden" name="TextY" value="@N(Model.TextY)" data-text-y />
+      <input type="hidden" name="FocusX" value="@N(Model.FocusX)" data-focus-x />
+      <input type="hidden" name="FocusY" value="@N(Model.FocusY)" data-focus-y />
+      <input type="file" name="image" hidden data-image />
+      <label asp-for="Caption">Açıklama metni (boş bırakılırsa hazır metin yazılır)</label>
+      <textarea asp-for="Caption" rows="8" maxlength="2200"></textarea>
+      <div class="admin-actions"><button class="admin-btn" type="submit" data-submit>Kaydet</button><a href="/yonetim/sosyal-medya/referans-projeler">İptal</a></div>
+    </div>
+  </div>
+</form>
+<script>window.SocialProjectEditor = { photo: @Json.Serialize(string.IsNullOrEmpty(Model.PhotoPath) ? null : Model.PhotoPath), logo: "/images/logo-ust.webp" };</script>
+<script src="~/js/social-project-editor.js" asp-append-version="true"></script>

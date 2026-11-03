@@ -1,0 +1,38 @@
+@{
+    var current = ViewContext.RouteData.Values["action"]?.ToString();
+    var tabs = new[]
+    {
+        ("Projects", "/yonetim/sosyal-medya/referans-projeler", "Referans projeler"),
+        ("Posts", "/yonetim/sosyal-medya/bilgi-icerikleri", "Bilgi içerikleri"),
+        ("Highlights", "/yonetim/sosyal-medya/one-cikanlar", "Öne çıkanlar"),
+    };
+    var active = current is "CreateProject" or "EditProject" ? "Projects" : current;
+}
+<style>
+.sm-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 18px;border-bottom:1px solid var(--line)}
+.sm-tabs a{padding:10px 16px;margin-bottom:-1px;border:1px solid transparent;border-radius:8px 8px 0 0;color:var(--muted);font-weight:600;text-decoration:none}
+.sm-tabs a[aria-current]{color:var(--ink);background:#fff;border-color:var(--line);border-bottom-color:#fff}
+.sm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.sm-card{display:flex;flex-direction:column;gap:10px;padding:14px;background:#fff;border:1px solid var(--line);border-radius:var(--radius)}
+.sm-card img{display:block;width:100%;height:auto;aspect-ratio:4/5;border-radius:6px;background:#0d1115;object-fit:cover}
+.sm-card h2{margin:0;font-size:15px}.sm-card p{margin:0}
+.sm-card textarea{width:100%;min-height:150px;font:inherit;font-size:13px;resize:vertical}
+.sm-card .admin-actions{margin:0}
+</style>
+<div class="admin-actions"><h1>Sosyal medya</h1><a class="admin-btn admin-btn--secondary" href="/yonetim/sosyal-medya/tumunu-indir">Tümünü indir (ZIP)</a></div>
+<nav class="sm-tabs" aria-label="Sosyal medya bölümleri">
+@foreach (var (action, url, label) in tabs)
+{
+  <a href="@url" aria-current="@(active == action ? "page" : null)">@label</a>
+}
+</nav>
+<script>
+document.addEventListener("click", async function (event) {
+  var button = event.target.closest("[data-copy]");
+  if (!button) return;
+  var text = button.closest(".sm-card").querySelector("textarea");
+  try { await navigator.clipboard.writeText(text.value); }
+  catch { text.select(); document.execCommand("copy"); }
+  var label = button.textContent; button.textContent = "Kopyalandı"; setTimeout(function () { button.textContent = label; }, 1500);
+});
+</script>

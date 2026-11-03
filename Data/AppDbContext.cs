@@ -24,6 +24,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<GalleryImage> GalleryImages => Set<GalleryImage>();
     public DbSet<ClientReference> ClientReferences => Set<ClientReference>();
+    public DbSet<SocialProjectPost> SocialProjectPosts => Set<SocialProjectPost>();
     public DbSet<FaqItem> FaqItems => Set<FaqItem>();
     public DbSet<ProfileSystem> ProfileSystems => Set<ProfileSystem>();
     public DbSet<GlassType> GlassTypes => Set<GlassType>();
