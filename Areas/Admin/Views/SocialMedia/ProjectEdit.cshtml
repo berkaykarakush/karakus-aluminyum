@@ -1,9 +1,12 @@
 @model KarakusAluminyum.Web.Models.SocialProjectPost
 @using System.Globalization
+@using KarakusAluminyum.Web.Models
 @{
     var editing = Model.Id != 0;
-    ViewData["Title"] = editing ? "Referans projeyi düzenle" : "Yeni referans proje";
-    var action = editing ? $"/yonetim/sosyal-medya/referans-projeler/duzenle/{Model.Id}" : "/yonetim/sosyal-medya/referans-projeler/ekle";
+    var kind = (SocialProjectKind)ViewBag.Kind;
+    var root = "/yonetim/sosyal-medya/" + kind.Segment;
+    ViewData["Title"] = editing ? $"{kind.Singular[..1].ToUpper(CultureInfo.GetCultureInfo("tr-TR"))}{kind.Singular[1..]} gönderisini düzenle" : $"Yeni {kind.Singular}";
+    var action = editing ? $"{root}/duzenle/{Model.Id}" : $"{root}/ekle";
     string N(double value) => value.ToString("0.####", CultureInfo.InvariantCulture);
 }
 <partial name="_Nav" />
@@ -21,7 +24,7 @@
 .sp-presets button{padding:8px 6px;font-size:13px}
 @@media(max-width:900px){.sp-layout{grid-template-columns:1fr}}
 </style>
-<div class="admin-actions"><h2 style="margin:0">@ViewData["Title"]</h2><a href="/yonetim/sosyal-medya/referans-projeler">Listeye dön</a></div>
+<div class="admin-actions"><h2 style="margin:0">@ViewData["Title"]</h2><a href="@root">Listeye dön</a></div>
 <form class="admin-form" method="post" action="@action" enctype="multipart/form-data" data-project-editor>
   @Html.AntiForgeryToken()
   <div asp-validation-summary="All" class="wd-errors"></div>
@@ -52,9 +55,9 @@
       <input type="file" name="image" hidden data-image />
       <label asp-for="Caption">Açıklama metni (boş bırakılırsa hazır metin yazılır)</label>
       <textarea asp-for="Caption" rows="8" maxlength="2200"></textarea>
-      <div class="admin-actions"><button class="admin-btn" type="submit" data-submit>Kaydet</button><a href="/yonetim/sosyal-medya/referans-projeler">İptal</a></div>
+      <div class="admin-actions"><button class="admin-btn" type="submit" data-submit>Kaydet</button><a href="@root">İptal</a></div>
     </div>
   </div>
 </form>
-<script>window.SocialProjectEditor = { photo: @Json.Serialize(string.IsNullOrEmpty(Model.PhotoPath) ? null : Model.PhotoPath), logo: "/images/logo-ust.webp" };</script>
+<script>window.SocialProjectEditor = { photo: @Json.Serialize(string.IsNullOrEmpty(Model.PhotoPath) ? null : Model.PhotoPath), logo: "/images/logo-ust.webp", label: @Json.Serialize(kind.Label) };</script>
 <script src="~/js/social-project-editor.js" asp-append-version="true"></script>

@@ -14,8 +14,8 @@ namespace KarakusAluminyum.Web.Areas.Admin.Controllers;
 public sealed record SocialMediaPost(string File, string Title, string Audience, string Caption);
 public sealed record SocialMediaHighlight(string Name, string Purpose, string AddLater, string Cover, string Story);
 
-// Üç bölüm: öne çıkanlar ve bilgi içerikleri "social media" klasöründen okunur (wwwroot dışında, yalnızca panelden görülür);
-// referans projeler panelden yüklenir, görselleri kalıcı uploads klasöründe durur.
+// Dört bölüm: öne çıkanlar ve bilgi içerikleri "social media" klasöründen okunur (wwwroot dışında, yalnızca panelden görülür);
+// referans ve devam eden projeler panelden yüklenir, görselleri kalıcı uploads klasöründe durur.
 [Area("Admin"), Authorize(Roles = "Admin,Editor"), Route("yonetim/sosyal-medya")]
 public sealed class SocialMediaController : Controller
 {
@@ -46,7 +46,7 @@ public sealed class SocialMediaController : Controller
     private Task<List<SocialMediaHighlight>> HighlightsAsync(CancellationToken cancellationToken) => ReadAsync<SocialMediaHighlight>(HighlightFolder, cancellationToken);
 
     [HttpGet("")]
-    public IActionResult Index() => RedirectToAction(nameof(Projects));
+    public IActionResult Index() => RedirectToAction(nameof(Projects), new { segment = SocialProjectKind.Reference.Segment });
 
     [HttpGet("one-cikanlar")]
     public async Task<IActionResult> Highlights(CancellationToken cancellationToken) => View(await HighlightsAsync(cancellationToken));
@@ -73,16 +73,32 @@ public sealed class SocialMediaController : Controller
         return indir ? PhysicalFile(path, "image/jpeg", post!.File) : PhysicalFile(path, "image/jpeg");
     }
 
-    [HttpGet("referans-projeler")]
-    public async Task<IActionResult> Projects() => View(await _db.SocialProjectPosts.AsNoTracking().OrderByDescending(x => x.CreatedUtc).ToListAsync());
+    // Referans ve devam eden projeler aynı işlemleri kullanır; tür adresteki bölümden gelir.
+    private const string KindRoute = "{segment:regex(^(referans-projeler|devam-eden-projeler)$)}";
 
-    [HttpGet("referans-projeler/ekle")]
-    public IActionResult CreateProject() => View("ProjectEdit", new SocialProjectPost());
-
-    [HttpPost("referans-projeler/ekle"), ValidateAntiForgeryToken, RequestSizeLimit(16_000_000)]
-    public async Task<IActionResult> CreateProject(SocialProjectPost input, IFormFile? photo, IFormFile? image)
+    private SocialProjectKind Kind(string segment)
     {
+        var kind = SocialProjectKind.FromSegment(segment) ?? SocialProjectKind.Reference;
+        ViewBag.Kind = kind;
+        return kind;
+    }
+
+    [HttpGet(KindRoute)]
+    public async Task<IActionResult> Projects(string segment)
+    {
+        var kind = Kind(segment);
+        return View(await _db.SocialProjectPosts.AsNoTracking().Where(x => x.Kind == kind.Key).OrderByDescending(x => x.CreatedUtc).ToListAsync());
+    }
+
+    [HttpGet(KindRoute + "/ekle")]
+    public IActionResult CreateProject(string segment) => View("ProjectEdit", new SocialProjectPost { Kind = Kind(segment).Key });
+
+    [HttpPost(KindRoute + "/ekle"), ValidateAntiForgeryToken, RequestSizeLimit(16_000_000)]
+    public async Task<IActionResult> CreateProject(string segment, SocialProjectPost input, IFormFile? photo, IFormFile? image)
+    {
+        var kind = Kind(segment);
         input.Id = 0;
+        input.Kind = kind.Key;
         input.PhotoPath = input.ImagePath = "";
         ReadLayout(input);
         if (photo is null || photo.Length == 0) ModelState.AddModelError("photo", "Proje fotoğrafını seçin.");
@@ -90,28 +106,37 @@ public sealed class SocialMediaController : Controller
         var saved = await SaveImagesAsync(input, photo, image);
         if (!saved) return View("ProjectEdit", input);
 
-        var row = new SocialProjectPost { PhotoPath = input.PhotoPath, ImagePath = input.ImagePath };
+        var row = new SocialProjectPost { Kind = kind.Key, PhotoPath = input.PhotoPath, ImagePath = input.ImagePath };
         Apply(row, input);
         _db.SocialProjectPosts.Add(row);
         await _db.SaveChangesAsync();
-        await _audit.RecordAsync("create", "SocialProjectPost", row.Id.ToString(), row.Name);
-        TempData["Notice"] = "Referans proje gönderisi kaydedildi.";
-        return RedirectToAction(nameof(Projects));
+        await _audit.RecordAsync("create", "SocialProjectPost", row.Id.ToString(), $"{kind.Key}: {row.Name}");
+        TempData["Notice"] = $"{Upper(kind.Singular)} gönderisi kaydedildi.";
+        return RedirectToAction(nameof(Projects), new { segment = kind.Segment });
     }
 
-    [HttpGet("referans-projeler/duzenle/{id:int}")]
-    public async Task<IActionResult> EditProject(int id)
+    // Kayıt başka türün adresinden açılamaz: devam eden proje, referans sekmesinden düzenlenmez.
+    private Task<SocialProjectPost?> FindAsync(int id, SocialProjectKind kind, bool tracking = false)
     {
-        var row = await _db.SocialProjectPosts.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+        var query = tracking ? _db.SocialProjectPosts : _db.SocialProjectPosts.AsNoTracking();
+        return query.FirstOrDefaultAsync(x => x.Id == id && x.Kind == kind.Key);
+    }
+
+    [HttpGet(KindRoute + "/duzenle/{id:int}")]
+    public async Task<IActionResult> EditProject(string segment, int id)
+    {
+        var row = await FindAsync(id, Kind(segment));
         return row is null ? NotFound() : View("ProjectEdit", row);
     }
 
-    [HttpPost("referans-projeler/duzenle/{id:int}"), ValidateAntiForgeryToken, RequestSizeLimit(16_000_000)]
-    public async Task<IActionResult> EditProject(int id, SocialProjectPost input, IFormFile? photo, IFormFile? image)
+    [HttpPost(KindRoute + "/duzenle/{id:int}"), ValidateAntiForgeryToken, RequestSizeLimit(16_000_000)]
+    public async Task<IActionResult> EditProject(string segment, int id, SocialProjectPost input, IFormFile? photo, IFormFile? image)
     {
-        var row = await _db.SocialProjectPosts.FindAsync(id);
+        var kind = Kind(segment);
+        var row = await FindAsync(id, kind, tracking: true);
         if (row is null) return NotFound();
         input.Id = id;
+        input.Kind = kind.Key;
         input.PhotoPath = row.PhotoPath;
         input.ImagePath = row.ImagePath;
         ReadLayout(input);
@@ -126,32 +151,35 @@ public sealed class SocialMediaController : Controller
         await _db.SaveChangesAsync();
         if (oldPhoto != row.PhotoPath) DeleteFile(oldPhoto);
         if (oldImage != row.ImagePath) DeleteFile(oldImage);
-        await _audit.RecordAsync("update", "SocialProjectPost", id.ToString(), row.Name);
-        TempData["Notice"] = "Referans proje gönderisi kaydedildi.";
-        return RedirectToAction(nameof(Projects));
+        await _audit.RecordAsync("update", "SocialProjectPost", id.ToString(), $"{kind.Key}: {row.Name}");
+        TempData["Notice"] = $"{Upper(kind.Singular)} gönderisi kaydedildi.";
+        return RedirectToAction(nameof(Projects), new { segment = kind.Segment });
     }
 
-    [HttpPost("referans-projeler/sil/{id:int}"), ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteProject(int id)
+    [HttpPost(KindRoute + "/sil/{id:int}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteProject(string segment, int id)
     {
-        var row = await _db.SocialProjectPosts.FindAsync(id);
+        var kind = Kind(segment);
+        var row = await FindAsync(id, kind, tracking: true);
         if (row is null) return NotFound();
         _db.SocialProjectPosts.Remove(row);
         await _db.SaveChangesAsync();
         DeleteFile(row.PhotoPath);
         DeleteFile(row.ImagePath);
-        await _audit.RecordAsync("delete", "SocialProjectPost", id.ToString(), row.Name);
-        TempData["Notice"] = "Referans proje gönderisi silindi.";
-        return RedirectToAction(nameof(Projects));
+        await _audit.RecordAsync("delete", "SocialProjectPost", id.ToString(), $"{kind.Key}: {row.Name}");
+        TempData["Notice"] = $"{Upper(kind.Singular)} gönderisi silindi.";
+        return RedirectToAction(nameof(Projects), new { segment = kind.Segment });
     }
 
-    [HttpGet("referans-projeler/gorsel/{id:int}")]
-    public async Task<IActionResult> ProjectImage(int id, bool indir = false)
+    [HttpGet(KindRoute + "/gorsel/{id:int}")]
+    public async Task<IActionResult> ProjectImage(string segment, int id, bool indir = false)
     {
-        var row = await _db.SocialProjectPosts.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+        var row = await FindAsync(id, Kind(segment));
         if (row is null || string.IsNullOrEmpty(row.ImagePath) || !System.IO.File.Exists(Physical(row.ImagePath))) return NotFound();
         return indir ? PhysicalFile(Physical(row.ImagePath), "image/jpeg", ProjectFileName(row)) : PhysicalFile(Physical(row.ImagePath), "image/jpeg");
     }
+
+    private static string Upper(string text) => string.IsNullOrEmpty(text) ? text : char.ToUpper(text[0], System.Globalization.CultureInfo.GetCultureInfo("tr-TR")) + text[1..];
 
     [HttpGet("tumunu-indir")]
     public async Task<IActionResult> DownloadAll(CancellationToken cancellationToken)
@@ -172,15 +200,17 @@ public sealed class SocialMediaController : Controller
             foreach (var file in highlights.SelectMany(x => new[] { x.Cover, x.Story })) Add(Path.Combine(Folder, HighlightFolder, file), $"{HighlightFolder}/{file}");
             foreach (var post in posts) Add(Path.Combine(Folder, InfoFolder, post.File), $"{InfoFolder}/{post.File}");
             await TextAsync($"{InfoFolder}/aciklamalar.txt", string.Concat(posts.Select(p => $"{p.File}\nHedef kitle: {p.Audience}\n\n{p.Caption}\n\n----------\n\n")));
-            foreach (var project in projects) Add(Physical(project.ImagePath), $"referans-projeler/{ProjectFileName(project)}");
-            if (projects.Count > 0)
-                await TextAsync("referans-projeler/aciklamalar.txt", string.Concat(projects.Select(p => $"{ProjectFileName(p)}\n\n{p.Caption}\n\n----------\n\n")));
+            foreach (var group in projects.GroupBy(p => SocialProjectKind.FromKey(p.Kind)))
+            {
+                foreach (var project in group) Add(Physical(project.ImagePath), $"{group.Key.Segment}/{ProjectFileName(project)}");
+                await TextAsync($"{group.Key.Segment}/aciklamalar.txt", string.Concat(group.Select(p => $"{ProjectFileName(p)}\n\n{p.Caption}\n\n----------\n\n")));
+            }
         }
         output.Position = 0;
         return File(output, "application/zip", "karakus-sosyal-medya.zip");
     }
 
-    private static string ProjectFileName(SocialProjectPost row) => $"referans-{row.Id:00}-{Slug(row.Name)}.jpg";
+    private static string ProjectFileName(SocialProjectPost row) => $"{SocialProjectKind.FromKey(row.Kind).FilePrefix}-{row.Id:00}-{Slug(row.Name)}.jpg";
 
     private static string Slug(string text)
     {
@@ -211,7 +241,7 @@ public sealed class SocialMediaController : Controller
     private static void Apply(SocialProjectPost row, SocialProjectPost input)
     {
         row.Name = input.Name.Trim();
-        row.Caption = string.IsNullOrWhiteSpace(input.Caption) ? SocialProjectPost.DefaultCaption(row.Name) : input.Caption.Trim();
+        row.Caption = string.IsNullOrWhiteSpace(input.Caption) ? SocialProjectPost.DefaultCaption(row.Name, row.Kind) : input.Caption.Trim();
         row.TextX = input.TextX;
         row.TextY = input.TextY;
         row.FocusX = input.FocusX;

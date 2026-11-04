@@ -1,12 +1,13 @@
-// Referans proje gönderisi düzenleyicisi: fotoğraf + "Referans Projelerimiz" + proje adı + logo, 1080×1350.
+// Proje gönderisi düzenleyicisi: fotoğraf + etiket ("Referans Projelerimiz" / "Devam Eden Projelerimiz") + proje adı + logo, 1080×1350.
 // Önizleme ile kaydedilen görsel aynı tuval üzerinde çizilir; kaydederken tuval JPEG olarak forma eklenir.
 (function () {
   "use strict";
   var form = document.querySelector("[data-project-editor]");
   if (!form) return;
 
-  var W = 1080, H = 1350, MARGIN_X = 84, MARGIN_TOP = 96, MARGIN_BOTTOM = 96;
-  var LABEL = "Referans Projelerimiz", FONT = '"SmManrope", "Manrope", "Segoe UI", Arial, sans-serif';
+  // Alt boşluk logonun (altta 64 px boşluk + yaklaşık 84 px yükseklik) üstünde kalır; yazı logoya binmez.
+  var W = 1080, H = 1350, MARGIN_X = 84, MARGIN_TOP = 96, MARGIN_BOTTOM = 190;
+  var LABEL = window.SocialProjectEditor.label || "Referans Projelerimiz", FONT = '"SmManrope", "Manrope", "Segoe UI", Arial, sans-serif';
   var canvas = form.querySelector("[data-canvas]"), ctx = canvas.getContext("2d");
   var field = function (name) { return form.querySelector("[data-" + name + "]"); };
   var nameInput = field("name"), scaleInput = field("scale"), photoInput = field("photo-input"), imageInput = field("image");
