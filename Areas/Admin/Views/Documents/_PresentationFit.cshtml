@@ -1,0 +1,9 @@
+@* Sayfa (yatay 297 mm ≈ 1123 px, dikey 210 mm ≈ 794 px) dar ekranda pencereye sığacak kadar küçültülür; baskıyı etkilemez. *@
+<script>
+(function(){
+  function fit(){var page=document.querySelector('.pres--portrait')?794:1123,width=document.documentElement.clientWidth-32;document.documentElement.style.setProperty('--pres-zoom',Math.min(1,width/page).toFixed(4));}
+  fit();window.addEventListener('resize',fit);
+  // Kaydırılmış sayfada basılırsa teklifin sabit alt bilgisi kayabiliyor.
+  window.addEventListener('beforeprint',function(){window.scrollTo(0,0);});
+})();
+</script>

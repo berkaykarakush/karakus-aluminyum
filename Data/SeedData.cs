@@ -82,6 +82,7 @@ public static class SeedData
     public const string ProductSystemsSeededKey = "ProductSystemsSeeded";
     public const string BrandsSeededKey = "BrandsSeeded";
     public const string AccountingSeededKey = "AccountingSeeded";
+    public const string PresentationSeededKey = "PresentationSeeded";
     private const string BrandSeedVersion = "2";
 
     // Listeye marka eklenince BrandSeedVersion artırılır.
@@ -101,7 +102,7 @@ public static class SeedData
 
 
     // Tek seferlik seed'lerin işaretçileri; site ayarları ekranında gösterilmez.
-    public static readonly string[] InternalSettingKeys = { GallerySeededKey, HomeFaqsSeededKey, DrawingSeededKey, ClausesSeededKey, ContentSeed.VersionKey, ProductSystemsSeededKey, BrandsSeededKey, AccountingSeededKey, RetiredServicesKey, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.KeySetting, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.MarkerSetting, KarakusAluminyum.Web.Services.Drawing.LegacyDrawingSystems.MarkerKey, SampleSystemValues.MarkerKey };
+    public static readonly string[] InternalSettingKeys = { GallerySeededKey, PresentationSeededKey, HomeFaqsSeededKey, DrawingSeededKey, ClausesSeededKey, ContentSeed.VersionKey, ProductSystemsSeededKey, BrandsSeededKey, AccountingSeededKey, RetiredServicesKey, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.KeySetting, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.MarkerSetting, KarakusAluminyum.Web.Services.Drawing.LegacyDrawingSystems.MarkerKey, SampleSystemValues.MarkerKey };
 
     public static async Task InitializeAsync(IServiceProvider services, IConfiguration config)
     {
@@ -309,6 +310,13 @@ public static class SeedData
         {
             db.SiteSettingRecords.Add(new SiteSettingRecord { Key = ClausesSeededKey, Value = "true", Description = "Hazır belge maddeleri eklendi" });
             db.TemplateClauses.AddRange(DocumentSeed.Clauses());
+        }
+
+        // Kurumsal sunum bölümleri bir kez eklenir; yöneticinin sildiği bölüm yeniden başlatınca geri gelmez.
+        if (!await db.SiteSettingRecords.AnyAsync(s => s.Key == PresentationSeededKey))
+        {
+            db.SiteSettingRecords.Add(new SiteSettingRecord { Key = PresentationSeededKey, Value = "true", Description = "Kurumsal sunum bölümleri eklendi" });
+            if (!await db.PresentationSections.AnyAsync()) db.PresentationSections.AddRange(PresentationSeed.Sections());
         }
 
         // Galeri seed: mevcut wwwroot görselleriyle hizmet/proje galerilerini doldur.

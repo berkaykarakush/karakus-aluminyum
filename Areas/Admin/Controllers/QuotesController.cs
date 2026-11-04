@@ -17,7 +17,8 @@ public sealed class QuotesController : Controller
     private readonly AppDbContext _db;
     private readonly IAuditService _audit;
     private readonly LengthUnits _units;
-    public QuotesController(AppDbContext db, IAuditService audit, LengthUnits units) { _db = db; _audit = audit; _units = units; }
+    private readonly PresentationBuilder _presentation;
+    public QuotesController(AppDbContext db, IAuditService audit, LengthUnits units, PresentationBuilder presentation) { _db = db; _audit = audit; _units = units; _presentation = presentation; }
 
     [HttpGet("")]
     public async Task<IActionResult> Index(QuoteStatus? status)
@@ -138,15 +139,19 @@ public sealed class QuotesController : Controller
         return View(quote);
     }
 
+    // sunum=1: kurumsal sunum teklifin önüne eklenir, kapağa müşteri ve teklif bilgileri yazılır.
+    // Sunum dikey basılır: Chrome aynı belgede yatay ve dikey sayfayı karıştırınca tüm sayfaları küçültür.
     [HttpGet("yazdir/{id:int}")]
-    public async Task<IActionResult> Print(int id)
+    public async Task<IActionResult> Print(int id, [FromQuery(Name = "sunum")] int withPresentation = 0)
     {
         var quote = await _db.Quotes.AsNoTracking().Include(x => x.Customer).Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == id);
         if (quote is null) return NotFound();
         var content = DocumentJson.ParseContent(quote.DocumentJson);
         var template = await DocumentViews.TemplateForAsync(_db, DocumentKinds.Quote, quote.SnapshotJson);
         var attachments = await DocumentViews.LoadAttachmentsAsync(_db, content.DesignIds);
-        return View("~/Areas/Admin/Views/Documents/QuotePrint.cshtml", new QuotePrintVm(quote, quote.Customer?.Name ?? "", template, content, DocumentViews.BuildBlocks(quote, content), attachments));
+        var customer = quote.Customer?.Name ?? "";
+        var presentation = withPresentation == 1 ? await _presentation.BuildAsync(new PresentationCover(customer, quote.Title, quote.QuoteNumber, quote.DocumentDate), portrait: true) : null;
+        return View("~/Areas/Admin/Views/Documents/QuotePrint.cshtml", new QuotePrintVm(quote, customer, template, content, DocumentViews.BuildBlocks(quote, content), attachments, presentation));
     }
 
     // Taslak teklif, şablon ayarlarındaki güncel logo ve firma bilgilerini alır.

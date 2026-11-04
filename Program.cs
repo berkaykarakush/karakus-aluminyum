@@ -70,6 +70,7 @@ builder.Services.AddRateLimiter(options =>
     }
 });
 builder.Services.AddScoped<SiteSettingsProvider>();
+builder.Services.AddScoped<KarakusAluminyum.Web.Services.Documents.PresentationBuilder>();
 builder.Services.Configure<NotificationOptions>(builder.Configuration.GetSection(NotificationOptions.SectionName));
 builder.Services.AddHttpClient(KarakusAluminyum.Web.Services.Notifications.WhatsAppCloudSender.ClientName, client => client.Timeout = TimeSpan.FromSeconds(20));
 builder.Services.AddSingleton<KarakusAluminyum.Web.Services.Notifications.NotificationSignal>();
