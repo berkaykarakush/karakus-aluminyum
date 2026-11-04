@@ -1,0 +1,74 @@
+@model KarakusAluminyum.Web.Models.Crm.Prospect
+@using KarakusAluminyum.Web.Models.Crm
+@using KarakusAluminyum.Web.Services.Prospecting
+@{
+    ViewData["Title"] = Model.Name;
+    var wa = ProspectText.WhatsAppNumber(Model.Phone);
+    var links = new List<(string Text, string? Url)> { ("Web sitesi", Model.Website), ("Google Haritalar", Model.GoogleMapsUrl), ("Instagram", Model.Instagram), ("Facebook", Model.Facebook), ("LinkedIn", Model.LinkedIn), ("TikTok", Model.TikTok), ("WhatsApp", wa is null ? null : "https://wa.me/" + wa) };
+}
+<link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
+<div class="admin-actions">
+  <h1>@Model.Name</h1>
+  <a class="admin-btn" href="/yonetim/crm/firmalar">Firma havuzu</a>
+  @if (Model.CustomerId is int customerId)
+  {
+    <a class="admin-btn" href="/yonetim/crm/musteriler/duzenle/@customerId">Müşteri kaydı</a>
+    <a class="admin-btn" href="/yonetim/crm/teklifler/ekle">Teklif hazırla</a>
+  }
+  else
+  {
+    <form method="post" action="/yonetim/crm/firmalar/@Model.Id/musteriye-donustur">@Html.AntiForgeryToken()<button class="admin-btn" title="Müşteriler listesine eklenir; teklif ve fatura kesilebilir">Müşteriye dönüştür</button></form>
+  }
+  @if (Model.Website is not null) { <form method="post" action="/yonetim/crm/firmalar/@Model.Id/web-sitesini-oku">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--secondary">Web sitesini yeniden oku</button></form> }
+</div>
+
+@if (Model.DoNotContact) { <p class="notice" style="background:#fbecec;border-color:#a52b2b;color:#7a1f1f">Bu firma iletişim kurulmasını istemedi.</p> }
+
+<div class="admin-grid" style="align-items:start">
+  <div class="admin-panel">
+    <h2 style="margin-top:0">Görüşmeler</h2>
+    <form class="admin-form" method="post" action="/yonetim/crm/firmalar/@Model.Id/gorusme">
+      @Html.AntiForgeryToken()
+      <div class="admin-grid">
+        <div><label for="kind">Tür</label><select id="kind" name="kind">@foreach (var k in Enum.GetValues<ProspectActivityKind>()) { <option value="@k">@ProspectLabels.Activity(k)</option> }</select></div>
+        <div><label for="nextFollowUp">Sonraki takip</label><input id="nextFollowUp" name="nextFollowUp" type="date" value="@Model.NextFollowUp?.ToString("yyyy-MM-dd")" /></div>
+      </div>
+      <label for="text">Not</label><textarea id="text" name="text" rows="3" maxlength="1000" required placeholder="Kimle görüşüldü, ne konuşuldu, ne istendi?"></textarea>
+      <div class="admin-actions" style="margin-top:8px"><button class="admin-btn">Görüşmeyi kaydet</button></div>
+    </form>
+    @foreach (var a in Model.Activities)
+    {
+      <div style="padding:10px 0;border-top:1px solid #e3e7ea">
+        <small class="admin-muted">@a.CreatedUtc.AddHours(3).ToString("dd.MM.yyyy HH:mm") · @ProspectLabels.Activity(a.Kind)@(a.CreatedBy is null ? "" : " · " + a.CreatedBy)</small>
+        <p style="margin:4px 0 0;white-space:pre-wrap">@a.Text</p>
+      </div>
+    }
+    @if (Model.Activities.Count == 0) { <p class="admin-muted">Henüz görüşme kaydı yok.</p> }
+  </div>
+
+  <div class="admin-panel">
+    <h2 style="margin-top:0">Bağlantılar</h2>
+    <div class="admin-actions" style="flex-wrap:wrap;gap:8px">
+      @if (Model.Phone is not null) { <a class="admin-btn admin-btn--secondary" href="tel:@Model.Phone">Ara: @Model.Phone</a> }
+      @if (Model.Email is not null) { <a class="admin-btn admin-btn--secondary" href="mailto:@Model.Email">@Model.Email</a> }
+      @foreach (var (text, url) in links.Where(l => l.Url is not null)) { <a class="admin-btn admin-btn--secondary" href="@url" target="_blank" rel="noopener noreferrer">@text ↗</a> }
+    </div>
+    <p class="admin-muted" style="margin-top:12px">
+      Kaynak: @ProspectSources.Label(Model.Source) · Eklenme: @Model.CreatedUtc.AddHours(3).ToString("dd.MM.yyyy")
+      @if (Model.Rating is double r) { <text> · Google puanı: @r.ToString("0.0") (@Model.RatingCount yorum)</text> }
+      @if (Model.LastSeenUtc is DateTime seen) { <text> · Son taramada görüldü: @seen.AddHours(3).ToString("dd.MM.yyyy")</text> }
+      @if (Model.EnrichedUtc is DateTime enriched) { <br /><text>Web sitesi okundu: @enriched.AddHours(3).ToString("dd.MM.yyyy HH:mm")</text>@if (Model.EnrichError is not null) { <text> · @Model.EnrichError</text> } }
+      else if (Model.Website is not null) { <br /><text>Web sitesi kısa süre içinde okunacak.</text> }
+    </p>
+  </div>
+</div>
+
+<div class="admin-panel">
+  <h2 style="margin-top:0">Firma bilgileri</h2>
+  <form class="admin-form" method="post" action="/yonetim/crm/firmalar/@Model.Id">
+    @Html.AntiForgeryToken()
+    <partial name="_Form" model="Model" />
+    <div class="admin-actions"><button class="admin-btn" type="submit">Kaydet</button></div>
+  </form>
+  <form method="post" action="/yonetim/crm/firmalar/@Model.Id/sil" style="margin-top:16px" onsubmit="return confirm('Firma ve görüşme kayıtları silinsin mi? Firma istemediyse silmek yerine &quot;İletişim kurulmasın&quot; işaretleyin.')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Firmayı sil</button></form>
+</div>

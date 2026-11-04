@@ -1,0 +1,26 @@
+@model KarakusAluminyum.Web.Models.Crm.Prospect
+@using KarakusAluminyum.Web.Models.Crm
+@{
+    var sectors = (List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Sectors;
+    var districts = (List<string>)ViewBag.Districts;
+}
+<div asp-validation-summary="All" class="wd-errors"></div>
+<div class="admin-grid">
+  <div><label asp-for="Name">Firma adı</label><input asp-for="Name" required maxlength="200" /></div>
+  <div><label asp-for="SectorId">Sektör</label><select asp-for="SectorId" asp-items="sectors"><option value="">Sektör yok</option></select></div>
+  <div><label asp-for="Stage">Aşama</label><select asp-for="Stage">@foreach (var s in Enum.GetValues<ProspectStage>()) { <option value="@s" selected="@(Model.Stage == s)">@ProspectLabels.Stage(s)</option> }</select></div>
+  <div><label asp-for="NextFollowUp">Sonraki takip tarihi</label><input asp-for="NextFollowUp" type="date" /></div>
+  <div><label asp-for="ContactPerson">Yetkili kişi</label><input asp-for="ContactPerson" maxlength="120" /></div>
+  <div><label asp-for="Phone">Telefon</label><input asp-for="Phone" maxlength="40" inputmode="tel" /></div>
+  <div><label asp-for="Email">E-posta</label><input asp-for="Email" type="email" maxlength="180" /></div>
+  <div><label asp-for="Website">Web sitesi</label><input asp-for="Website" maxlength="500" placeholder="firma.com" /></div>
+  <div><label asp-for="Instagram">Instagram</label><input asp-for="Instagram" maxlength="300" placeholder="https://www.instagram.com/..." /></div>
+  <div><label asp-for="Facebook">Facebook</label><input asp-for="Facebook" maxlength="300" placeholder="https://www.facebook.com/..." /></div>
+  <div><label asp-for="LinkedIn">LinkedIn</label><input asp-for="LinkedIn" maxlength="300" placeholder="https://www.linkedin.com/company/..." /></div>
+  <div><label asp-for="TikTok">TikTok</label><input asp-for="TikTok" maxlength="300" placeholder="https://www.tiktok.com/@@..." /></div>
+  <div><label asp-for="District">İlçe</label><input asp-for="District" list="districtList" maxlength="60" /><datalist id="districtList">@foreach (var d in districts) { <option value="@d"></option> }</datalist></div>
+  <div><label asp-for="Address">Adres</label><input asp-for="Address" maxlength="500" /></div>
+</div>
+<label asp-for="Notes">Notlar</label><textarea asp-for="Notes" rows="3" maxlength="2000"></textarea>
+<p><label><input asp-for="DoNotContact" /> İletişim kurulmasın (firma istemediğini bildirdi; listelerde ve takipte gösterilmez, taramalar geri açmaz)</label></p>
+<p class="admin-muted">Web sitesi girilirse e-posta ve sosyal medya bağlantıları sitenin iletişim sayfalarından otomatik okunur; yalnızca boş alanlar doldurulur.</p>

@@ -1,0 +1,11 @@
+@model KarakusAluminyum.Web.Models.Crm.Prospect
+@{ ViewData["Title"] = "Firma ekle"; }
+<link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
+<div class="admin-actions"><h1>Firma ekle</h1><a class="admin-btn" href="/yonetim/crm/firmalar">Firma havuzu</a></div>
+<div class="admin-panel">
+  <form class="admin-form" method="post" action="/yonetim/crm/firmalar/ekle">
+    @Html.AntiForgeryToken()
+    <partial name="_Form" model="Model" />
+    <div class="admin-actions"><button class="admin-btn" type="submit">Kaydet</button><a href="/yonetim/crm/firmalar">İptal</a></div>
+  </form>
+</div>

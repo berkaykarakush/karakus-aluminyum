@@ -71,6 +71,15 @@ builder.Services.AddRateLimiter(options =>
 });
 builder.Services.AddScoped<SiteSettingsProvider>();
 builder.Services.AddScoped<KarakusAluminyum.Web.Services.Documents.PresentationBuilder>();
+builder.Services.Configure<KarakusAluminyum.Web.Services.Prospecting.ProspectingOptions>(builder.Configuration.GetSection(KarakusAluminyum.Web.Services.Prospecting.ProspectingOptions.SectionName));
+builder.Services.AddHttpClient(KarakusAluminyum.Web.Services.Prospecting.GooglePlacesClient.ClientName, client => client.Timeout = TimeSpan.FromSeconds(20));
+builder.Services.AddHttpClient(KarakusAluminyum.Web.Services.Prospecting.WebsiteReader.ClientName, client => client.Timeout = TimeSpan.FromSeconds(15))
+    .ConfigurePrimaryHttpMessageHandler(KarakusAluminyum.Web.Services.Prospecting.WebsiteReader.CreateHandler);
+builder.Services.AddScoped<KarakusAluminyum.Web.Services.Prospecting.IPlacesClient, KarakusAluminyum.Web.Services.Prospecting.GooglePlacesClient>();
+builder.Services.AddScoped<KarakusAluminyum.Web.Services.Prospecting.IWebsiteReader, KarakusAluminyum.Web.Services.Prospecting.WebsiteReader>();
+builder.Services.AddScoped<KarakusAluminyum.Web.Services.Prospecting.ProspectScanner>();
+builder.Services.AddSingleton<KarakusAluminyum.Web.Services.Prospecting.ProspectSignal>();
+if (builder.Configuration.GetValue("Prospecting:WorkerEnabled", true)) builder.Services.AddHostedService<KarakusAluminyum.Web.Services.Prospecting.ProspectWorker>();
 builder.Services.Configure<NotificationOptions>(builder.Configuration.GetSection(NotificationOptions.SectionName));
 builder.Services.AddHttpClient(KarakusAluminyum.Web.Services.Notifications.WhatsAppCloudSender.ClientName, client => client.Timeout = TimeSpan.FromSeconds(20));
 builder.Services.AddSingleton<KarakusAluminyum.Web.Services.Notifications.NotificationSignal>();

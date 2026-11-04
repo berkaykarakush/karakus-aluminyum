@@ -1,0 +1,24 @@
+@model KarakusAluminyum.Web.Models.Crm.ProspectSector
+@{
+    var editing = Model.Id != 0;
+    ViewData["Title"] = editing ? "Sektörü düzenle" : "Yeni sektör";
+    var action = editing ? $"/yonetim/crm/firmalar/sektor/{Model.Id}" : "/yonetim/crm/firmalar/sektor/ekle";
+}
+<link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/crm/firmalar/tarama">Sektörler ve tarama</a></div>
+<div class="admin-panel">
+  <form class="admin-form" method="post" action="@action">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="All" class="wd-errors"></div>
+    <label asp-for="Name">Sektör adı</label><input asp-for="Name" required maxlength="120" placeholder="Örn. Elektrik mühendisliği ve taahhüt" />
+    <label for="keywords">Google'da aranacak ifadeler (her satıra bir tane, en fazla @KarakusAluminyum.Web.Models.Crm.ProspectSector.MaxKeywords)</label>
+    <textarea id="keywords" name="keywords" rows="5" required>@ViewBag.Keywords</textarea>
+    <p class="admin-muted">Her ifade, açık her ilçe için ayrı aranır: "elektrik mühendislik Bornova İzmir". Firmaların Google Haritalar'da kendini tanımladığı kısa ifadeler en iyi sonucu verir. Her ifade ilçe sayısı kadar ücretli istek harcar.</p>
+    <p><label><input asp-for="IsActive" /> Taramaya açık</label></p>
+    <div class="admin-actions"><button class="admin-btn" type="submit">Kaydet</button><a href="/yonetim/crm/firmalar/tarama">İptal</a></div>
+  </form>
+  @if (editing)
+  {
+    <form method="post" action="/yonetim/crm/firmalar/sektor/@Model.Id/sil" style="margin-top:16px" onsubmit="return confirm('Sektör silinsin mi? Firmaları havuzda sektörsüz olarak kalır.')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sektörü sil</button></form>
+  }
+</div>
