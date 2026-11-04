@@ -1,0 +1,84 @@
+@model KarakusAluminyum.Web.Areas.Admin.Controllers.ProspectListVm
+@using KarakusAluminyum.Web.Models.Crm
+@using KarakusAluminyum.Web.Services.Prospecting
+@{
+    ViewData["Title"] = "Firma havuzu";
+    var f = Model.Filter;
+    var sectors = (List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Sectors;
+    var districts = (List<string>)ViewBag.Districts;
+    var pages = (int)Math.Ceiling(Model.Total / (double)Model.PageSize);
+    var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(3));
+    string Url(int? page = null, ProspectStage? stage = null, string? show = null, bool resetStage = false)
+    {
+        var query = new Dictionary<string, string?> { ["q"] = f.Q, ["sector"] = f.Sector?.ToString(), ["district"] = f.District, ["stage"] = resetStage ? stage?.ToString() : (stage ?? f.Stage)?.ToString(), ["show"] = show ?? f.Show, ["page"] = page?.ToString() };
+        return "/yonetim/crm/firmalar?" + string.Join("&", query.Where(p => !string.IsNullOrEmpty(p.Value)).Select(p => p.Key + "=" + Uri.EscapeDataString(p.Value!)));
+    }
+    var exportQuery = Url().Split('?', 2)[1];
+}
+<div class="admin-actions">
+  <h1>Firma havuzu</h1>
+  <a class="admin-btn" href="/yonetim/crm/firmalar/ekle">+ Firma ekle</a>
+  <a class="admin-btn" href="/yonetim/crm/firmalar/tarama">Sektörler ve tarama</a>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/crm/firmalar/disa-aktar?@exportQuery">Excel'e aktar (CSV)</a>
+</div>
+
+<div class="admin-panel">
+  <div class="admin-actions" style="flex-wrap:wrap;gap:8px">
+    <a class="admin-btn @(f.Show == "takip" ? "" : "admin-btn--secondary")" href="@Url(show: "takip")">Takibi gelen: @Model.DueCount</a>
+    <a class="admin-btn @(f.Stage is null && string.IsNullOrEmpty(f.Show) ? "" : "admin-btn--secondary")" href="/yonetim/crm/firmalar">Tümü: @Model.StageCounts.Values.Sum()</a>
+    @foreach (var s in Enum.GetValues<ProspectStage>())
+    {
+      <a class="admin-btn @(f.Stage == s ? "" : "admin-btn--secondary")" href="@Url(stage: s, resetStage: true)">@ProspectLabels.Stage(s): @Model.StageCounts.GetValueOrDefault(s)</a>
+    }
+  </div>
+  <form method="get" class="admin-form" style="margin-top:12px">
+    <div class="admin-grid">
+      <div><label for="q">Arama</label><input id="q" name="q" value="@f.Q" placeholder="Firma, telefon, e-posta, yetkili" /></div>
+      <div><label for="sector">Sektör</label><select id="sector" name="sector"><option value="">Tüm sektörler</option>@foreach (var s in sectors) { <option value="@s.Value" selected="@(f.Sector?.ToString() == s.Value)">@s.Text</option> }</select></div>
+      <div><label for="district">İlçe</label><select id="district" name="district"><option value="">Tüm ilçeler</option>@foreach (var d in districts) { <option selected="@(f.District == d)">@d</option> }</select></div>
+      <div><label for="stage">Aşama</label><select id="stage" name="stage"><option value="">Tüm aşamalar</option>@foreach (var s in Enum.GetValues<ProspectStage>()) { <option value="@s" selected="@(f.Stage == s)">@ProspectLabels.Stage(s)</option> }</select></div>
+      <div><label for="show">Göster</label><select id="show" name="show">
+        @foreach (var (value, text) in new[] { ("", "Hepsi"), ("acik", "Açık (sonuçlanmamış)"), ("takip", "Takibi gelenler"), ("telefon", "Telefonu olanlar"), ("eposta", "E-postası olanlar"), ("web", "Web sitesi olanlar"), ("iletisim-yok", "İletişim kurulmasın") })
+        { <option value="@value" selected="@((f.Show ?? "") == value)">@text</option> }
+      </select></div>
+      <div style="align-self:end"><button class="admin-btn">Filtrele</button></div>
+    </div>
+  </form>
+</div>
+
+<div class="admin-panel" style="overflow-x:auto">
+  <p class="admin-muted">@Model.Total firma@(pages > 1 ? $" · sayfa {f.Page}/{pages}" : "")</p>
+  <table class="admin-table">
+    <thead><tr><th>Firma</th><th>İlçe</th><th>İletişim</th><th>Bağlantılar</th><th>Puan</th><th>Aşama</th><th>Takip</th></tr></thead>
+    <tbody>
+    @foreach (var x in Model.Items)
+    {
+      var wa = ProspectText.WhatsAppNumber(x.Phone);
+      <tr style="@(x.DoNotContact ? "opacity:.5" : null)">
+        <td><a href="/yonetim/crm/firmalar/@x.Id"><strong>@x.Name</strong></a><br /><small class="admin-muted">@(x.Sector?.Name ?? "Sektör yok")@(x.CustomerId is null ? "" : " · müşteri")</small></td>
+        <td>@x.District</td>
+        <td style="white-space:nowrap">@if (x.Phone is not null) { <a href="tel:@x.Phone">@x.Phone</a><br /> }@if (x.Email is not null) { <a href="mailto:@x.Email">@x.Email</a> }</td>
+        <td style="white-space:nowrap">
+          @if (x.Website is not null) { <a href="@x.Website" target="_blank" rel="noopener noreferrer">Web</a> }
+          @if (x.GoogleMapsUrl is not null) { <a href="@x.GoogleMapsUrl" target="_blank" rel="noopener noreferrer">Harita</a> }
+          @if (x.Instagram is not null) { <a href="@x.Instagram" target="_blank" rel="noopener noreferrer">Instagram</a> }
+          @if (x.Facebook is not null) { <a href="@x.Facebook" target="_blank" rel="noopener noreferrer">Facebook</a> }
+          @if (x.LinkedIn is not null) { <a href="@x.LinkedIn" target="_blank" rel="noopener noreferrer">LinkedIn</a> }
+          @if (wa is not null) { <a href="https://wa.me/@wa" target="_blank" rel="noopener noreferrer">WhatsApp</a> }
+        </td>
+        <td>@(x.Rating is double r ? $"{r:0.0} ({x.RatingCount})" : "")</td>
+        <td>@ProspectLabels.Stage(x.Stage)</td>
+        <td style="@(x.NextFollowUp <= today ? "color:#a52b2b;font-weight:700" : null)">@x.NextFollowUp?.ToString("dd.MM.yyyy")</td>
+      </tr>
+    }
+    @if (Model.Items.Count == 0) { <tr><td colspan="7">Kayıt yok. <a href="/yonetim/crm/firmalar/tarama">Sektör taraması başlatın</a> veya firma ekleyin.</td></tr> }
+    </tbody>
+  </table>
+  @if (pages > 1)
+  {
+    <div class="admin-actions" style="margin-top:12px">
+      @if (f.Page > 1) { <a class="admin-btn admin-btn--secondary" href="@Url(page: f.Page - 1)">← Önceki</a> }
+      @if (f.Page < pages) { <a class="admin-btn admin-btn--secondary" href="@Url(page: f.Page + 1)">Sonraki →</a> }
+    </div>
+  }
+</div>

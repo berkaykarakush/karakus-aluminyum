@@ -53,6 +53,11 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<TemplateClause> TemplateClauses => Set<TemplateClause>();
     public DbSet<Contract> Contracts => Set<Contract>();
     public DbSet<PresentationSection> PresentationSections => Set<PresentationSection>();
+    public DbSet<Prospect> Prospects => Set<Prospect>();
+    public DbSet<ProspectSector> ProspectSectors => Set<ProspectSector>();
+    public DbSet<ProspectDistrict> ProspectDistricts => Set<ProspectDistrict>();
+    public DbSet<ProspectActivity> ProspectActivities => Set<ProspectActivity>();
+    public DbSet<ProspectScan> ProspectScans => Set<ProspectScan>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -98,6 +103,15 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<DocumentTemplate>().HasIndex(x => x.Kind).IsUnique();
         builder.Entity<Contract>().HasIndex(x => x.ContractNumber).IsUnique();
         builder.Entity<PresentationSection>().HasIndex(x => x.SortOrder);
+        builder.Entity<Prospect>().HasIndex(x => x.GooglePlaceId).IsUnique().HasFilter("\"GooglePlaceId\" IS NOT NULL");
+        builder.Entity<Prospect>().HasIndex(x => new { x.Stage, x.NextFollowUp });
+        builder.Entity<Prospect>().HasIndex(x => x.SectorId);
+        builder.Entity<Prospect>().HasOne(x => x.Sector).WithMany().HasForeignKey(x => x.SectorId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<Prospect>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<ProspectActivity>().HasOne(x => x.Prospect).WithMany(x => x.Activities).HasForeignKey(x => x.ProspectId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<ProspectScan>().HasOne(x => x.Sector).WithMany().HasForeignKey(x => x.SectorId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<ProspectScan>().HasIndex(x => new { x.Status, x.CreatedUtc });
+        builder.Entity<ProspectDistrict>().HasIndex(x => x.Name).IsUnique();
         builder.Entity<Contract>().HasOne(x => x.Customer).WithMany()
             .HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<Contract>().HasOne(x => x.Quote).WithMany()

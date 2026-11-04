@@ -1,0 +1,96 @@
+@model KarakusAluminyum.Web.Areas.Admin.Controllers.ProspectScanVm
+@using KarakusAluminyum.Web.Models.Crm
+@using KarakusAluminyum.Web.Services.Prospecting
+@{
+    ViewData["Title"] = "Sektörler ve tarama";
+    var o = Model.Options;
+    var activeDistricts = Model.Districts.Count(d => d.IsActive);
+    int Estimate(ProspectSector s) => ProspectText.ParseKeywords(s.KeywordsJson).Count * activeDistricts * Math.Max(1, o.MaxPagesPerQuery);
+    var running = Model.Scans.Any(s => s.Status is ProspectScanStatus.Queued or ProspectScanStatus.Running);
+}
+@if (running) { <meta http-equiv="refresh" content="15" /> }
+<div class="admin-actions">
+  <h1>Sektörler ve tarama</h1>
+  <a class="admin-btn" href="/yonetim/crm/firmalar">Firma havuzu</a>
+  <a class="admin-btn" href="/yonetim/crm/firmalar/sektor/ekle">+ Yeni sektör</a>
+  @if (o.HasApiKey) { <form method="post" action="/yonetim/crm/firmalar/tarama/baslat" onsubmit="return confirm('Açık tüm sektörler taranacak (en çok @Model.Sectors.Where(s => s.IsActive).Sum(Estimate) istek). Devam edilsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn">Tüm açık sektörleri tara</button></form> }
+</div>
+
+<div class="admin-panel">
+  @if (o.HasApiKey)
+  {
+    <p><strong>Google Places API bağlı.</strong> Bu ay kullanılan: <strong>@Model.MonthlyUsage / @o.MonthlyRequestLimit</strong> istek. Sınır dolunca tarama kendiliğinden durur, ücretli kullanıma geçilmez.</p>
+    <p class="admin-muted">Tarama yalnızca "Tara" düğmesine basıldığında yapılır; otomatik tarama yoktur. Aynı sektörü tekrar taramak yeni açılan firmaları yakalar, var olanları güncellemek için de istek harcar. Firma siteleri (e-posta, Instagram, Facebook, LinkedIn) Google kotası harcamadan arka planda okunur.</p>
+  }
+  else
+  {
+    <p><strong>Google Places API anahtarı tanımlı değil.</strong> Firmalar şimdilik elle eklenebilir; web sitesi girilen firmaların e-posta ve sosyal hesapları yine otomatik okunur.</p>
+    <details open>
+      <summary><strong>Anahtar nasıl alınır? (yaklaşık 10 dakika)</strong></summary>
+      <ol>
+        <li><a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer">Google Cloud Console</a>'da yeni bir proje oluşturun ve faturalandırma hesabı bağlayın (kart istenir; aylık ücretsiz kota içinde kalındığında ücret çıkmaz).</li>
+        <li>"APIs &amp; Services → Library" bölümünde <strong>Places API (New)</strong>'u etkinleştirin.</li>
+        <li>"APIs &amp; Services → Credentials → Create credentials → API key" ile anahtar oluşturun. Anahtarı düzenleyip "API restrictions" kısmında yalnızca <strong>Places API (New)</strong>'u seçin; mümkünse "Application restrictions" kısmında sunucunun IP adresini girin.</li>
+        <li>"Billing → Budgets &amp; alerts" ile örneğin 5 USD'lik bütçe uyarısı kurun.</li>
+        <li>Sunucudaki <code>.env</code> dosyasına <code>GOOGLE_PLACES_API_KEY=anahtar</code> satırını ekleyip uygulamayı yeniden başlatın (<code>docker compose up -d</code>).</li>
+      </ol>
+      <p class="admin-muted">Telefon ve web sitesi alanları Google'ın en üst fiyat kademesindedir. Aylık ücretsiz kotayı Google'ın güncel fiyat sayfasından kontrol edip <code>GOOGLE_PLACES_MONTHLY_LIMIT</code> değerini buna göre ayarlayın (varsayılan @o.MonthlyRequestLimit).</p>
+    </details>
+  }
+  <p class="admin-muted">Instagram, Facebook ve TikTok'ta firma aramaya izin veren resmî bir yol yoktur; bu hesaplar firmaların kendi sitelerindeki bağlantılardan toplanır. Kişisel veri içeren kayıtları (yetkili adı, cep telefonu) yalnızca satış görüşmesi için kullanın; firma istemezse "İletişim kurulmasın" işaretleyin.</p>
+</div>
+
+<div class="admin-panel" style="overflow-x:auto">
+  <h2 style="margin-top:0">Sektörler</h2>
+  <table class="admin-table">
+    <thead><tr><th>Sektör</th><th>Aranan ifadeler</th><th>Firma</th><th>Son tarama</th><th>Tahmini istek</th><th>Durum</th><th>İşlem</th></tr></thead>
+    <tbody>
+    @foreach (var s in Model.Sectors)
+    {
+      <tr style="@(s.IsActive ? null : "opacity:.55")">
+        <td><a href="/yonetim/crm/firmalar?sector=@s.Id"><strong>@s.Name</strong></a></td>
+        <td>@string.Join(", ", ProspectText.ParseKeywords(s.KeywordsJson))</td>
+        <td>@Model.SectorCounts.GetValueOrDefault(s.Id)</td>
+        <td>@(s.LastScanUtc?.AddHours(3).ToString("dd.MM.yyyy HH:mm") ?? "Hiç")</td>
+        <td>@Estimate(s)</td>
+        <td>@(s.IsActive ? "Açık" : "Kapalı")</td>
+        <td><div class="admin-actions">
+          <a class="admin-btn admin-btn--secondary" href="/yonetim/crm/firmalar/sektor/@s.Id">Düzenle</a>
+          @if (o.HasApiKey && s.IsActive) { <form method="post" action="/yonetim/crm/firmalar/tarama/baslat">@Html.AntiForgeryToken()<input type="hidden" name="sectorId" value="@s.Id" /><button class="admin-btn">Tara</button></form> }
+        </div></td>
+      </tr>
+    }
+    </tbody>
+  </table>
+</div>
+
+<div class="admin-panel">
+  <h2 style="margin-top:0">Taranan ilçeler <small class="admin-muted">(@activeDistricts / @Model.Districts.Count)</small></h2>
+  <form method="post" action="/yonetim/crm/firmalar/tarama/ilceler">
+    @Html.AntiForgeryToken()
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px 16px">
+      @foreach (var d in Model.Districts) { <label><input type="checkbox" name="active" value="@d.Id" checked="@d.IsActive" /> @d.Name</label> }
+    </div>
+    <div class="admin-actions" style="margin-top:12px"><button class="admin-btn">İlçeleri kaydet</button></div>
+  </form>
+</div>
+
+<div class="admin-panel" style="overflow-x:auto">
+  <h2 style="margin-top:0">Son taramalar</h2>
+  <table class="admin-table">
+    <thead><tr><th>Tarih</th><th>Sektör</th><th>Durum</th><th>İstek</th><th>Bulunan</th><th>Yeni</th><th>Açıklama</th></tr></thead>
+    <tbody>
+    @foreach (var s in Model.Scans)
+    {
+      <tr>
+        <td>@s.CreatedUtc.AddHours(3).ToString("dd.MM.yyyy HH:mm")<br /><small class="admin-muted">@s.RequestedBy</small></td>
+        <td>@(s.Sector?.Name ?? "Silinmiş sektör")</td>
+        <td>@ProspectLabels.Scan(s.Status)</td>
+        <td>@s.RequestCount</td><td>@s.FoundCount</td><td>@s.NewCount</td>
+        <td>@s.Message</td>
+      </tr>
+    }
+    @if (Model.Scans.Count == 0) { <tr><td colspan="7">Henüz tarama yapılmadı.</td></tr> }
+    </tbody>
+  </table>
+</div>

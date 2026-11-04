@@ -83,6 +83,7 @@ public static class SeedData
     public const string BrandsSeededKey = "BrandsSeeded";
     public const string AccountingSeededKey = "AccountingSeeded";
     public const string PresentationSeededKey = "PresentationSeeded";
+    public const string ProspectingSeededKey = "ProspectingSeeded";
     private const string BrandSeedVersion = "2";
 
     // Listeye marka eklenince BrandSeedVersion artırılır.
@@ -102,7 +103,7 @@ public static class SeedData
 
 
     // Tek seferlik seed'lerin işaretçileri; site ayarları ekranında gösterilmez.
-    public static readonly string[] InternalSettingKeys = { GallerySeededKey, PresentationSeededKey, HomeFaqsSeededKey, DrawingSeededKey, ClausesSeededKey, ContentSeed.VersionKey, ProductSystemsSeededKey, BrandsSeededKey, AccountingSeededKey, RetiredServicesKey, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.KeySetting, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.MarkerSetting, KarakusAluminyum.Web.Services.Drawing.LegacyDrawingSystems.MarkerKey, SampleSystemValues.MarkerKey };
+    public static readonly string[] InternalSettingKeys = { GallerySeededKey, PresentationSeededKey, ProspectingSeededKey, HomeFaqsSeededKey, DrawingSeededKey, ClausesSeededKey, ContentSeed.VersionKey, ProductSystemsSeededKey, BrandsSeededKey, AccountingSeededKey, RetiredServicesKey, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.KeySetting, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.MarkerSetting, KarakusAluminyum.Web.Services.Drawing.LegacyDrawingSystems.MarkerKey, SampleSystemValues.MarkerKey };
 
     public static async Task InitializeAsync(IServiceProvider services, IConfiguration config)
     {
@@ -317,6 +318,13 @@ public static class SeedData
         {
             db.SiteSettingRecords.Add(new SiteSettingRecord { Key = PresentationSeededKey, Value = "true", Description = "Kurumsal sunum bölümleri eklendi" });
             if (!await db.PresentationSections.AnyAsync()) db.PresentationSections.AddRange(PresentationSeed.Sections());
+        }
+
+        // Firma havuzu: İzmir ilçeleri ve inşaat sektörleri bir kez eklenir; sonrası panelden yönetilir.
+        if (!await db.SiteSettingRecords.AnyAsync(s => s.Key == ProspectingSeededKey))
+        {
+            db.SiteSettingRecords.Add(new SiteSettingRecord { Key = ProspectingSeededKey, Value = "true", Description = "Firma havuzu sektörleri ve ilçeleri eklendi" });
+            if (!await db.ProspectSectors.AnyAsync() && !await db.ProspectDistricts.AnyAsync()) KarakusAluminyum.Web.Services.Prospecting.ProspectSeed.AddTo(db);
         }
 
         // Galeri seed: mevcut wwwroot görselleriyle hizmet/proje galerilerini doldur.

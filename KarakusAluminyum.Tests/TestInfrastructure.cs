@@ -61,6 +61,7 @@ public sealed class AppFactory : WebApplicationFactory<Program>
         builder.UseSetting("AdminSeed:Email", AdminEmail);
         builder.UseSetting("AdminSeed:Password", Password);
         builder.UseSetting("Notifications:WorkerEnabled", "false");
+        builder.UseSetting("Prospecting:WorkerEnabled", "false");
     }
 
     public HttpClient NewClient() => CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
