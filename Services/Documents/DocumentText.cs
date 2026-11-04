@@ -104,6 +104,7 @@ public static class DocumentJson
     public static DocumentContent ParseContent(string? json) => Parse<DocumentContent>(json) ?? new DocumentContent();
     public static DocumentContent? TryParseContent(string? json) => Parse<DocumentContent>(json);
     public static List<ContractArticle> ParseArticles(string? json) => Parse<List<ContractArticle>>(json) ?? new();
+    public static List<PresentationItem> ParseItems(string? json) => Parse<List<PresentationItem>>(json) ?? new();
     public static DocumentTemplate? ParseTemplate(string? json) => string.IsNullOrWhiteSpace(json) || json == "{}" ? null : Parse<DocumentTemplate>(json);
     public static string Serialize<T>(T value) => JsonSerializer.Serialize(value, Options);
 

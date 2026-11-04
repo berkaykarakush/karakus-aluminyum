@@ -18,9 +18,28 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>@t.Title - @Model.CustomerName</title>
   <link rel="stylesheet" href="~/css/document-print.css" asp-append-version="true" />
+  @if (Model.Presentation is not null)
+  {
+    <link rel="stylesheet" href="~/css/presentation.css" asp-append-version="true" />
+    @* Sunum sayfaları kenar boşluksuzdur. Chrome aynı belgede farklı kenar boşluklu sayfaları güvenilir bölemediği için
+       teklif sayfaları da kenar boşluksuz basılır; üst ve alt boşluk her sayfada tekrar eden başlık ve alt bilgiye verilir. *@
+    <style>@@page{size:A4;margin:0}@@media print{.doc-head{padding-top:12mm!important}.doc-sheet>tfoot .doc-foot{height:34mm}.doc-print-foot{bottom:10mm}}</style>
+  }
 </head>
 <body class="doc doc--quote">
-  <div class="doc-toolbar"><button type="button" onclick="window.print()">Yazdır / PDF kaydet</button></div>
+  <div class="doc-toolbar">
+    @if (quote.Id != 0)
+    {
+      @* Sunumlu ve sunumsuz görünüm arasında geçiş; önizlemede (kayıtsız örnek teklif) gösterilmez. *@
+      <a class="doc-toolbar__link" href="/yonetim/crm/teklifler/yazdir/@quote.Id@(Model.Presentation is null ? "?sunum=1" : "")">@(Model.Presentation is null ? "Kurumsal sunumu ekle" : "Sunumsuz göster")</a>
+    }
+    <button type="button" onclick="window.print()">Yazdır / PDF kaydet</button>
+  </div>
+  @if (Model.Presentation is not null)
+  {
+    <partial name="~/Areas/Admin/Views/Documents/_Presentation.cshtml" model="Model.Presentation" />
+    <partial name="~/Areas/Admin/Views/Documents/_PresentationFit.cshtml" />
+  }
   @for (var i = 0; i < Model.Blocks.Count; i++)
   {
     var view = Model.Blocks[i];

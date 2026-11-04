@@ -52,6 +52,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<DocumentTemplate> DocumentTemplates => Set<DocumentTemplate>();
     public DbSet<TemplateClause> TemplateClauses => Set<TemplateClause>();
     public DbSet<Contract> Contracts => Set<Contract>();
+    public DbSet<PresentationSection> PresentationSections => Set<PresentationSection>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -96,6 +97,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<DocumentTemplate>().HasIndex(x => x.Kind).IsUnique();
         builder.Entity<Contract>().HasIndex(x => x.ContractNumber).IsUnique();
+        builder.Entity<PresentationSection>().HasIndex(x => x.SortOrder);
         builder.Entity<Contract>().HasOne(x => x.Customer).WithMany()
             .HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<Contract>().HasOne(x => x.Quote).WithMany()

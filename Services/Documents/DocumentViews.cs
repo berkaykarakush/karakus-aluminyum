@@ -18,7 +18,7 @@ public sealed record AttachmentList(IReadOnlyList<AttachmentItem> Items)
 
 public sealed record QuoteBlockView(DocumentBlock Block, IReadOnlyList<QuoteItem> Items, decimal Subtotal);
 
-public sealed record QuotePrintVm(Quote Quote, string CustomerName, DocumentTemplate Template, DocumentContent Content, IReadOnlyList<QuoteBlockView> Blocks, AttachmentList Attachments)
+public sealed record QuotePrintVm(Quote Quote, string CustomerName, DocumentTemplate Template, DocumentContent Content, IReadOnlyList<QuoteBlockView> Blocks, AttachmentList Attachments, PresentationVm? Presentation = null)
 {
     public Dictionary<string, string> System => new()
     {

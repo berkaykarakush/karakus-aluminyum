@@ -1,0 +1,54 @@
+@model List<KarakusAluminyum.Web.Models.Documents.PresentationSection>
+@using KarakusAluminyum.Web.Models.Documents
+@{ ViewData["Title"] = "Kurumsal sunum"; }
+<div class="admin-actions">
+  <h1>Kurumsal sunum</h1>
+  <a class="admin-btn" href="/yonetim/sunum/goruntule" target="_blank" rel="noopener">Yatay sunum / PDF</a>
+  <a class="admin-btn" href="/yonetim/sunum/goruntule?yon=dikey" target="_blank" rel="noopener">Dikey dosya / PDF</a>
+</div>
+<div class="admin-panel">
+  <p class="admin-muted">Sunum, kapaktan iletişim sayfasına kadar A4 sayfalardan oluşur: ekranda göstermek için yatay, basılı dosya için dikey indirilebilir veya teklif detayındaki <strong>Sunumla PDF</strong> düğmesiyle teklifin önüne dikey olarak eklenir; o zaman kapağa müşteri adı, teklif başlığı, numarası ve tarihi otomatik yazılır.
+  Hizmetler, referanslar, projeler ve markalar ilgili panel sayfalarından her seferinde güncel olarak alınır; listesi boş olan bölüm basılmaz.</p>
+  <form class="admin-actions" method="get" action="/yonetim/sunum/goruntule" target="_blank" style="margin:12px 0">
+    <input name="firma" placeholder="Belirli bir firma için: kapakta görünecek firma adı" maxlength="160" style="flex:1;min-width:240px;padding:9px 11px;border:1px solid #cfd5d9;border-radius:8px" aria-label="Kapaktaki firma adı" />
+    <button class="admin-btn admin-btn--secondary" type="submit">Bu firmaya hazırla</button>
+  </form>
+  <div style="overflow-x:auto">
+  <table class="admin-table">
+    <thead><tr><th>Sıra</th><th>Bölüm</th><th>Başlık</th><th>Durum</th><th>İşlem</th></tr></thead>
+    <tbody>
+    @for (var i = 0; i < Model.Count; i++)
+    {
+      var x = Model[i];
+      <tr style="@(x.IsActive ? null : "opacity:.55")">
+        <td style="white-space:nowrap">
+          <form method="post" action="/yonetim/sunum/tasi/@x.Id" style="display:inline">@Html.AntiForgeryToken()<input type="hidden" name="direction" value="-1" /><button class="admin-btn admin-btn--secondary" disabled="@(i == 0)" aria-label="Yukarı taşı" title="Yukarı taşı">↑</button></form>
+          <form method="post" action="/yonetim/sunum/tasi/@x.Id" style="display:inline">@Html.AntiForgeryToken()<input type="hidden" name="direction" value="1" /><button class="admin-btn admin-btn--secondary" disabled="@(i == Model.Count - 1)" aria-label="Aşağı taşı" title="Aşağı taşı">↓</button></form>
+        </td>
+        <td>@PresentationKinds.Label(x.Kind)</td>
+        <td>@x.Title</td>
+        <td>@(x.IsActive ? "Açık" : "Kapalı")</td>
+        <td><div class="admin-actions">
+          <a class="admin-btn" href="/yonetim/sunum/duzenle/@x.Id">Düzenle</a>
+          <form method="post" action="/yonetim/sunum/durum/@x.Id">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--secondary">@(x.IsActive ? "Kapat" : "Aç")</button></form>
+          <form method="post" action="/yonetim/sunum/sil/@x.Id" onsubmit="return confirm('Bu bölüm sunumdan silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form>
+        </div></td>
+      </tr>
+    }
+    </tbody>
+  </table>
+  </div>
+  @if (Model.Count == 0) { <p class="admin-muted">Sunumda bölüm yok. Aşağıdan bölüm ekleyin veya varsayılan içeriği yükleyin.</p> }
+
+  <form class="admin-actions" method="get" action="/yonetim/sunum/ekle" style="margin-top:18px">
+    <label for="tur" style="margin:0">Yeni bölüm</label>
+    <select id="tur" name="tur" style="padding:9px 11px;border:1px solid #cfd5d9;border-radius:8px">
+      @foreach (var kind in PresentationKinds.All) { <option value="@kind" selected="@(kind == PresentationKinds.Text)">@PresentationKinds.Label(kind)</option> }
+    </select>
+    <button class="admin-btn" type="submit">+ Bölüm ekle</button>
+  </form>
+  @if (User.IsInRole("Admin"))
+  {
+    <form method="post" action="/yonetim/sunum/varsayilan" style="margin-top:18px" onsubmit="return confirm('Tüm bölümler silinip varsayılan sunum içeriği yüklenecek. Devam edilsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Varsayılan içeriğe dön</button></form>
+  }
+</div>

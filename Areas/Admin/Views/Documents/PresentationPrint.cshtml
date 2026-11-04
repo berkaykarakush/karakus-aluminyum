@@ -1,0 +1,32 @@
+@model KarakusAluminyum.Web.Services.Documents.PresentationVm
+@{
+    Layout = null;
+    var size = Model.Portrait ? "210mm 297mm" : "297mm 210mm";
+    string Link(bool portrait) => "/yonetim/sunum/goruntule?" + (portrait ? "yon=dikey&" : "") + "firma=" + Uri.EscapeDataString(Model.Cover.Customer ?? "");
+}
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>@Model.Site.SiteName - Kurumsal Sunum@(string.IsNullOrWhiteSpace(Model.Cover.Customer) ? "" : " - " + Model.Cover.Customer)</title>
+  <link rel="stylesheet" href="~/css/presentation.css" asp-append-version="true" />
+  <style>@@page{size:@size;margin:0}</style>
+</head>
+<body class="pres-page">
+  <div class="pres-toolbar">
+    <a class="is-secondary" href="/yonetim/sunum">← Bölümleri düzenle</a>
+    <form method="get" action="/yonetim/sunum/goruntule">
+      @if (Model.Portrait) { <input type="hidden" name="yon" value="dikey" /> }
+      <input name="firma" value="@Model.Cover.Customer" maxlength="160" placeholder="Kapakta görünecek firma adı (isteğe bağlı)" aria-label="Kapaktaki firma adı" />
+      <button class="is-secondary" type="submit">Kapağa yaz</button>
+    </form>
+    <a class="is-secondary" href="@Link(!Model.Portrait)">@(Model.Portrait ? "Yatay (ekran sunumu)" : "Dikey (basılı dosya)")</a>
+    <button type="button" onclick="window.print()">Yazdır / PDF indir</button>
+  </div>
+  @if (Model.PageCount == 0) { <p style="text-align:center;font:15px Arial,sans-serif">Sunumda açık bölüm yok. <a href="/yonetim/sunum">Bölümleri düzenleyin.</a></p> }
+  <partial name="~/Areas/Admin/Views/Documents/_Presentation.cshtml" model="Model" />
+  <partial name="~/Areas/Admin/Views/Documents/_PresentationFit.cshtml" />
+</body>
+</html>

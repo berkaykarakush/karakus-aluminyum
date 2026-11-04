@@ -1,0 +1,222 @@
+@model KarakusAluminyum.Web.Services.Documents.PresentationVm
+@using KarakusAluminyum.Web.Models.Documents
+@using KarakusAluminyum.Web.Services.Documents
+@using Microsoft.AspNetCore.Html
+@* Kurumsal sunum: yatay A4 sayfalar. Tek başına (PresentationPrint) veya teklifin önünde (QuotePrint) basılır. *@
+@{
+    var site = Model.Site;
+    var logo = PresentationVm.LogoPath;
+    var phones = site.Phones.Select(p => p.Display).ToList();
+    var email = site.Email.Contains("DOMAININIZ", StringComparison.OrdinalIgnoreCase) ? null : site.Email;
+    var web = site.BaseUrl.Contains("DOMAININIZ", StringComparison.OrdinalIgnoreCase) ? null : site.BaseUrl.Replace("https://", "").Replace("http://", "").TrimEnd('/');
+}
+<div class="pres @(Model.Portrait ? "pres--portrait" : "")">
+@foreach (var slide in Model.Pages)
+{
+    var s = slide.Section;
+    var eyebrow = slide.Parts > 1 ? $"{s.Eyebrow} · {slide.Part}/{slide.Parts}" : s.Eyebrow;
+    switch (s.Kind)
+    {
+        case PresentationKinds.Cover:
+            <section class="pres-slide pres-cover">
+              @if (!string.IsNullOrEmpty(s.ImagePath)) { <img class="pres-bg" src="@s.ImagePath" alt="" /> }
+              <div class="pres-cover__top">
+                <img class="pres-cover__logo" src="@logo" alt="@site.SiteName" />
+                <div class="pres-cover__tag">@site.City@if (web is not null) { <br />@web }</div>
+              </div>
+              <div class="pres-cover__main">
+                @if (!string.IsNullOrWhiteSpace(s.Eyebrow)) { <span class="pres-eyebrow">@Text(s.Eyebrow)</span> }
+                <h1 class="pres-title">@Text(s.Title)</h1>
+                @if (!string.IsNullOrWhiteSpace(s.Body)) { <p class="pres-cover__lead">@Text(s.Body)</p> }
+              </div>
+              <dl class="pres-cover__info">
+                @if (!string.IsNullOrWhiteSpace(Model.Cover.Customer)) { <div><dt>Hazırlanan</dt><dd>@Model.Cover.Customer</dd></div> }
+                @if (!string.IsNullOrWhiteSpace(Model.Cover.Project)) { <div><dt>Proje</dt><dd>@Model.Cover.Project</dd></div> }
+                @if (!string.IsNullOrWhiteSpace(Model.Cover.Number)) { <div><dt>Teklif no</dt><dd>@Model.Cover.Number</dd></div> }
+                <div><dt>Tarih</dt><dd>@TurkishNumbers.Date(Model.Cover.Date)</dd></div>
+              </dl>
+              <div class="pres-cover__bar"></div>
+            </section>
+            break;
+
+        case PresentationKinds.Contents:
+            <section class="pres-slide pres-contents">
+              <div class="pres-contents__aside">
+                @Eyebrow(s.Eyebrow)
+                <h2 class="pres-title">@Text(s.Title)</h2>
+                @Paragraphs(s.Body)
+                <img src="@logo" alt="@site.SiteName" />
+              </div>
+              <ol class="pres-contents__list">
+                @for (var i = 0; i < Model.Contents.Count; i++)
+                {
+                  <li><span class="pres-contents__n">@((i + 1).ToString("00"))</span><span class="pres-contents__t">@Text(Model.Contents[i].Title)</span><span class="pres-contents__p">@Model.Contents[i].Page.ToString("00")</span></li>
+                }
+              </ol>
+              @Foot(slide.Number)
+            </section>
+            break;
+
+        case PresentationKinds.WhyUs:
+            <section class="pres-slide pres-slide--paper">
+              @Head(eyebrow, s.Title, s.Body)
+              <div class="pres-cards pres-cards--@Math.Min(slide.Items.Count, 6)">
+                @for (var i = 0; i < slide.Items.Count; i++)
+                {
+                  <div class="pres-card"><span class="pres-card__n">@((i + 1).ToString("00"))</span><h3>@slide.Items[i].Title</h3><p>@Text(slide.Items[i].Text)</p></div>
+                }
+              </div>
+              @Foot(slide.Number)
+            </section>
+            break;
+
+        case PresentationKinds.Services:
+            <section class="pres-slide">
+              @Head(eyebrow, s.Title, s.Body)
+              <div class="pres-services">
+                @foreach (var service in slide.Services)
+                {
+                  <div class="pres-service">
+                    @if (PresentationBuilder.IsRealImage(service.Image)) { <img src="@service.Image" alt="" /> } else { <div class="pres-service__blank"></div> }
+                    <h3>@service.Name</h3>
+                    <p>@service.ShortDescription</p>
+                  </div>
+                }
+              </div>
+              @Foot(slide.Number)
+            </section>
+            break;
+
+        case PresentationKinds.Process:
+            <section class="pres-slide pres-slide--dark pres-process">
+              <img class="pres-bg pres-bg--faint" src="/images/cephe-koyu.webp" alt="" />
+              @Head(eyebrow, s.Title, s.Body)
+              <div class="pres-steps">
+                @for (var i = 0; i < slide.Items.Count; i++)
+                {
+                  <div class="pres-step"><span>@((i + 1).ToString("00"))</span><h3>@slide.Items[i].Title</h3><p>@Text(slide.Items[i].Text)</p></div>
+                }
+              </div>
+              @Foot(slide.Number)
+            </section>
+            break;
+
+        case PresentationKinds.Brands:
+            <section class="pres-slide pres-slide--paper">
+              @Head(eyebrow, s.Title, s.Body)
+              <div class="pres-brands">
+                @foreach (var group in slide.Brands)
+                {
+                  <div class="pres-brands__row">
+                    <span class="pres-brands__label">@group.Label</span>
+                    <div class="pres-brands__list">
+                      @foreach (var brand in group.Brands)
+                      {
+                        <span class="pres-brand">@if (!string.IsNullOrEmpty(brand.LogoPath)) { <img src="@brand.LogoPath" alt="@brand.Name" /> } else { @brand.Name }</span>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+              @Foot(slide.Number)
+            </section>
+            break;
+
+        case PresentationKinds.References:
+            <section class="pres-slide">
+              @Head(eyebrow, s.Title, s.Body)
+              <div class="pres-logos">
+                @foreach (var reference in slide.References)
+                {
+                  <div class="pres-logos__cell">@if (!string.IsNullOrEmpty(reference.LogoPath)) { <img src="@reference.LogoPath" alt="@reference.Name" /> } else { <span>@reference.Name</span> }</div>
+                }
+              </div>
+              @Foot(slide.Number)
+            </section>
+            break;
+
+        case PresentationKinds.Projects:
+            <section class="pres-slide">
+              @Head(eyebrow, s.Title, s.Body)
+              <div class="pres-projects pres-projects--@slide.Projects.Count">
+                @foreach (var project in slide.Projects)
+                {
+                  <div class="pres-project @(project.Image is null ? "pres-project--blank" : "")">
+                    @if (project.Image is not null) { <img src="@project.Image" alt="" /> }
+                    <div class="pres-project__text"><span>@project.Type · @project.Location</span><h3>@project.Title</h3></div>
+                  </div>
+                }
+              </div>
+              @Foot(slide.Number)
+            </section>
+            break;
+
+        case PresentationKinds.Contact:
+            <section class="pres-slide pres-contact">
+              @if (!string.IsNullOrEmpty(s.ImagePath)) { <img class="pres-bg" src="@s.ImagePath" alt="" /> }
+              <img class="pres-contact__logo" src="@logo" alt="@site.SiteName" />
+              <div class="pres-contact__main">
+                @Eyebrow(s.Eyebrow)
+                <h2 class="pres-title">@Text(s.Title)</h2>
+                @Paragraphs(s.Body)
+              </div>
+              <dl class="pres-cover__info pres-contact__info">
+                @if (phones.Count > 0) { <div><dt>Telefon</dt><dd>@foreach (var phone in phones) { @phone<br /> }</dd></div> }
+                @if (email is not null) { <div><dt>E-posta</dt><dd>@email</dd></div> }
+                @if (!string.IsNullOrWhiteSpace(site.Address)) { <div class="pres-contact__address"><dt>Adres</dt><dd>@site.Address</dd></div> }
+                @if (web is not null) { <div><dt>Web</dt><dd>@web</dd></div> }
+              </dl>
+              <div class="pres-cover__bar"></div>
+            </section>
+            break;
+
+        default: // Hakkımızda, Kalite ve garanti, Serbest bölüm: yan yana görsel ve metin
+            var media = !string.IsNullOrEmpty(s.ImagePath);
+            var reverse = s.Kind == PresentationKinds.Quality;
+            <section class="pres-slide pres-split @(media ? "pres-split--media" : "") @(media && reverse ? "pres-split--reverse" : "")">
+              @if (media) { <div class="pres-split__media"><img src="@s.ImagePath" alt="" /></div> }
+              <div class="pres-split__copy">
+                @Eyebrow(eyebrow)
+                <h2 class="pres-title">@Text(s.Title)</h2>
+                <div class="pres-split__body">@Paragraphs(s.Body)</div>
+                @if (slide.Items.Count > 0)
+                {
+                  <ul class="pres-list">
+                    @foreach (var item in slide.Items) { <li><div>@if (!string.IsNullOrWhiteSpace(item.Title)) { <strong>@item.Title</strong> }@Text(item.Text)</div></li> }
+                  </ul>
+                }
+                @if (s.Kind == PresentationKinds.About && Model.Stats.Count > 0)
+                {
+                  <div class="pres-stats">
+                    @foreach (var stat in Model.Stats) { <div><strong>@stat.Value</strong><span>@stat.Label</span></div> }
+                  </div>
+                }
+              </div>
+              @Foot(slide.Number)
+            </section>
+            break;
+    }
+}
+</div>
+
+@functions {
+    IHtmlContent Text(string? text) => TemplateText.ToHtml(text, Model.Variables);
+
+    IHtmlContent Eyebrow(string? text) => string.IsNullOrWhiteSpace(text) ? HtmlString.Empty
+        : new HtmlString($"<span class=\"pres-eyebrow\">{Text(text)}</span>");
+
+    // Boş satır paragraf açar; tek satır sonu <br> olarak kalır.
+    IHtmlContent Paragraphs(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return HtmlString.Empty;
+        var parts = text.Replace("\r\n", "\n").Split("\n\n", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return new HtmlString(string.Concat(parts.Select(p => $"<p>{Text(p)}</p>")));
+    }
+
+    IHtmlContent Head(string? eyebrow, string title, string? body) => new HtmlString(
+        $"<header class=\"pres-head\"><div>{Eyebrow(eyebrow)}<h2 class=\"pres-title\">{Text(title)}</h2></div>"
+        + (string.IsNullOrWhiteSpace(body) ? "" : $"<p class=\"pres-head__text\">{Text(body)}</p>") + "</header>");
+
+    IHtmlContent Foot(int number) => new HtmlString(
+        $"<footer class=\"pres-foot\"><img src=\"{PresentationVm.LogoPath}\" alt=\"\" /><span>{System.Net.WebUtility.HtmlEncode(Model.Site.SiteName)}</span><span class=\"pres-foot__page\">{number:00} / {Model.PageCount:00}</span></footer>");
+}

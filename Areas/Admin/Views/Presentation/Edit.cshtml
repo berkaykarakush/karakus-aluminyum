@@ -1,0 +1,76 @@
+@model KarakusAluminyum.Web.Models.Documents.PresentationSection
+@using KarakusAluminyum.Web.Models.Documents
+@{
+    var editing = Model.Id != 0;
+    var label = PresentationKinds.Label(Model.Kind);
+    ViewData["Title"] = editing ? $"{label} bölümünü düzenle" : $"Yeni bölüm: {label}";
+    var action = editing ? $"/yonetim/sunum/duzenle/{Model.Id}" : "/yonetim/sunum/ekle";
+    var items = (List<PresentationItem>)ViewBag.Items;
+    var hasItems = PresentationKinds.HasItems(Model.Kind);
+}
+<link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/sunum">Kurumsal sunum</a><a class="admin-btn admin-btn--secondary" href="/yonetim/sunum/goruntule" target="_blank" rel="noopener">Önizle</a></div>
+<div class="admin-panel">
+  <p class="admin-muted">@PresentationKinds.Help(Model.Kind)</p>
+  <form class="admin-form" method="post" action="@action" enctype="multipart/form-data">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Kind" />
+    <div asp-validation-summary="All" class="wd-errors"></div>
+    <label asp-for="Eyebrow">Üst başlık (küçük harflerle başlığın üstünde görünür)</label><input asp-for="Eyebrow" maxlength="80" />
+    <label asp-for="Title">Başlık</label><input asp-for="Title" maxlength="160" required />
+    <label asp-for="Body">Metin</label><textarea asp-for="Body" rows="6" maxlength="1500"></textarea>
+    <p class="admin-muted">Sayfaya sığması için kısa tutun. <strong>**kalın**</strong> yazılabilir, boş satır paragraf açar. Kullanılabilen alanlar: <code>{{kurulus_yili}}</code>, <code>{{tecrube_yili}}</code>, <code>{{sehir}}</code>, <code>{{hizmet_sayisi}}</code>, <code>{{firma}}</code> (teklifteki veya kapakta yazan müşteri).</p>
+
+    @if (Model.Kind is not (PresentationKinds.Contents or PresentationKinds.Services or PresentationKinds.References or PresentationKinds.Projects or PresentationKinds.Brands or PresentationKinds.WhyUs or PresentationKinds.Process))
+    {
+      <label for="imageFile">Görsel @(string.IsNullOrEmpty(Model.ImagePath) ? "" : "(değiştirmek için seçin)") - yatay fotoğraf önerilir</label>
+      @if (!string.IsNullOrEmpty(Model.ImagePath)) { <p><img src="@Model.ImagePath" alt="" style="max-width:320px;max-height:180px;object-fit:cover;border-radius:6px" /></p><p><label><input type="checkbox" name="removeImage" value="true" /> Görseli kaldır</label></p> }
+      <img id="imagePreview" alt="" hidden style="max-width:320px;max-height:180px;object-fit:cover;border-radius:6px" />
+      <input id="imageFile" type="file" name="imageFile" accept=".png,.jpg,.jpeg,.webp" data-image-preview="imagePreview" />
+    }
+
+    @if (hasItems)
+    {
+      <h3 style="margin-top:22px">Maddeler <small class="admin-muted">(en fazla @PresentationSection.MaxItems)</small></h3>
+      <div id="items">
+        @for (var i = 0; i < items.Count; i++)
+        {
+          <div class="admin-panel" data-item style="margin:8px 0;padding:12px">
+            <input name="items[@i].Title" value="@items[i].Title" placeholder="Madde başlığı" maxlength="80" aria-label="Madde başlığı" />
+            <textarea name="items[@i].Text" rows="2" placeholder="Kısa açıklama" maxlength="300" aria-label="Madde açıklaması" style="margin-top:6px;min-height:56px">@items[i].Text</textarea>
+            <button type="button" class="admin-btn admin-btn--danger" data-remove style="margin-top:6px">Maddeyi kaldır</button>
+          </div>
+        }
+      </div>
+      <button type="button" class="admin-btn admin-btn--secondary" id="addItem">+ Madde ekle</button>
+      <template id="itemTemplate">
+        <div class="admin-panel" data-item style="margin:8px 0;padding:12px">
+          <input data-field="Title" placeholder="Madde başlığı" maxlength="80" aria-label="Madde başlığı" />
+          <textarea data-field="Text" rows="2" placeholder="Kısa açıklama" maxlength="300" aria-label="Madde açıklaması" style="margin-top:6px;min-height:56px"></textarea>
+          <button type="button" class="admin-btn admin-btn--danger" data-remove style="margin-top:6px">Maddeyi kaldır</button>
+        </div>
+      </template>
+    }
+
+    <p style="margin-top:18px"><label><input asp-for="IsActive" /> Sunumda göster</label></p>
+    <div class="admin-actions"><button class="admin-btn" type="submit">Kaydet</button><a href="/yonetim/sunum">İptal</a></div>
+  </form>
+</div>
+@if (hasItems)
+{
+<script>
+(function(){
+  const list=document.getElementById('items'), max=@PresentationSection.MaxItems, add=document.getElementById('addItem');
+  // Alan adları her değişiklikte sırayla yeniden yazılır; model bağlayıcı boşluklu indeksi okumaz.
+  function renumber(){
+    list.querySelectorAll('[data-item]').forEach(function(row,i){
+      row.querySelectorAll('input,textarea').forEach(function(el){const field=el.dataset.field||el.name.split('.').pop();el.dataset.field=field;el.name='items['+i+'].'+field;});
+    });
+    add.disabled=list.querySelectorAll('[data-item]').length>=max;
+  }
+  add.addEventListener('click',function(){list.appendChild(document.getElementById('itemTemplate').content.cloneNode(true));renumber();list.lastElementChild.querySelector('input').focus();});
+  list.addEventListener('click',function(e){if(e.target.matches('[data-remove]')){e.target.closest('[data-item]').remove();renumber();}});
+  renumber();
+})();
+</script>
+}
