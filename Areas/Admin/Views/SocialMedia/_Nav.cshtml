@@ -1,12 +1,15 @@
 @{
+    // Proje sekmeleri aynı işlemleri kullanır; hangi sekmenin açık olduğu adresteki bölümden anlaşılır.
     var current = ViewContext.RouteData.Values["action"]?.ToString();
+    var segment = ViewContext.RouteData.Values["segment"]?.ToString();
     var tabs = new[]
     {
-        ("Projects", "/yonetim/sosyal-medya/referans-projeler", "Referans projeler"),
+        ("referans-projeler", "/yonetim/sosyal-medya/referans-projeler", "Referans projeler"),
+        ("devam-eden-projeler", "/yonetim/sosyal-medya/devam-eden-projeler", "Devam eden projeler"),
         ("Posts", "/yonetim/sosyal-medya/bilgi-icerikleri", "Bilgi içerikleri"),
         ("Highlights", "/yonetim/sosyal-medya/one-cikanlar", "Öne çıkanlar"),
     };
-    var active = current is "CreateProject" or "EditProject" ? "Projects" : current;
+    var active = segment ?? current;
 }
 <style>
 .sm-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 18px;border-bottom:1px solid var(--line)}

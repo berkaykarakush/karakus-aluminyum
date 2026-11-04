@@ -1,16 +1,21 @@
 @model List<KarakusAluminyum.Web.Models.SocialProjectPost>
-@{ ViewData["Title"] = "Sosyal medya - Referans projeler"; }
+@using KarakusAluminyum.Web.Models
+@{
+    var kind = (SocialProjectKind)ViewBag.Kind;
+    var root = "/yonetim/sosyal-medya/" + kind.Segment;
+    ViewData["Title"] = "Sosyal medya - " + kind.Tab;
+}
 <partial name="_Nav" />
 <div class="admin-panel">
   <div class="admin-actions" style="margin:0;justify-content:space-between">
-    <p class="admin-muted" style="margin:0">Proje fotoğrafını yükleyin, proje adını yazın ve yazıyı fotoğrafın üstünde sürükleyerek yerleştirin. "Referans Projelerimiz" etiketi ve logo otomatik eklenir.</p>
-    <a class="admin-btn" href="/yonetim/sosyal-medya/referans-projeler/ekle">+ Yeni referans proje</a>
+    <p class="admin-muted" style="margin:0">Proje fotoğrafını yükleyin, proje adını yazın ve yazıyı fotoğrafın üstünde sürükleyerek yerleştirin. "@kind.Label" etiketi ve logo otomatik eklenir.@(kind == SocialProjectKind.Ongoing ? " Proje tamamlanınca fotoğrafını Referans projeler sekmesine ekleyebilirsiniz." : "")</p>
+    <a class="admin-btn" href="@root/ekle">+ Yeni @kind.Singular</a>
   </div>
 </div>
 <div class="sm-grid">
 @foreach (var x in Model)
 {
-  var url = $"/yonetim/sosyal-medya/referans-projeler/gorsel/{x.Id}";
+  var url = $"{root}/gorsel/{x.Id}";
   <article class="sm-card">
     <a href="@url" target="_blank" rel="noopener"><img src="@(url)?v=@x.UpdatedUtc.Ticks" alt="@x.Name" loading="lazy" width="1080" height="1350" /></a>
     <h2>@x.Name</h2>
@@ -18,10 +23,10 @@
     <div class="admin-actions">
       <a class="admin-btn" href="@(url)?indir=true">İndir</a>
       <button type="button" class="admin-btn admin-btn--secondary" data-copy>Metni kopyala</button>
-      <a class="admin-btn admin-btn--secondary" href="/yonetim/sosyal-medya/referans-projeler/duzenle/@x.Id">Düzenle</a>
-      <form method="post" action="/yonetim/sosyal-medya/referans-projeler/sil/@x.Id" onsubmit="return confirm('Bu referans proje gönderisi silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form>
+      <a class="admin-btn admin-btn--secondary" href="@root/duzenle/@x.Id">Düzenle</a>
+      <form method="post" action="@root/sil/@x.Id" onsubmit="return confirm('Bu @kind.Singular gönderisi silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form>
     </div>
   </article>
 }
 </div>
-@if (Model.Count == 0) { <div class="admin-panel"><p class="admin-muted">Henüz referans proje gönderisi yok.</p></div> }
+@if (Model.Count == 0) { <div class="admin-panel"><p class="admin-muted">Henüz @kind.Singular gönderisi yok.</p></div> }

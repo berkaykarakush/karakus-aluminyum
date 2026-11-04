@@ -15,6 +15,7 @@ public sealed class SocialMediaTests(PostgresFixture postgres)
     private const string Posts = Root + "/bilgi-icerikleri";
     private const string Highlights = Root + "/one-cikanlar";
     private const string Projects = Root + "/referans-projeler";
+    private const string Ongoing = Root + "/devam-eden-projeler";
     private const string First = Root + "/gorsel/01-villa-otomatik-giyotin.jpg";
     private const int PostCount = 13;
 
@@ -43,16 +44,16 @@ public sealed class SocialMediaTests(PostgresFixture postgres)
     }
 
     [Fact]
-    public async Task Panel_HasThreeSections_AndOpensOnProjects()
+    public async Task Panel_HasFourSections_AndOpensOnProjects()
     {
         var client = await AdminAsync(postgres.Shared);
         var root = await client.GetAsync(Root);
         Assert.Equal(HttpStatusCode.Redirect, root.StatusCode);
         Assert.EndsWith("/referans-projeler", root.Headers.Location!.ToString());
-        foreach (var url in new[] { Projects, Posts, Highlights })
+        foreach (var url in new[] { Projects, Ongoing, Posts, Highlights })
         {
             var html = WebUtility.HtmlDecode(await client.GetStringAsync(url));
-            foreach (var tab in new[] { "Referans projeler", "Bilgi içerikleri", "Öne çıkanlar" }) Assert.Contains(tab, html);
+            foreach (var tab in new[] { "Referans projeler", "Devam eden projeler", "Bilgi içerikleri", "Öne çıkanlar" }) Assert.Contains(tab, html);
             Assert.Contains("aria-current=\"page\"", html);
         }
     }
@@ -174,6 +175,42 @@ public sealed class SocialMediaTests(PostgresFixture postgres)
         Assert.False(await app.WithDbAsync(db => db.SocialProjectPosts.AnyAsync(x => x.Id == row.Id)));
         Assert.False(File.Exists(Disk(after.ImagePath)));
         Assert.False(File.Exists(Disk(after.PhotoPath)));
+    }
+
+    // Devam eden projeler ayrı sekmededir: kendi etiketi, metni, dosya adı ve ZIP klasörü vardır; diğer sekmeden açılamaz.
+    [Fact]
+    public async Task OngoingProject_IsSeparateFromReferences()
+    {
+        var app = postgres.Shared;
+        var client = await AdminAsync(app);
+        var name = "Şantiye " + Guid.NewGuid().ToString("N")[..6];
+        var editor = await client.GetStringAsync(Ongoing + "/ekle");
+        Assert.Contains("label: \"Devam Eden Projelerimiz\"", WebUtility.HtmlDecode(editor));
+        var token = await client.GetTokenAsync(Ongoing + "/ekle");
+
+        var created = await client.PostAsync(Ongoing + "/ekle", ProjectForm(token, name, Jpeg(1600, 1200, SKColors.SteelBlue), Jpeg(1080, 1350, SKColors.Navy), ("Kind", "reference")));
+        Assert.Equal(HttpStatusCode.Redirect, created.StatusCode);
+        Assert.EndsWith("/devam-eden-projeler", created.Headers.Location!.ToString());
+        var row = await app.WithDbAsync(db => db.SocialProjectPosts.AsNoTracking().SingleAsync(x => x.Name == name));
+        Assert.Equal("ongoing", row.Kind); // tür formdan değil adresten gelir
+        Assert.Contains($"Devam eden projelerimizden: {name}.", row.Caption);
+
+        Assert.Contains(name, WebUtility.HtmlDecode(await client.GetStringAsync(Ongoing)));
+        Assert.DoesNotContain(name, WebUtility.HtmlDecode(await client.GetStringAsync(Projects)));
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"{Projects}/duzenle/{row.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"{Projects}/gorsel/{row.Id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PostFormAsync($"{Projects}/sil/{row.Id}", await client.GetTokenAsync(Projects))).StatusCode);
+
+        var download = await client.GetAsync($"{Ongoing}/gorsel/{row.Id}?indir=true");
+        Assert.StartsWith($"devam-eden-{row.Id:00}-santiye-", download.Content.Headers.ContentDisposition?.FileNameStar ?? download.Content.Headers.ContentDisposition?.FileName?.Trim('"'));
+        using (var archive = new ZipArchive(await (await client.GetAsync(Root + "/tumunu-indir")).Content.ReadAsStreamAsync()))
+        {
+            Assert.Contains(archive.Entries, x => x.FullName.StartsWith($"devam-eden-projeler/devam-eden-{row.Id:00}-"));
+            Assert.Contains(archive.Entries, x => x.FullName == "devam-eden-projeler/aciklamalar.txt");
+        }
+
+        Assert.Equal(HttpStatusCode.Redirect, (await client.PostFormAsync($"{Ongoing}/sil/{row.Id}", await client.GetTokenAsync(Ongoing))).StatusCode);
+        Assert.False(await app.WithDbAsync(db => db.SocialProjectPosts.AnyAsync(x => x.Id == row.Id)));
     }
 
     [Fact]
