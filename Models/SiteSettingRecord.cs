@@ -6,4 +6,6 @@ public sealed class SiteSettingRecord
     [Required, StringLength(100)] public string Key { get; set; } = "";
     [StringLength(2000)] public string Value { get; set; } = "";
     [StringLength(250)] public string Description { get; set; } = "";
+    // Panelden son değiştirilme zamanı; site haritasında Kurumsal ve İletişim sayfalarının tarihi buradan gelir.
+    public DateTime? UpdatedUtc { get; set; }
 }

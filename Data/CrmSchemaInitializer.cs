@@ -152,6 +152,7 @@ CREATE TABLE IF NOT EXISTS "WindowDesigns" (
 CREATE INDEX IF NOT EXISTS "IX_WindowDesigns_UpdatedUtc" ON "WindowDesigns" ("UpdatedUtc");
 CREATE INDEX IF NOT EXISTS "IX_WindowDesigns_CustomerId" ON "WindowDesigns" ("CustomerId");
 
+ALTER TABLE "SiteSettingRecords" ADD COLUMN IF NOT EXISTS "UpdatedUtc" timestamp with time zone;
 ALTER TABLE "Quotes" ADD COLUMN IF NOT EXISTS "DocumentDate" timestamp with time zone NOT NULL DEFAULT now();
 ALTER TABLE "Quotes" ADD COLUMN IF NOT EXISTS "VatMode" integer NOT NULL DEFAULT 0;
 ALTER TABLE "Quotes" ADD COLUMN IF NOT EXISTS "DocumentJson" text NOT NULL DEFAULT '{{}}';

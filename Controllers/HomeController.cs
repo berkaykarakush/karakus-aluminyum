@@ -22,7 +22,7 @@ public class HomeController : Controller
             .OrderBy(f => f.SortOrder).ThenBy(f => f.Id).ToListAsync();
         ViewData["Seo"] = new SeoViewModel
         {
-            Title = "Karakuş Alüminyum | İzmir Mimari Alüminyum Sistemleri",
+            Title = "İzmir Alüminyum Doğrama, Cam Balkon ve Kapı Sistemleri | Karakuş Alüminyum",
             Description = "İzmir'de alüminyum ve PVC doğrama, cam balkon, giyotin ve sürme cam sistemleri ile otomatik kapı çözümleri. Projeniz için ölçü ve teklif alın.",
             CanonicalPath = "/",
             ImagePath = "/images/aluminyum-dograma.webp",
@@ -43,8 +43,8 @@ public class HomeController : Controller
         ViewBag.Projects = (await ProjectQueries.PublishedAsync(_db)).Where(p => p.Image != ProjectQueries.PlaceholderImage).Take(3).ToList();
         ViewData["Seo"] = new SeoViewModel
         {
-            Title = "Hakkımızda | Karakuş Alüminyum",
-            Description = "Karakuş Alüminyum'un çalışma yaklaşımı, hizmet anlayışı ve mimari alüminyum çözümleri hakkında bilgi alın.",
+            Title = "Hakkımızda | 2001'den Beri İzmir'de Karakuş Alüminyum",
+            Description = "Karakuş Alüminyum, 2001'den beri Bornova/İzmir'de alüminyum ve PVC doğrama, cam balkon, giyotin cam ve kapı sistemleri uygulayan bir firmadır.",
             CanonicalPath = "/kurumsal",
             PageType = "AboutPage",
             Breadcrumbs = new[] { ("Hakkımızda", "/kurumsal") }

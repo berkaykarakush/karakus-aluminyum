@@ -14,7 +14,7 @@ public class ProjectsController : Controller
     public async Task<IActionResult> Index()
     {
         var rows = await ProjectQueries.PublishedAsync(_db);
-        ViewData["Seo"] = new SeoViewModel { Title="Projelerimiz | Karakuş Alüminyum", Description="Karakuş Alüminyum'un alüminyum doğrama ve mimari sistem uygulamalarını proje portföyünde inceleyin.", CanonicalPath="/projeler", PageType="CollectionPage", Breadcrumbs=new[]{("Projeler","/projeler")}, Schema=new[]{SchemaNodes.ItemList("/projeler", rows.Select(x=>("/projeler/"+x.Slug,x.Title)))} };
+        ViewData["Seo"] = new SeoViewModel { Title="İzmir Alüminyum Doğrama Projeleri | Karakuş Alüminyum", Description="Karakuş Alüminyum'un alüminyum doğrama ve mimari sistem uygulamalarını proje portföyünde inceleyin.", CanonicalPath="/projeler", PageType="CollectionPage", Breadcrumbs=new[]{("Projeler","/projeler")}, Schema=new[]{SchemaNodes.ItemList("/projeler", rows.Select(x=>("/projeler/"+x.Slug,x.Title)))} };
         return View((IReadOnlyList<ProjectItem>)rows);
     }
     [HttpGet("{slug}")]

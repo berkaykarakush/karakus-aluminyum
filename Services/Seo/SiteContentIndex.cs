@@ -35,6 +35,9 @@ public sealed class SiteContentIndex
         var projects = await _db.Projects.AsNoTracking().Where(x => x.IsPublished).OrderByDescending(x => x.CreatedUtc).ToListAsync();
         var posts = await _db.BlogPosts.AsNoTracking().Where(x => x.IsPublished).OrderByDescending(x => x.PublishedUtc).ToListAsync();
         var faqs = await _db.FaqItems.AsNoTracking().Where(x => x.IsPublished).OrderBy(x => x.SortOrder).ThenBy(x => x.Id).ToListAsync();
+        // Kurumsal ve İletişim sayfaları panel ayarlarından beslenir; tarihleri ilgili ayarların son değişikliğidir.
+        var settingDates = await _db.SiteSettingRecords.AsNoTracking().Where(x => x.UpdatedUtc != null).Select(x => new { x.Key, x.UpdatedUtc }).ToListAsync();
+        DateTime? SettingsModified(string group) => Latest(settingDates.Where(x => SiteSettingCatalog.Find(x.Key)?.Group == group).Select(x => x.UpdatedUtc));
         var images = await _db.GalleryImages.AsNoTracking().Where(x => x.IsPublished).OrderBy(x => x.SortOrder).ThenBy(x => x.Id).ToListAsync();
 
         string Links(IEnumerable<(string Path, string Title, string Text)> rows) => string.Join('\n', rows.Select(x => $"- [{x.Title}]({x.Path}): {x.Text}"));
@@ -52,13 +55,13 @@ public sealed class SiteContentIndex
         var pages = new List<PublicPage>
         {
             new("/", site.SiteName, site.SiteDescription, PageKind.Core, Latest(new[] { servicesModified, projectsModified, postsModified, Latest(homeFaqs.Select(x => (DateTime?)x.UpdatedUtc)) }), Array.Empty<(string, string)>(),
-                $"{site.HeroTitle} {site.HeroTitleEmphasis}.\n\n{site.HeroText}\n\n## Ürün ve hizmetler\n\n{serviceLinks}" + (homeFaqs.Count > 0 ? $"\n\n## Sık sorulan sorular\n\n{Faq(homeFaqs)}" : "")),
-            new("/kurumsal", "Hakkımızda", "Çalışma yaklaşımımız ve hizmet anlayışımız.", PageKind.Core, null, Array.Empty<(string, string)>(), $"{site.AboutIntro}\n\n## {site.AboutSectionTitle}\n\n{site.AboutText}"),
+                $"{site.HeroTitle} {site.HeroTitleEmphasis.TrimEnd('.')}.\n\n{site.HeroText}\n\n## Ürün ve hizmetler\n\n{serviceLinks}" + (homeFaqs.Count > 0 ? $"\n\n## Sık sorulan sorular\n\n{Faq(homeFaqs)}" : "")),
+            new("/kurumsal", "Hakkımızda", $"{SiteSettings.FoundedYear}'den beri {site.PrimaryServiceArea}/{site.City}'de alüminyum, cam ve kapı sistemleri uygulayan firmamızın çalışma yaklaşımı.", PageKind.Core, SettingsModified(SiteSettingCatalog.AboutGroup), Array.Empty<(string, string)>(), $"{site.AboutIntro}\n\n## {site.AboutSectionTitle}\n\n{site.AboutText}"),
             new("/urunler", "Ürün ve Hizmetler", "Sunduğumuz alüminyum, cam ve kapı sistemleri.", PageKind.Core, servicesModified, Array.Empty<(string, string)>(), serviceLinks),
             new("/projeler", "Projelerimiz", "Uyguladığımız projelerden örnekler.", PageKind.Core, projectsModified, Array.Empty<(string, string)>(), projectLinks),
             new("/galeri", "Galeri", "Uygulamalarımızdan görüntüler.", PageKind.Core, Latest(images.Select(x => (DateTime?)x.CreatedUtc)), Gallery(images, "Karakuş Alüminyum uygulaması"), $"{images.Count} görsel yayında."),
             new("/blog", "Bilgi Merkezi", "Alüminyum sistemler ve ürün seçimi hakkında yazılar.", PageKind.Core, postsModified, Array.Empty<(string, string)>(), postLinks),
-            new("/iletisim", "İletişim ve Teklif", "Projeniz için bize ulaşın.", PageKind.Core, null, Array.Empty<(string, string)>(), $"- Telefon: {site.PhoneText}\n- E-posta: {site.Email}\n- Adres: {site.Address}\n- Hizmet bölgesi: {site.City}, {site.PrimaryServiceArea}\n\nTeklif formu: /iletisim")
+            new("/iletisim", "İletişim ve Teklif", "Projeniz için ölçü ve teklif almak üzere bize ulaşın.", PageKind.Core, SettingsModified(SiteSettingCatalog.ContactGroup), Array.Empty<(string, string)>(), $"- Telefon: {site.PhoneText}\n- E-posta: {site.Email}\n- Adres: {site.Address}\n- Hizmet bölgesi: {site.City}, {site.PrimaryServiceArea}\n\nTeklif formu: /iletisim")
         };
 
         foreach (var x in services)

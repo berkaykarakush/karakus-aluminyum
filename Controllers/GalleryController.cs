@@ -21,7 +21,7 @@ public class GalleryController : Controller
             .ToListAsync();
         ViewData["Seo"] = new SeoViewModel
         {
-            Title = "Galeri | Karakuş Alüminyum",
+            Title = "Uygulama Galerisi | Karakuş Alüminyum İzmir",
             Description = "Alüminyum doğrama, sürme cam, cam balkon ve kapı sistemleri uygulamalarımızdan seçtiğimiz görüntüler.",
             CanonicalPath = "/galeri",
             PageType = "CollectionPage",

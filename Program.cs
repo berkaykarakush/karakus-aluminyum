@@ -118,6 +118,9 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.ExpireTimeSpan = TimeSpan.FromHours(8);
 });
 
+// Tarayıcı siteyi bir yıl boyunca yalnızca HTTPS ile açar. Alt alan adları (e-posta paneli vb.) kapsanmaz.
+builder.Services.AddHsts(options => options.MaxAge = TimeSpan.FromDays(365));
+
 var app = builder.Build();
 
 // Şema yönetimi açıkça seçilir. Production'da var olan DB'yi EnsureCreated ile değiştirmeyin.
