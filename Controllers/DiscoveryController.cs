@@ -75,7 +75,11 @@ public sealed class DiscoveryController : Controller
         var site = await _settings.GetAsync();
         var pages = await _index.PagesAsync();
         var text = new StringBuilder($"# {site.SiteName}\n\n> {site.SiteDescription}\n\n");
-        text.Append($"- Konum: {site.Address}\n- Telefon: {site.PhoneText}\n- E-posta: {site.Email}\n- Web: {Base(site)}\n- Tüm içerik tek dosyada: {Absolute(site, "/llms-full.txt")}\n");
+        text.Append($"- Firma türü: Alüminyum doğrama, cam ve kapı sistemleri firması (ölçü, teklif ve montaj)\n- Kuruluş: {SiteSettings.FoundedYear}\n- Konum: {site.Address}\n- Hizmet bölgesi: {site.City} ve tüm ilçeleri; {site.City} dışındaki projeler de değerlendirilir\n- Telefon: {site.PhoneText}\n- E-posta: {site.Email}\n- Web: {Base(site)}\n");
+        if (!string.IsNullOrWhiteSpace(site.OpeningHours)) text.Append($"- Çalışma saatleri: {site.OpeningHours}\n");
+        foreach (var (label, url) in new[] { ("Google İşletme Profili", site.GoogleBusinessProfileUrl), ("Instagram", site.InstagramUrl), ("Facebook", site.FacebookUrl), ("LinkedIn", site.LinkedInUrl) })
+            if (!string.IsNullOrWhiteSpace(url)) text.Append($"- {label}: {url}\n");
+        text.Append($"- Tüm içerik tek dosyada: {Absolute(site, "/llms-full.txt")}\n- Tüm içerik JSON olarak: {Absolute(site, "/icerik.json")}\n");
         void Section(string title, PageKind kind)
         {
             var rows = pages.Where(x => x.Kind == kind).ToList();
@@ -96,6 +100,46 @@ public sealed class DiscoveryController : Controller
         var text = new StringBuilder($"# {site.SiteName}\n\n> {site.SiteDescription}\n");
         foreach (var page in await _index.PagesAsync()) text.Append("\n---\n\n").Append(Render(site, page));
         return Content(text.ToString(), "text/plain; charset=utf-8");
+    }
+
+    // Sitenin tüm yayımlanmış içeriği tek JSON belgesinde: işletme bilgisi ve her sayfanın başlığı, özeti, Markdown gövdesi, görselleri.
+    // Panelden eklenen içerik SiteContentIndex üzerinden kendiliğinden girer; taslaklar girmez.
+    [HttpGet("icerik.json"), ResponseCache(Duration = CacheSeconds)]
+    public async Task<IActionResult> ContentJson()
+    {
+        var site = await _settings.GetAsync();
+        var pages = await _index.PagesAsync();
+        static string? Date(DateTime? utc) => utc is { } x ? DateTime.SpecifyKind(x, DateTimeKind.Utc).ToString("yyyy-MM-ddTHH:mm:ssZ") : null;
+        static string Kind(PageKind kind) => kind switch { PageKind.Service => "hizmet", PageKind.Project => "proje", PageKind.Article => "yazi", _ => "sayfa" };
+        var document = new Dictionary<string, object?>
+        {
+            ["$schema_note"] = "Karakuş Alüminyum web sitesinin makine tarafından okunabilir içerik dökümü. Alanlar Türkçedir; 'icerik' Markdown biçimindedir.",
+            ["guncelleme"] = Date(pages.Max(x => x.ModifiedUtc)),
+            ["isletme"] = new Dictionary<string, object?>
+            {
+                ["ad"] = site.SiteName, ["aciklama"] = site.SiteDescription, ["kurulus_yili"] = SiteSettings.FoundedYear, ["web"] = Base(site) + "/",
+                ["adres"] = site.Address, ["ilce"] = site.PrimaryServiceArea, ["sehir"] = site.City, ["ulke"] = "Türkiye",
+                ["konum"] = site.MapCoordinates is { } point ? new Dictionary<string, double> { ["enlem"] = point.Latitude, ["boylam"] = point.Longitude } : null,
+                ["telefonlar"] = site.Phones.Select(x => x.E164).ToList(), ["eposta"] = site.Email,
+                ["whatsapp"] = string.IsNullOrWhiteSpace(site.WhatsAppNumber) ? null : "https://wa.me/" + site.WhatsAppNumber,
+                ["calisma_saatleri"] = string.IsNullOrWhiteSpace(site.OpeningHours) ? null : site.OpeningHours,
+                ["hizmet_bolgesi"] = $"{site.City} ve tüm ilçeleri; {site.City} dışındaki projeler de değerlendirilir",
+                ["profiller"] = new[] { site.GoogleBusinessProfileUrl, site.InstagramUrl, site.FacebookUrl, site.LinkedInUrl }.Where(x => !string.IsNullOrWhiteSpace(x)).ToList(),
+                ["teklif"] = Absolute(site, "/iletisim")
+            },
+            ["sayfalar"] = pages.Select(x => new Dictionary<string, object?>
+            {
+                ["tur"] = Kind(x.Kind), ["baslik"] = x.Title, ["ozet"] = x.Description, ["url"] = Absolute(site, x.Path), ["markdown"] = Absolute(site, x.MarkdownPath),
+                ["guncelleme"] = Date(x.ModifiedUtc), ["gorseller"] = x.Images.Select(i => new Dictionary<string, string> { ["url"] = new Uri(Absolute(site, i.Path)).AbsoluteUri, ["baslik"] = i.Title }).ToList(),
+                ["icerik"] = AbsoluteLinks(site, x.Body)
+            }).ToList()
+        };
+        var json = System.Text.Json.JsonSerializer.Serialize(document, new System.Text.Json.JsonSerializerOptions
+        {
+            WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Create(System.Text.Unicode.UnicodeRanges.All),
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+        });
+        return Content(json, "application/json; charset=utf-8");
     }
 
     [HttpGet("index.md"), ResponseCache(Duration = CacheSeconds)]

@@ -82,12 +82,16 @@ public sealed class SeoService
         ["address"] = new Dictionary<string, object?>
         {
             ["@type"] = "PostalAddress",
-            ["addressLocality"] = site.City,
+            ["addressLocality"] = string.IsNullOrWhiteSpace(site.PrimaryServiceArea) ? site.City : site.PrimaryServiceArea,
             ["addressRegion"] = site.City,
             ["streetAddress"] = site.Address,
             ["addressCountry"] = "TR"
         },
-        ["areaServed"] = new[] { site.City, site.PrimaryServiceArea },
+        ["foundingDate"] = SiteSettings.FoundedYear.ToString(),
+        ["geo"] = site.MapCoordinates is { } point ? new Dictionary<string, object?> { ["@type"] = "GeoCoordinates", ["latitude"] = point.Latitude, ["longitude"] = point.Longitude } : null,
+        ["hasMap"] = string.IsNullOrWhiteSpace(site.GoogleBusinessProfileUrl) ? null : site.GoogleBusinessProfileUrl,
+        ["openingHours"] = string.IsNullOrWhiteSpace(site.OpeningHours) ? null : site.OpeningHours.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries),
+        ["areaServed"] = new[] { site.City, site.PrimaryServiceArea }.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().Select(x => new Dictionary<string, object?> { ["@type"] = x == site.City ? "City" : "AdministrativeArea", ["name"] = x }).ToArray(),
         ["sameAs"] = new[] { site.InstagramUrl, site.FacebookUrl, site.LinkedInUrl, site.GoogleBusinessProfileUrl }
             .Where(x => !string.IsNullOrWhiteSpace(x)).ToArray()
     };

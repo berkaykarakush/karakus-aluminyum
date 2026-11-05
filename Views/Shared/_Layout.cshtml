@@ -32,7 +32,7 @@
     <meta name="description" content="@seo.Description" />
     <meta name="robots" content="@seo.Robots" />
     <link rel="canonical" href="@canonical" />
-    @if (seo.IsIndexable) { <link rel="alternate" type="text/markdown" href="@seo.MarkdownPath" title="Markdown" /> }
+    @if (seo.IsIndexable) { <link rel="alternate" type="text/markdown" href="@seo.MarkdownPath" title="Markdown" /><link rel="alternate" type="application/json" href="/icerik.json" title="Site içeriği (JSON)" /> }
     <link rel="preload" as="font" type="font/woff2" href="/fonts/manrope-latin.woff2" crossorigin />
     <link rel="preload" as="font" type="font/woff2" href="/fonts/manrope-latin-ext.woff2" crossorigin />
     <link rel="preload" as="font" type="font/woff2" href="/fonts/instrument-serif-latin.woff2" crossorigin />
@@ -59,6 +59,8 @@
         <!script type="application/ld+json">@Html.Raw(Seo.PageGraphJson(seo, settings))</!script>
     }
     @if (!string.IsNullOrWhiteSpace(settings.GoogleSiteVerification)) { <meta name="google-site-verification" content="@settings.GoogleSiteVerification" /> }
+    @if (!string.IsNullOrWhiteSpace(settings.BingSiteVerification)) { <meta name="msvalidate.01" content="@settings.BingSiteVerification" /> }
+    @if (!string.IsNullOrWhiteSpace(settings.YandexVerification)) { <meta name="yandex-verification" content="@settings.YandexVerification" /> }
     @if (!string.IsNullOrWhiteSpace(settings.MetaDomainVerification)) { <meta name="facebook-domain-verification" content="@settings.MetaDomainVerification" /> }
     @await RenderSectionAsync("Head", required: false)
 </head>

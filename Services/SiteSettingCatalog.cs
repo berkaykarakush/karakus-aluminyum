@@ -35,6 +35,7 @@ public static class SiteSettingCatalog
         new("Address", ContactGroup, "Adres", "Karacaoğlan Mah. 6252 Sk. No: 3, Bornova/İzmir"),
         new("City", ContactGroup, "Şehir", "İzmir"),
         new("PrimaryServiceArea", ContactGroup, "Ana hizmet bölgesi", "Bornova"),
+        new("OpeningHours", ContactGroup, "Çalışma saatleri", "", Help: "Arama motorları için. Örn. Mo-Fr 08:30-18:30, Sa 09:00-14:00 (günler İngilizce kısaltmayla, gruplar virgülle).", Pattern: "^(Mo|Tu|We|Th|Fr|Sa|Su)(-(Mo|Tu|We|Th|Fr|Sa|Su))? [0-2][0-9]:[0-5][0-9]-[0-2][0-9]:[0-5][0-9](, ?(Mo|Tu|We|Th|Fr|Sa|Su)(-(Mo|Tu|We|Th|Fr|Sa|Su))? [0-2][0-9]:[0-5][0-9]-[0-2][0-9]:[0-5][0-9])*$", PatternError: "Örn. Mo-Fr 08:30-18:30, Sa 09:00-14:00"),
         new("GoogleMapsUrl", ContactGroup, "Google Haritalar gömme adresi", "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3125.168057091929!2d27.206807025382613!3d38.43758697370485!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14b962db502ab2f7%3A0xe5025465f1957d53!2zS2FyYWt1xZ8gQWzDvG1pbnl1bQ!5e0!3m2!1str!2str!4v1793255765258!5m2!1str!2str", Help: "Google Haritalar'da Paylaş > Harita yerleştir ekranındaki kodu veya adresi yapıştırın. Boş bırakılırsa İletişim sayfasında harita gösterilmez.", Pattern: "^https://www\\.google\\.com/maps/embed[?/][^\\s\"'<>]*$", PatternError: "Paylaş > Harita yerleştir ekranındaki kodu veya https://www.google.com/maps/embed ile başlayan adresi yapıştırın."),
 
         new("SiteName", SeoGroup, "Site adı", "Karakuş Alüminyum"),
@@ -50,6 +51,8 @@ public static class SiteSettingCatalog
         new("Ga4MeasurementId", AnalyticsGroup, "Google Analytics 4 ölçüm kimliği", "", Help: "Örn. G-ABC123DEF4. Analytics > Yönetici > Veri akışları ekranında yazar.", Pattern: "^G-[A-Z0-9]{4,20}$", PatternError: "G- ile başlayan kimliği büyük harflerle yazın."),
         new("MetaPixelId", AnalyticsGroup, "Meta Pixel kimliği", "", Help: "Yalnızca rakamlardan oluşur. Meta Events Manager > Veri kaynakları ekranında yazar.", Pattern: "^[0-9]{6,20}$", PatternError: "Yalnızca rakam kullanın."),
         new("GoogleSiteVerification", AnalyticsGroup, "Google Search Console doğrulama kodu", "", Help: "Yalnızca content değeri.", Pattern: "^[A-Za-z0-9_\\-]{10,120}$", PatternError: "Yalnızca kodun kendisini yazın."),
+        new("BingSiteVerification", AnalyticsGroup, "Bing Webmaster Tools doğrulama kodu", "", Help: "msvalidate.01 etiketinin yalnızca content değeri. ChatGPT ve Copilot aramaları Bing dizinini kullanır.", Pattern: "^[A-Za-z0-9_\\-]{10,120}$", PatternError: "Yalnızca kodun kendisini yazın."),
+        new("YandexVerification", AnalyticsGroup, "Yandex Webmaster doğrulama kodu", "", Help: "yandex-verification etiketinin yalnızca content değeri.", Pattern: "^[A-Za-z0-9_\\-]{10,120}$", PatternError: "Yalnızca kodun kendisini yazın."),
         new("MetaDomainVerification", AnalyticsGroup, "Meta alan adı doğrulama kodu", "", Help: "Yalnızca content değeri.", Pattern: "^[A-Za-z0-9_\\-]{10,120}$", PatternError: "Yalnızca kodun kendisini yazın."),
         new("FirstPartyAnalyticsEnabled", AnalyticsGroup, "Panel raporları için site ziyaretlerini kaydet", "true", SettingKind.Toggle, "Yalnızca çerez onayı veren ziyaretçiler için, IP adresi olmadan kaydedilir."),
         new("ConsentText", AnalyticsGroup, "Çerez bildirimi metni", "Sitemizi geliştirmek ve reklamlarımızı ölçmek için analiz çerezleri kullanıyoruz. Google ve Meta hizmetleri nedeniyle veriler yurt dışına aktarılabilir. Onay vermezseniz bu çerezler yüklenmez.", SettingKind.LongText),
@@ -62,8 +65,8 @@ public static class SiteSettingCatalog
         new("WhatsAppTemplateName", NotificationGroup, "WhatsApp şablon adı", "", Help: "Meta'da onaylanan şablonun adı. Kurulum için Bildirimler sayfasına bakın.", Pattern: "^[a-z0-9_]{1,512}$", PatternError: "Yalnızca küçük harf, rakam ve alt çizgi kullanın."),
         new("WhatsAppTemplateLanguage", NotificationGroup, "WhatsApp şablon dili", "tr", Pattern: "^[a-z]{2}(_[A-Z]{2})?$", PatternError: "Örn. tr"),
 
-        new("HeroEyebrow", HomeGroup, "Üst başlık", "Mimari Alüminyum Sistemleri"),
-        new("HeroTitle", HomeGroup, "Büyük başlık", "Mimariye değer katan"),
+        new("HeroEyebrow", HomeGroup, "Üst başlık", "İzmir Alüminyum ve Cam Sistemleri"),
+        new("HeroTitle", HomeGroup, "Büyük başlık", "İzmir’de mimariye değer katan"),
         new("HeroTitleEmphasis", HomeGroup, "Büyük başlık (vurgulu kısım)", "alüminyum çözümleri."),
         new("HeroText", HomeGroup, "Giriş metni", "Alüminyum ve PVC doğrama, cam balkon, giyotin ve sürme cam sistemleri ile otomatik kapı çözümleri sunuyoruz. Projenizi ölçüden uygulamaya birlikte planlıyoruz.", SettingKind.LongText),
         new("ApproachTitle", HomeGroup, "Yaklaşım başlığı", "Doğru sistemi doğru detayla kuruyoruz."),
@@ -72,7 +75,7 @@ public static class SiteSettingCatalog
         new("CtaText", HomeGroup, "Sayfa sonu çağrı metni", "Ölçü, çizim veya yalnızca fikrinizi paylaşın; size uygun seçenekleri birlikte değerlendirelim."),
 
         new("AboutTitle", AboutGroup, "Başlık", "Bizi yakından tanıyın."),
-        new("AboutIntro", AboutGroup, "Giriş metni", "Karakuş Alüminyum olarak İzmir'de konut, ticari ve endüstriyel yapılar için alüminyum, cam ve kapı sistemleri alanında hizmet veriyoruz.", SettingKind.LongText),
+        new("AboutIntro", AboutGroup, "Giriş metni", "Karakuş Alüminyum olarak 2001'den beri Bornova/İzmir'de konut, ticari ve endüstriyel yapılar için alüminyum, cam ve kapı sistemleri alanında hizmet veriyoruz.", SettingKind.LongText),
         new("AboutSectionTitle", AboutGroup, "Bölüm başlığı", "Proje odaklı çalışıyoruz."),
         new("AboutText", AboutGroup, "Bölüm metni", "İlk görüşmeden uygulamaya kadar süreci şeffaf biçimde yürütüyoruz. Önce ihtiyacınızı ve yapının koşullarını dinliyor, ardından yerinde ölçü alıyor ve kullanım amacınıza uygun sistem seçeneklerini teklifimizle birlikte sunuyoruz. Onaylanan detaylar doğrultusunda uygulamayı planlıyoruz.", SettingKind.LongText),
 

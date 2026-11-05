@@ -417,4 +417,90 @@ public sealed class SeoTests(PostgresFixture postgres)
         Assert.Contains("> Özel açıklama metni", await client.GetStringAsync("/llms.txt"));
         Assert.Equal("Özel açıklama metni", Node(Graph(await client.GetStringAsync("/")), "HomeAndConstructionBusiness").GetProperty("description").GetString());
     }
+
+    [Fact]
+    public async Task LocalBusinessSignals_ReachSchemaMetaAndLlms()
+    {
+        await using var app = postgres.CreateApp("seo_local");
+        var client = app.NewClient();
+        await client.GetAsync("/");
+        await SetAsync(app, "BingSiteVerification", "BING1234567890");
+        await SetAsync(app, "YandexVerification", "YANDEX1234567890");
+        await SetAsync(app, "OpeningHours", "Mo-Fr 08:30-18:30, Sa 09:00-14:00");
+
+        var html = await client.GetStringAsync("/");
+        Assert.Contains("<meta name=\"msvalidate.01\" content=\"BING1234567890\" />", html);
+        Assert.Contains("<meta name=\"yandex-verification\" content=\"YANDEX1234567890\" />", html);
+        Assert.Contains("<title>İzmir Alüminyum", html);
+        var business = Node(Graph(html), "HomeAndConstructionBusiness");
+        Assert.Equal("2001", business.GetProperty("foundingDate").GetString());
+        Assert.Equal("Bornova", business.GetProperty("address").GetProperty("addressLocality").GetString());
+        Assert.Equal(38.437587, business.GetProperty("geo").GetProperty("latitude").GetDouble(), 5);
+        Assert.Equal(27.206807, business.GetProperty("geo").GetProperty("longitude").GetDouble(), 5);
+        Assert.Equal(new[] { "Mo-Fr 08:30-18:30", "Sa 09:00-14:00" }, business.GetProperty("openingHours").EnumerateArray().Select(x => x.GetString()));
+        Assert.Contains(business.GetProperty("areaServed").EnumerateArray(), x => x.GetProperty("@type").GetString() == "City" && x.GetProperty("name").GetString() == "İzmir");
+
+        var llms = await client.GetStringAsync("/llms.txt");
+        Assert.Contains("- Kuruluş: 2001", llms);
+        Assert.Contains("- Çalışma saatleri: Mo-Fr 08:30-18:30, Sa 09:00-14:00", llms);
+        Assert.Contains("- Google İşletme Profili: https://", llms);
+        Assert.DoesNotContain("çözümleri..", await client.GetStringAsync("/index.md"));
+    }
+
+    [Fact]
+    public async Task OldDefaultHeroTexts_AreUpgraded_ButCustomTextIsKept()
+    {
+        await using var app = postgres.CreateApp("seo_upgrade");
+        app.NewClient();
+        await SetAsync(app, "HeroEyebrow", "Mimari Alüminyum Sistemleri");
+        await SetAsync(app, "HeroTitle", "Kendi başlığım");
+        await using (var scope = app.Services.CreateAsyncScope()) await SeedData.InitializeAsync(scope.ServiceProvider, scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>());
+        var html = await app.NewClient().GetStringAsync("/");
+        Assert.Contains("İzmir Alüminyum ve Cam Sistemleri", html);
+        Assert.Contains("Kendi başlığım", html);
+    }
+
+    [Fact]
+    public async Task ContentJson_IsDynamic_AndHidesDrafts()
+    {
+        await using var app = postgres.CreateApp("seo_json");
+        var client = app.NewClient();
+        var slug = Tag();
+        var secret = Tag();
+        await AddAsync(app, new BlogPost { Title = "JSON yazısı " + slug, Slug = slug, Summary = "Özet " + slug, Content = "Gövde [bağlantı](/urunler)", IsPublished = true, PublishedUtc = DateTime.UtcNow }, x => x.Id);
+        await AddAsync(app, new BlogPost { Title = "Taslak", Slug = secret, Summary = "x", Content = "Gizli " + secret, IsPublished = false }, x => x.Id);
+
+        var response = await client.GetAsync("/icerik.json");
+        Assert.Equal("application/json", response.Content.Headers.ContentType!.MediaType);
+        var text = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain(secret, text);
+        using var json = JsonDocument.Parse(text);
+        var business = json.RootElement.GetProperty("isletme");
+        Assert.Equal(2001, business.GetProperty("kurulus_yili").GetInt32());
+        Assert.Equal("Bornova", business.GetProperty("ilce").GetString());
+        var pages = json.RootElement.GetProperty("sayfalar").EnumerateArray().ToList();
+        Assert.Contains(pages, x => x.GetProperty("tur").GetString() == "hizmet");
+        var post = Assert.Single(pages, x => x.GetProperty("url").GetString() == $"{Domain}/blog/{slug}");
+        Assert.Equal("yazi", post.GetProperty("tur").GetString());
+        Assert.Equal($"{Domain}/blog/{slug}.md", post.GetProperty("markdown").GetString());
+        Assert.Contains($"]({Domain}/urunler)", post.GetProperty("icerik").GetString());
+        Assert.Contains("/icerik.json", await client.GetStringAsync("/llms.txt"));
+        Assert.Contains("type=\"application/json\" href=\"/icerik.json\"", await client.GetStringAsync("/"));
+    }
+
+    [Fact]
+    public async Task AboutAndContactPages_GetLastmod_WhenTheirSettingsChange()
+    {
+        await using var app = postgres.CreateApp("seo_settings_lastmod");
+        var admin = app.NewClient();
+        await admin.LoginAsync(AppFactory.AdminEmail);
+        var client = app.NewClient();
+        Assert.Null((await SitemapAsync(client))[$"{Domain}/kurumsal"].Element(SitemapNs + "lastmod"));
+
+        var token = await admin.GetTokenAsync("/yonetim/ayarlar");
+        await admin.PostFormAsync("/yonetim/ayarlar/kaydet", token, ("values[AboutIntro]", "Yeni kurumsal giriş metni"));
+        var sitemap = await SitemapAsync(client);
+        Assert.NotNull(sitemap[$"{Domain}/kurumsal"].Element(SitemapNs + "lastmod"));
+        Assert.Null(sitemap[$"{Domain}/iletisim"].Element(SitemapNs + "lastmod")); // iletişim ayarı değişmedi
+    }
 }

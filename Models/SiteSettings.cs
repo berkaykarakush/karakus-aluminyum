@@ -39,6 +39,21 @@ public sealed class SiteSettings
     public string MetaPixelId { get; set; } = "";
     public string GoogleSiteVerification { get; set; } = "";
     public string MetaDomainVerification { get; set; } = "";
+    public string BingSiteVerification { get; set; } = "";
+    public string YandexVerification { get; set; } = "";
+    public string OpeningHours { get; set; } = "";
+    // Harita gömme adresindeki konum (!3d enlem, !2d boylam); işletme şemasında koordinat olarak kullanılır.
+    public (double Latitude, double Longitude)? MapCoordinates
+    {
+        get
+        {
+            var lat = System.Text.RegularExpressions.Regex.Match(GoogleMapsUrl, "!3d(-?[0-9]+\\.[0-9]+)");
+            var lng = System.Text.RegularExpressions.Regex.Match(GoogleMapsUrl, "!2d(-?[0-9]+\\.[0-9]+)");
+            if (!lat.Success || !lng.Success) return null;
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            return (Math.Round(double.Parse(lat.Groups[1].Value, inv), 6), Math.Round(double.Parse(lng.Groups[1].Value, inv), 6));
+        }
+    }
     public string FirstPartyAnalyticsEnabled { get; set; } = "true";
     public string LegalName { get; set; } = "Karakuş Alüminyum";
     public string SiteDescription { get; set; } = "İzmir'de mimari alüminyum doğrama ve sistem çözümleri.";
