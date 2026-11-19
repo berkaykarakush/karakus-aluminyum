@@ -134,6 +134,7 @@ public sealed class ContractsController : Controller
         if (contract is null) return NotFound();
         var content = DocumentJson.ParseContent(contract.DocumentJson);
         ViewBag.PlanErrors = PaymentPlan.Validate(content.Payments, contract.TotalAmount).ToList();
+        ViewBag.OrderId = await _db.ProductionOrders.Where(x => x.ContractId == id || (contract.QuoteId != null && x.QuoteId == contract.QuoteId)).Select(x => (int?)x.Id).FirstOrDefaultAsync();
         ViewBag.PublicUrl = DocumentLinks.Url(Request, DocumentLinks.Contract, await DocumentLinks.EnsureContractAsync(_db, contract.Id, contract.PublicToken));
         return View(contract);
     }

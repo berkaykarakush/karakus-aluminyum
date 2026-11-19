@@ -137,6 +137,7 @@ public sealed class QuotesController : Controller
         var quote = await _db.Quotes.AsNoTracking().Include(x => x.Customer).Include(x => x.Items).Include(x => x.DrawingList).Include(x => x.GlassType).FirstOrDefaultAsync(x => x.Id == id);
         if (quote is null) return NotFound();
         ViewBag.ContractId = await _db.Contracts.Where(x => x.QuoteId == id).Select(x => (int?)x.Id).FirstOrDefaultAsync();
+        ViewBag.OrderId = await _db.ProductionOrders.Where(x => x.QuoteId == id).Select(x => (int?)x.Id).FirstOrDefaultAsync();
         ViewBag.PublicUrl = DocumentLinks.Url(Request, DocumentLinks.Quote, await DocumentLinks.EnsureQuoteAsync(_db, quote.Id, quote.PublicToken));
         return View(quote);
     }

@@ -1,0 +1,21 @@
+@model List<KarakusAluminyum.Web.Models.Production.Installer>
+@{ ViewData["Title"] = "Montajcılar"; var open = (Dictionary<int, int>)ViewBag.Open; }
+<div class="admin-actions"><h1>Montajcılar</h1><a class="admin-btn" href="/yonetim/siparisler/montajcilar/ekle">+ Ekip ekle</a><a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler">Siparişler</a><a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler/planlama">Montaj takvimi</a></div>
+<p class="admin-muted">Kendi montaj ekipleriniz ve taşeronlar. Siparişe ekip ve montaj tarihi atanır; üretim planında montaj takvimi görünür.</p>
+<div class="admin-panel">
+  <table class="admin-table">
+    <thead><tr><th>Ekip</th><th>Telefon</th><th>Kişi</th><th>Tür</th><th>Açık sipariş</th><th>Durum</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var x in Model)
+    {
+      <tr>
+        <td><strong>@x.Name</strong>@if (!string.IsNullOrWhiteSpace(x.Notes)) { <div class="admin-muted">@x.Notes</div> }</td>
+        <td>@x.Phone</td><td>@x.TeamSize</td><td>@(x.IsSubcontractor ? "Taşeron" : "Kendi ekibimiz")</td>
+        <td>@open.GetValueOrDefault(x.Id)</td><td>@(x.IsActive ? "Aktif" : "Pasif")</td>
+        <td><a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler/montajcilar/duzenle/@x.Id">Düzenle</a></td>
+      </tr>
+    }
+    </tbody>
+  </table>
+  @if (Model.Count == 0) { <p class="admin-muted">Henüz montaj ekibi yok.</p> }
+</div>

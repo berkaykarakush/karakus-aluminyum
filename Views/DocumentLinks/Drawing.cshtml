@@ -14,15 +14,18 @@
   <meta name="robots" content="noindex, nofollow" />
   <title>@Model.Name - Çizim listesi</title>
   <link rel="stylesheet" href="~/css/document-print.css" asp-append-version="true" />
+  <link rel="stylesheet" href="~/css/brand.css" asp-append-version="true" />
   <link rel="stylesheet" href="~/css/poz-list.css" asp-append-version="true" />
   <style>@@page{size:A4;margin:10mm}.poz-public{max-width:210mm;margin:0 auto;padding:10mm;background:#fff;box-shadow:0 4px 18px rgba(0,0,0,.14)}@@media print{.poz-public{max-width:none;padding:0;box-shadow:none}}</style>
 </head>
 <body class="doc">
+  <partial name="~/Areas/Admin/Views/Shared/_BrandLayer.cshtml" />
   @if (ViewData["PublicNote"] is string note) { <partial name="~/Areas/Admin/Views/Documents/_PublicBanner.cshtml" model="note" /> }
   <div class="doc-toolbar"><button type="button" onclick="window.print()">Yazdır / PDF kaydet</button></div>
   <div class="poz-public">
     <table class="poz-sheet">
       <thead><tr><td><partial name="~/Areas/Admin/Views/Shared/_PozSheetHead.cshtml" model="new PozSheetHeadVm(Model, pozlar)" /></td></tr></thead>
+      <tfoot><tr><td><div class="poz-foot-space"></div></td></tr></tfoot>
       <tbody><tr><td>
         <partial name="~/Areas/Admin/Views/Shared/_PozList.cshtml" model="pozlar" />
         <div class="poz-totals">
@@ -33,6 +36,7 @@
       </td></tr></tbody>
     </table>
   </div>
+  <div class="poz-print-foot"><partial name="~/Areas/Admin/Views/Shared/_BrandFoot.cshtml" /></div>
   <script src="~/js/units.js" asp-append-version="true"></script>
   <script src="~/js/window-drawing.js" asp-append-version="true"></script>
   <script src="~/js/poz-list.js" asp-append-version="true"></script>

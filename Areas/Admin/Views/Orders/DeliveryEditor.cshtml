@@ -1,0 +1,45 @@
+@model KarakusAluminyum.Web.Models.Production.DeliveryNoteInputVm
+@using KarakusAluminyum.Web.Services.Production
+@{
+    var order = (KarakusAluminyum.Web.Models.Production.ProductionOrder)ViewBag.Order;
+    var progress = ((List<DeliveryProgress>)ViewBag.Progress).ToDictionary(p => p.Design.Id);
+    ViewData["Title"] = "İrsaliye kes";
+    var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
+}
+<div class="admin-actions"><h1>İrsaliye kes · @order.OrderNumber</h1><a class="admin-btn" href="/yonetim/siparisler/detay/@order.Id">Vazgeç</a></div>
+<form class="admin-form admin-panel" method="post" action="/yonetim/siparisler/irsaliye/ekle/@order.Id">
+  @Html.AntiForgeryToken()
+  <div asp-validation-summary="All"></div>
+  <p class="admin-muted">Kalan adetlerin tamamı gelir; kısmi sevkte adedi azaltın, sevk edilmeyecek satırı 0 yapın. Tüm pozlar sevk edilince sipariş "Sevk edildi" olur.</p>
+  <div class="admin-grid">
+    <div><label asp-for="Date">İrsaliye tarihi</label><input asp-for="Date" type="date" /></div>
+    <div><label asp-for="Vehicle">Araç plakası</label><input asp-for="Vehicle" /></div>
+    <div><label asp-for="Driver">Teslim eden / şoför</label><input asp-for="Driver" /></div>
+  </div>
+  <label asp-for="Address">Sevk adresi</label><textarea asp-for="Address" rows="2"></textarea>
+  <table class="admin-table" style="margin-top:12px">
+    <thead><tr><th>Poz</th><th>Kalan</th><th>Sevk adedi</th><th>Birim</th></tr></thead>
+    <tbody>
+    @for (var i = 0; i < Model.Lines.Count; i++)
+    {
+      var line = Model.Lines[i];
+      var remaining = line.WindowDesignId is int d && progress.TryGetValue(d, out var p) ? p.Remaining.ToString("0.###", culture) : "-";
+      <tr>
+        <td><input type="hidden" name="Lines[@i].WindowDesignId" value="@line.WindowDesignId" /><input type="hidden" name="Lines[@i].Description" value="@line.Description" />@line.Description</td>
+        <td>@remaining</td>
+        <td><input type="number" name="Lines[@i].Quantity" value="@line.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture)" min="0" step="1" aria-label="@line.Description sevk adedi" style="max-width:120px" /></td>
+        <td><input type="hidden" name="Lines[@i].Unit" value="@(line.Unit ?? "Adet")" />@(line.Unit ?? "Adet")</td>
+      </tr>
+    }
+    @* Pozla bağlı olmayan ek satır (ör. aksesuar, sineklik) *@
+    <tr>
+      <td><input name="Lines[@Model.Lines.Count].Description" placeholder="Ek satır (ör. sineklik, aksesuar)" aria-label="Ek satır açıklaması" /></td>
+      <td>-</td>
+      <td><input type="number" name="Lines[@Model.Lines.Count].Quantity" value="0" min="0" step="any" aria-label="Ek satır adedi" style="max-width:120px" /></td>
+      <td><input name="Lines[@Model.Lines.Count].Unit" value="Adet" aria-label="Ek satır birimi" style="max-width:90px" /></td>
+    </tr>
+    </tbody>
+  </table>
+  <label asp-for="Notes">Not</label><input asp-for="Notes" />
+  <div class="admin-actions"><button class="admin-btn" type="submit">İrsaliyeyi kes</button></div>
+</form>

@@ -1,0 +1,24 @@
+@model List<KarakusAluminyum.Web.Models.Production.ProductionOrder>
+@using KarakusAluminyum.Web.Services.Production
+@{
+    var loads = (Dictionary<int, OrderLoad>)ViewData["Loads"]!;
+    var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
+}
+<table class="admin-table">
+  <thead><tr><th>Sipariş</th><th>Müşteri</th><th>Durum</th><th>Sevk</th><th>Poz / Adet</th><th>m²</th><th>İşaretler</th></tr></thead>
+  <tbody>
+  @foreach (var o in Model)
+  {
+    var load = o.DrawingListId is int id ? loads.GetValueOrDefault(id, OrderLoad.Empty) : OrderLoad.Empty;
+    <tr>
+      <td><a href="/yonetim/siparisler/detay/@o.Id">@o.OrderNumber</a><div class="admin-muted">@o.Title</div></td>
+      <td>@o.Customer?.Name</td>
+      <td><partial name="_Status" model="o.Status" /></td>
+      <td>@KarakusAluminyum.Web.Areas.Admin.Controllers.OrdersController.Date(o.PlannedShipDate)</td>
+      <td>@load.Positions / @load.Units</td>
+      <td>@load.AreaM2.ToString("0.00", culture)</td>
+      <td><partial name="_Flags" model="o" /></td>
+    </tr>
+  }
+  </tbody>
+</table>

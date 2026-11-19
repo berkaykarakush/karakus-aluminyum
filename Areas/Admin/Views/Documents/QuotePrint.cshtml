@@ -1,7 +1,9 @@
 @model KarakusAluminyum.Web.Services.Documents.QuotePrintVm
 @using KarakusAluminyum.Web.Models.Crm
 @using KarakusAluminyum.Web.Services.Documents
+@inject DocumentBrandingProvider Branding
 @{
+    var brand = await Branding.GetAsync();
     // Proforma fatura (ERP'lerdeki satış teklifi düzeni): satıcı ve alıcı bilgileri, belge bilgileri, kalem tablosu,
     // iskonto ve KDV dökümü, yazıyla tutar, teknik özellikler, şartlar, banka bilgileri ve müşteri onay kutusu.
     Layout = null;
@@ -23,6 +25,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>@t.Title - @Model.CustomerName</title>
   <link rel="stylesheet" href="~/css/document-print.css" asp-append-version="true" />
+  <link rel="stylesheet" href="~/css/brand.css" asp-append-version="true" />
   <link rel="stylesheet" href="~/css/poz-list.css" asp-append-version="true" />
   @if (Model.Presentation is not null)
   {
@@ -33,6 +36,7 @@
   }
 </head>
 <body class="doc doc--quote doc--proforma">
+  <partial name="~/Areas/Admin/Views/Shared/_BrandLayer.cshtml" />
   @if (ViewData["PublicNote"] is string publicNote) { <partial name="~/Areas/Admin/Views/Documents/_PublicBanner.cshtml" model="publicNote" /> }
   <div class="doc-toolbar">
     @if (quote.Id != 0 && ViewData["PublicNote"] is null)
@@ -57,8 +61,9 @@
           <strong>@(string.IsNullOrWhiteSpace(t.SellerLegalName) ? t.SellerName : t.SellerLegalName)</strong>
           @if (!string.IsNullOrWhiteSpace(t.SellerAddress)) { <div>@t.SellerAddress</div> }
           @if (!string.IsNullOrWhiteSpace(t.SellerTaxInfo)) { <div>VD / VKN: @t.SellerTaxInfo</div> }
-          @if (!string.IsNullOrWhiteSpace(t.Phone)) { <div>Tel: @t.Phone</div> }
-          @if (!string.IsNullOrWhiteSpace(t.SellerEmail)) { <div>E-posta: @t.SellerEmail</div> }
+          @if (!string.IsNullOrWhiteSpace(brand.Phone)) { <div>Tel: @brand.Phone@(string.IsNullOrWhiteSpace(brand.Phone2) ? "" : " · " + brand.Phone2)</div> }
+          @if (!string.IsNullOrWhiteSpace(t.SellerEmail ?? brand.Email)) { <div>E-posta: @(t.SellerEmail ?? brand.Email)</div> }
+          @if (!string.IsNullOrWhiteSpace(brand.Website)) { <div>Web: @brand.Website</div> }
         </section>
         <section class="pf-party">
           <h3>Alıcı</h3>

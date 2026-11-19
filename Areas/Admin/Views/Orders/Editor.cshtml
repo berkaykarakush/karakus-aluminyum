@@ -1,0 +1,27 @@
+@model KarakusAluminyum.Web.Models.Production.OrderInputVm
+@{
+    var editing = Model.Id != 0;
+    ViewData["Title"] = editing ? "Siparişi düzenle" : "Yeni sipariş";
+    var action = editing ? $"/yonetim/siparisler/duzenle/{Model.Id}" : "/yonetim/siparisler/ekle";
+}
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="@(editing ? $"/yonetim/siparisler/detay/{Model.Id}" : "/yonetim/siparisler")">Vazgeç</a></div>
+<form class="admin-form admin-panel" method="post" action="@action">
+  @Html.AntiForgeryToken()
+  <div asp-validation-summary="All"></div>
+  <div class="admin-grid">
+    <div><label asp-for="CustomerId">Müşteri *</label><select asp-for="CustomerId" asp-items="(SelectList)ViewBag.Customers" required><option value="">Müşteri seçin</option></select></div>
+    <div><label asp-for="Title">Sipariş başlığı *</label><input asp-for="Title" required placeholder="Örn. A Blok PVC doğramalar" /></div>
+    <div><label asp-for="DrawingListId">Çizim listesi (pozlar)</label><select asp-for="DrawingListId" asp-items="(SelectList)ViewBag.Lists"><option value="">Seçilmedi</option></select></div>
+    <div><label asp-for="OrderDate">Sipariş tarihi</label><input asp-for="OrderDate" type="date" /></div>
+    <div><label asp-for="PlannedShipDate">Sevk (teslim) tarihi</label><input asp-for="PlannedShipDate" type="date" /></div>
+    <div><label asp-for="ContactPhone">Şantiye / yetkili telefonu</label><input asp-for="ContactPhone" /></div>
+  </div>
+  <label asp-for="InstallAddress">Montaj adresi</label><textarea asp-for="InstallAddress" rows="2"></textarea>
+  <div class="admin-grid">
+    <label><input asp-for="GlassExcluded" style="width:auto" /> Cam hariç (camı müşteri temin eder)</label>
+    <label><input asp-for="InstallationExcluded" style="width:auto" /> Montaj hariç</label>
+    <label><input asp-for="Reserved" style="width:auto" /> Rezerve (malzeme ayrıldı)</label>
+  </div>
+  <label asp-for="Notes">Notlar</label><textarea asp-for="Notes" rows="3"></textarea>
+  <div class="admin-actions"><button class="admin-btn" type="submit">@(editing ? "Kaydet" : "Siparişi oluştur")</button></div>
+</form>

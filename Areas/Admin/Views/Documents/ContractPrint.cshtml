@@ -16,9 +16,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>@t.Title - @contract.BuyerName</title>
   <link rel="stylesheet" href="~/css/document-print.css" asp-append-version="true" />
+  <link rel="stylesheet" href="~/css/brand.css" asp-append-version="true" />
   <link rel="stylesheet" href="~/css/poz-list.css" asp-append-version="true" />
 </head>
 <body class="doc doc--contract">
+  <partial name="~/Areas/Admin/Views/Shared/_BrandLayer.cshtml" />
   @if (ViewData["PublicNote"] is string publicNote) { <partial name="~/Areas/Admin/Views/Documents/_PublicBanner.cshtml" model="publicNote" /> }
   <div class="doc-toolbar"><button type="button" onclick="window.print()">Yazdır / PDF kaydet</button></div>
   <table class="doc-sheet">

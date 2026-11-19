@@ -5,15 +5,13 @@
     var brands = items.Where(x => x.Brand is not null).Select(x => x.Brand!).DistinctBy(x => x.Id).ToList();
     var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
 }
+@{ var brandHead = new KarakusAluminyum.Web.Services.Documents.BrandHeadVm(null, Model.List.UpdatedUtc.ToLocalTime().ToString("dd/MM/yyyy")); }
+<partial name="~/Areas/Admin/Views/Shared/_BrandHead.cshtml" model="brandHead" />
 <header class="poz-sheet__head">
   <dl><dt>Liste No</dt><dd>@Model.List.Id</dd><dt>Liste</dt><dd>@Model.List.Name</dd></dl>
   <dl><dt>Müşteri</dt><dd>@(Model.List.Customer?.Name ?? "-")</dd><dt>Tarih</dt><dd>@Model.List.UpdatedUtc.ToLocalTime().ToString("dd.MM.yyyy")</dd></dl>
   <dl><dt>Poz / Adet</dt><dd>@items.Count / @items.Sum(x => x.Quantity)</dd><dt>Toplam alan</dt><dd>@Model.Pozlar.Sum(x => x.AreaM2 * x.Design.Quantity).ToString("0.00", culture) m²</dd></dl>
   <div class="poz-sheet__side">
     <div class="poz-sheet__brands">@foreach (var brand in brands) { @if (!string.IsNullOrEmpty(brand.LogoPath)) { <img src="@brand.LogoPath" alt="@brand.Name" /> } else { <span>@brand.Name</span> } }</div>
-    @if (ViewData["Qr"] is KarakusAluminyum.Web.Services.Documents.DocumentQr qr)
-    {
-      <a class="poz-sheet__qr" href="@qr.Url" title="Listenin asıl halini aç">@Html.Raw(qr.Svg)<span>Asıl belge</span></a>
-    }
   </div>
 </header>

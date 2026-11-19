@@ -4,6 +4,7 @@ using KarakusAluminyum.Web.Models.Analytics;
 using KarakusAluminyum.Web.Models.Crm;
 using KarakusAluminyum.Web.Models.Documents;
 using KarakusAluminyum.Web.Models.Drawing;
+using KarakusAluminyum.Web.Models.Production;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -49,6 +50,11 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<AnalyticsEvent> AnalyticsEvents => Set<AnalyticsEvent>();
     public DbSet<GlassList> GlassLists => Set<GlassList>();
     public DbSet<GlassListItem> GlassListItems => Set<GlassListItem>();
+    public DbSet<ProductionOrder> ProductionOrders => Set<ProductionOrder>();
+    public DbSet<OrderEvent> OrderEvents => Set<OrderEvent>();
+    public DbSet<Installer> Installers => Set<Installer>();
+    public DbSet<DeliveryNote> DeliveryNotes => Set<DeliveryNote>();
+    public DbSet<DeliveryNoteLine> DeliveryNoteLines => Set<DeliveryNoteLine>();
     public DbSet<DocumentTemplate> DocumentTemplates => Set<DocumentTemplate>();
     public DbSet<TemplateClause> TemplateClauses => Set<TemplateClause>();
     public DbSet<Contract> Contracts => Set<Contract>();
@@ -62,6 +68,21 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+
+        // Üretim siparişleri: müşteri silinemez; teklif, sözleşme, çizim listesi, camcı ve montajcı silinirse bağ kopar.
+        builder.Entity<ProductionOrder>().HasIndex(x => x.OrderNumber).IsUnique();
+        builder.Entity<ProductionOrder>().HasIndex(x => x.Status);
+        builder.Entity<ProductionOrder>().HasIndex(x => x.PlannedShipDate);
+        builder.Entity<ProductionOrder>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<ProductionOrder>().HasOne(x => x.GlassSupplier).WithMany().HasForeignKey(x => x.GlassSupplierId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<ProductionOrder>().HasOne(x => x.Quote).WithMany().HasForeignKey(x => x.QuoteId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<ProductionOrder>().HasOne(x => x.Contract).WithMany().HasForeignKey(x => x.ContractId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<ProductionOrder>().HasOne(x => x.DrawingList).WithMany().HasForeignKey(x => x.DrawingListId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<ProductionOrder>().HasOne(x => x.Installer).WithMany().HasForeignKey(x => x.InstallerId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<OrderEvent>().HasOne(x => x.ProductionOrder).WithMany(x => x.Events).HasForeignKey(x => x.ProductionOrderId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<DeliveryNote>().HasIndex(x => x.Number).IsUnique();
+        builder.Entity<DeliveryNote>().HasOne(x => x.ProductionOrder).WithMany(x => x.DeliveryNotes).HasForeignKey(x => x.ProductionOrderId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<DeliveryNoteLine>().HasOne(x => x.DeliveryNote).WithMany(x => x.Lines).HasForeignKey(x => x.DeliveryNoteId).OnDelete(DeleteBehavior.Cascade);
         builder.Entity<ServiceContent>().HasIndex(x => x.Slug).IsUnique();
         builder.Entity<PortfolioProject>().HasIndex(x => x.Slug).IsUnique();
         builder.Entity<BlogPost>().HasIndex(x => x.Slug).IsUnique();

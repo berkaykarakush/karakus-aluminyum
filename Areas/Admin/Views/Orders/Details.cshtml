@@ -1,0 +1,189 @@
+@model KarakusAluminyum.Web.Models.Production.ProductionOrder
+@using KarakusAluminyum.Web.Models.Production
+@using KarakusAluminyum.Web.Services.Production
+@{
+    ViewData["Title"] = "Sipariş " + Model.OrderNumber;
+    var progress = (List<DeliveryProgress>)ViewBag.Progress;
+    var load = (OrderLoad)ViewBag.Load;
+    var installers = (List<Installer>)ViewBag.Installers;
+    var systemIds = (List<int>)ViewBag.SystemIds;
+    var today = DateOnly.FromDateTime(DateTime.Today);
+    var late = OrderService.IsLate(Model, today);
+    var closed = !OrderStatuses.IsOpen(Model.Status);
+    var currentIndex = Array.IndexOf(OrderStatuses.Flow, Model.Status);
+    var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
+    string D(DateOnly? d) => KarakusAluminyum.Web.Areas.Admin.Controllers.OrdersController.Date(d);
+    string Iso(DateOnly? d) => d?.ToString("yyyy-MM-dd") ?? "";
+    var suppliers = new SelectList(((SelectList)ViewBag.Suppliers).Items, "Id", "Name", Model.GlassSupplierId);
+}
+<link rel="stylesheet" href="~/css/orders.css" asp-append-version="true" />
+<div class="or-page">
+<div class="admin-actions">
+  <h1>Sipariş @Model.OrderNumber</h1>
+  <partial name="_Status" model="Model.Status" />
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler">Siparişler</a>
+  <a class="admin-btn" href="/yonetim/siparisler/duzenle/@Model.Id">Düzenle</a>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler/is-emri/@Model.Id" target="_blank" rel="noopener">İş emri</a>
+  @if (systemIds.Count > 0) { <form method="post" action="/yonetim/siparisler/kesime-gonder/@Model.Id">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--secondary" title="Kesim planını açar ve siparişi kesime gönderildi olarak işaretler">Kesime gönder</button></form> }
+  @if (!closed && progress.Any(p => p.Remaining > 0)) { <a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler/irsaliye/ekle/@Model.Id">İrsaliye kes</a> }
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler/teslim-tutanagi/@Model.Id" target="_blank" rel="noopener">Teslim tutanağı</a>
+  @if (Model.Status is OrderStatus.Plan or OrderStatus.Cancelled && Model.DeliveryNotes.Count == 0)
+  {
+    <form method="post" action="/yonetim/siparisler/sil/@Model.Id" onsubmit="return confirm('Sipariş silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form>
+  }
+</div>
+<h2 style="margin:0 0 6px">@Model.Title</h2>
+<p class="admin-muted">@Model.Customer?.Name · Sipariş @D(Model.OrderDate) · Sevk @D(Model.PlannedShipDate)@if (late) { <span class="or-late"> · Sevk tarihi geçti</span> }</p>
+
+@* Ercom'daki sipariş durumu seçenekleri: tıklanan durum kaydedilir ve geçmişe yazılır. *@
+<div class="admin-panel">
+  <h3 style="margin-top:0">Sipariş durumu</h3>
+  <ol class="or-steps">
+    @for (var i = 0; i < OrderStatuses.Flow.Length; i++)
+    {
+      var status = OrderStatuses.Flow[i];
+      var state = status == Model.Status ? "is-current" : (currentIndex >= 0 && i < currentIndex ? "is-done" : "");
+      <li class="@state">
+        <form method="post" action="/yonetim/siparisler/durum/@Model.Id">@Html.AntiForgeryToken()<input type="hidden" name="status" value="@status" /><button disabled="@(status == Model.Status || Model.Status == OrderStatus.Cancelled)">@(i + 1). @OrderStatuses.Label(status)</button></form>
+      </li>
+    }
+  </ol>
+  @if (OrderStatuses.IsOpen(Model.Status))
+  {
+    <form method="post" action="/yonetim/siparisler/durum/@Model.Id" class="admin-actions" onsubmit="return confirm('Sipariş iptal edilsin mi?')">
+      @Html.AntiForgeryToken()<input type="hidden" name="status" value="@OrderStatus.Cancelled" />
+      <input name="note" placeholder="İptal nedeni" aria-label="İptal nedeni" style="max-width:320px" />
+      <button class="admin-btn admin-btn--danger">Siparişi iptal et</button>
+    </form>
+  }
+</div>
+
+<div class="or-grid">
+  <div class="admin-panel">
+    <h3 style="margin-top:0">Sipariş bilgileri</h3>
+    <dl class="or-dl">
+      <dt>Müşteri</dt><dd>@if (Model.Customer is not null) { <a href="/yonetim/crm/musteriler/duzenle/@Model.CustomerId">@Model.Customer.Name</a> }</dd>
+      <dt>Montaj adresi</dt><dd>@(Model.InstallAddress ?? "-")</dd>
+      <dt>Telefon</dt><dd>@(Model.ContactPhone ?? "-")</dd>
+      <dt>İş yükü</dt><dd>@load.Positions poz · @load.Units adet · @load.AreaM2.ToString("0.00", culture) m²</dd>
+      <dt>Çizim listesi</dt><dd>@if (Model.DrawingList is not null) { <a href="/yonetim/cizim/detay/@Model.DrawingListId">@Model.DrawingList.Name</a> } else { <span class="admin-muted">Bağlı değil</span> }</dd>
+      <dt>Teklif</dt><dd>@if (Model.Quote is not null) { <a href="/yonetim/crm/teklifler/detay/@Model.QuoteId">@Model.Quote.QuoteNumber</a> } else { <span>-</span> }</dd>
+      <dt>Sözleşme</dt><dd>@if (Model.Contract is not null) { <a href="/yonetim/sozlesmeler/detay/@Model.ContractId">@Model.Contract.ContractNumber</a> } else { <span>-</span> }</dd>
+      <dt>Sevk edildi</dt><dd>@D(Model.ShippedOn)</dd>
+      <dt>Teslim edildi</dt><dd>@D(Model.DeliveredOn)</dd>
+    </dl>
+    @if (!string.IsNullOrWhiteSpace(Model.Notes)) { <p style="white-space:pre-wrap;margin:10px 0 0">@Model.Notes</p> }
+  </div>
+
+  <div class="admin-panel">
+    <h3 style="margin-top:0">Sipariş işaretleri</h3>
+    <form method="post" action="/yonetim/siparisler/isaretler/@Model.Id">
+      @Html.AntiForgeryToken()
+      <div class="or-checks">
+        <label><input type="checkbox" name="sentToCutting" value="true" checked="@Model.SentToCutting" /> Kesime gönderildi</label>
+        <label><input type="checkbox" name="stockDeducted" value="true" checked="@Model.StockDeducted" /> Stok düşüldü</label>
+        <label><input type="checkbox" name="glassExcluded" value="true" checked="@Model.GlassExcluded" /> Cam hariç</label>
+        <label><input type="checkbox" name="installationExcluded" value="true" checked="@Model.InstallationExcluded" /> Montaj hariç</label>
+        <label><input type="checkbox" name="reserved" value="true" checked="@Model.Reserved" /> Rezerve</label>
+      </div>
+      <button class="admin-btn admin-btn--secondary">İşaretleri kaydet</button>
+    </form>
+  </div>
+
+  <div class="admin-panel">
+    <h3 style="margin-top:0">Cam</h3>
+    @if (Model.GlassExcluded) { <p class="admin-muted">Bu siparişte cam hariç.</p> }
+    else
+    {
+      <form method="post" action="/yonetim/siparisler/cam/@Model.Id">
+        @Html.AntiForgeryToken()
+        <label for="glass-supplier">Camcı (tedarikçi cari)</label>
+        <select id="glass-supplier" name="glassSupplierId" asp-items="suppliers"><option value="">Seçilmedi</option></select>
+        <div class="or-form-row">
+          <div><label for="glass-ordered">Sipariş verildi</label><input id="glass-ordered" type="date" name="glassOrderedOn" value="@Iso(Model.GlassOrderedOn)" /></div>
+          <div><label for="glass-expected">Beklenen teslim</label><input id="glass-expected" type="date" name="glassExpectedOn" value="@Iso(Model.GlassExpectedOn)" /></div>
+          <div><label for="glass-received">Teslim alındı</label><input id="glass-received" type="date" name="glassReceivedOn" value="@Iso(Model.GlassReceivedOn)" /></div>
+        </div>
+        <div class="admin-actions" style="margin-top:8px">
+          <button class="admin-btn admin-btn--secondary">Cam bilgilerini kaydet</button>
+          @if (Model.DrawingListId is not null) { <a class="admin-btn admin-btn--secondary" href="/yonetim/camlar">Cam listeleri</a> }
+        </div>
+      </form>
+    }
+  </div>
+
+  <div class="admin-panel">
+    <h3 style="margin-top:0">Montaj</h3>
+    @if (Model.InstallationExcluded) { <p class="admin-muted">Bu siparişte montaj hariç.</p> }
+    else
+    {
+      <form method="post" action="/yonetim/siparisler/montaj/@Model.Id">
+        @Html.AntiForgeryToken()
+        <div class="or-form-row">
+          <div><label for="installer">Montaj ekibi</label>
+            <select id="installer" name="installerId"><option value="">Seçilmedi</option>
+              @foreach (var i in installers.Where(i => i.IsActive || i.Id == Model.InstallerId)) { <option value="@i.Id" selected="@(i.Id == Model.InstallerId)">@i.Name@(i.IsSubcontractor ? " (taşeron)" : "")</option> }
+            </select></div>
+          <div><label for="installation-date">Montaj tarihi</label><input id="installation-date" type="date" name="installationDate" value="@Iso(Model.InstallationDate)" /></div>
+        </div>
+        <div class="admin-actions" style="margin-top:8px"><button class="admin-btn admin-btn--secondary">Montaj bilgilerini kaydet</button><a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler/montajcilar">Montajcılar</a></div>
+      </form>
+    }
+  </div>
+</div>
+
+<div class="admin-panel" style="margin-top:14px;overflow-x:auto">
+  <h3 style="margin-top:0">Pozlar ve sevk durumu</h3>
+  @if (progress.Count == 0) { <p class="admin-muted">Siparişe çizim listesi bağlı değil. "Düzenle" ile bağlayın.</p> }
+  else
+  {
+    <table class="admin-table">
+      <thead><tr><th>Poz</th><th>Ürün</th><th>Ölçü (mm)</th><th>Sipariş</th><th>Sevk edilen</th><th>Kalan</th></tr></thead>
+      <tbody>
+      @foreach (var p in progress)
+      {
+        <tr>
+          <td>@p.Design.Name</td><td>@KarakusAluminyum.Web.Models.Drawing.ProductCategories.Label(p.Design.Category)</td><td>@p.Design.WidthMm × @p.Design.HeightMm</td>
+          <td>@p.Ordered.ToString("0.###", culture)</td><td>@p.Delivered.ToString("0.###", culture)</td><td><strong>@p.Remaining.ToString("0.###", culture)</strong></td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  }
+</div>
+
+<div class="or-grid" style="margin-top:14px">
+  <div class="admin-panel">
+    <h3 style="margin-top:0">İrsaliyeler</h3>
+    @if (Model.DeliveryNotes.Count == 0) { <p class="admin-muted">Henüz irsaliye kesilmedi.</p> }
+    else
+    {
+      <table class="admin-table">
+        <thead><tr><th>No</th><th>Tarih</th><th>Adet</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var note in Model.DeliveryNotes.OrderBy(x => x.Date).ThenBy(x => x.Id))
+        {
+          <tr>
+            <td><a href="/yonetim/siparisler/irsaliye/@note.Id" target="_blank" rel="noopener">@note.Number</a></td><td>@D(note.Date)</td><td>@note.Lines.Sum(l => l.Quantity).ToString("0.###", culture)</td>
+            <td>@if (Model.Status != OrderStatus.Delivered) { <form method="post" action="/yonetim/siparisler/irsaliye/sil/@note.Id" onsubmit="return confirm('İrsaliye silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form> }</td>
+          </tr>
+        }
+        </tbody>
+      </table>
+    }
+  </div>
+
+  <div class="admin-panel">
+    <h3 style="margin-top:0">Sipariş geçmişi</h3>
+    <form method="post" action="/yonetim/siparisler/not/@Model.Id" class="admin-actions">
+      @Html.AntiForgeryToken()<input name="text" maxlength="500" placeholder="Not ekle (ör. müşteri arandı, ölçü alındı)" aria-label="Not" /><button class="admin-btn admin-btn--secondary">Ekle</button>
+    </form>
+    <ul class="or-timeline">
+      @foreach (var e in Model.Events.OrderByDescending(x => x.AtUtc).ThenByDescending(x => x.Id))
+      {
+        <li><time>@e.AtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")@(e.User is null ? "" : " · " + e.User)</time>@e.Text</li>
+      }
+    </ul>
+  </div>
+</div>
+</div>
