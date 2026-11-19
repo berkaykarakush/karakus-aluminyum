@@ -11,7 +11,7 @@ namespace KarakusAluminyum.Web.Controllers;
 public sealed class DiscoveryController : Controller
 {
     private const int CacheSeconds = 600;
-    private const string PrivatePaths = "Disallow: /yonetim\nDisallow: /yonetim-giris\nDisallow: /erisim-engellendi\nDisallow: /hata/\nDisallow: /t/\nDisallow: /iletisim/tesekkurler\n";
+    private const string PrivatePaths = "Disallow: /yonetim\nDisallow: /yonetim-giris\nDisallow: /erisim-engellendi\nDisallow: /hata/\nDisallow: /t/\nDisallow: /belge/\nDisallow: /iletisim/tesekkurler\n";
     // Yapay zekâ arama, cevap ve eğitim tarayıcıları. Ayarlardan birlikte kapatılabilir.
     private static readonly string[] AiCrawlers =
     {

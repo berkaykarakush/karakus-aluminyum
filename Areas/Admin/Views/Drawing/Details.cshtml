@@ -8,7 +8,6 @@
     var pozlar = PozSheet.Build(Model.Items.OrderBy(x => x.SortOrder).ThenBy(x => x.Id));
     var items = pozlar.Select(x => x.Design).ToList();
     var withSystem = items.Where(x => x.ProfileSystemId is not null).ToList();
-    var brands = items.Where(x => x.Brand is not null).Select(x => x.Brand!).DistinctBy(x => x.Id).ToList();
     var itemNotes = items.Where(x => !string.IsNullOrWhiteSpace(x.Notes)).ToList();
     var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
 }
@@ -36,12 +35,7 @@
 <div class="wd-sheet wd-pages">
   <table class="poz-sheet wd-page">
     <thead><tr><td>
-      <header class="poz-sheet__head">
-        <dl><dt>Liste No</dt><dd>@Model.Id</dd><dt>Liste</dt><dd>@Model.Name</dd></dl>
-        <dl><dt>Müşteri</dt><dd>@(Model.Customer?.Name ?? "-")</dd><dt>Tarih</dt><dd>@Model.UpdatedUtc.ToLocalTime().ToString("dd.MM.yyyy")</dd></dl>
-        <dl><dt>Poz / Adet</dt><dd>@items.Count / @items.Sum(x => x.Quantity)</dd><dt>Toplam alan</dt><dd>@pozlar.Sum(x => x.AreaM2 * x.Design.Quantity).ToString("0.00", culture) m²</dd></dl>
-        <div class="poz-sheet__brands">@foreach (var brand in brands) { @if (!string.IsNullOrEmpty(brand.LogoPath)) { <img src="@brand.LogoPath" alt="@brand.Name" /> } else { <span>@brand.Name</span> } }</div>
-      </header>
+      <partial name="_PozSheetHead" model="new PozSheetHeadVm(Model, pozlar)" />
     </td></tr></thead>
     <tbody><tr><td>
       <partial name="_PozList" model="pozlar" />
@@ -59,6 +53,11 @@
       @if (!string.IsNullOrWhiteSpace(Model.Notes)) { <p style="white-space:pre-wrap">@Model.Notes</p> }
       @foreach (var item in itemNotes) { <p style="white-space:pre-wrap"><strong>@item.Name:</strong> @item.Notes</p> }
     </section>
+  }
+  @if (ViewData["Qr"] is KarakusAluminyum.Web.Services.Documents.DocumentQr qr)
+  {
+    var link = (qr.Url, "/yonetim/cizim/baglantiyi-yenile/" + Model.Id);
+    <div class="wd-noprint"><partial name="_DocumentLink" model="link" /></div>
   }
   @if (withSystem.Count > 0)
   {

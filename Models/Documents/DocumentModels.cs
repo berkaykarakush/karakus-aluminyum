@@ -94,6 +94,7 @@ public sealed class Contract
     public int PageCount { get; set; } = 1;
     public string DocumentJson { get; set; } = "{}";
     public string SnapshotJson { get; set; } = "{}";
+    [StringLength(40)] public string? PublicToken { get; set; } // QR koddaki doğrulama bağlantısı: /belge/sozlesme/{token}
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
 }

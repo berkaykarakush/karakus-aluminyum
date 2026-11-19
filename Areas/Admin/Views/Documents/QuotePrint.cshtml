@@ -33,8 +33,9 @@
   }
 </head>
 <body class="doc doc--quote doc--proforma">
+  @if (ViewData["PublicNote"] is string publicNote) { <partial name="~/Areas/Admin/Views/Documents/_PublicBanner.cshtml" model="publicNote" /> }
   <div class="doc-toolbar">
-    @if (quote.Id != 0)
+    @if (quote.Id != 0 && ViewData["PublicNote"] is null)
     {
       @* Sunumlu ve sunumsuz görünüm arasında geçiş; önizlemede (kayıtsız örnek teklif) gösterilmez. *@
       <a class="doc-toolbar__link" href="/yonetim/crm/teklifler/yazdir/@quote.Id@(Model.Presentation is null ? "?sunum=1" : "")">@(Model.Presentation is null ? "Kurumsal sunumu ekle" : "Sunumsuz göster")</a>

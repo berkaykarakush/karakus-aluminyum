@@ -137,6 +137,7 @@ public sealed class QuotesController : Controller
         var quote = await _db.Quotes.AsNoTracking().Include(x => x.Customer).Include(x => x.Items).Include(x => x.DrawingList).Include(x => x.GlassType).FirstOrDefaultAsync(x => x.Id == id);
         if (quote is null) return NotFound();
         ViewBag.ContractId = await _db.Contracts.Where(x => x.QuoteId == id).Select(x => (int?)x.Id).FirstOrDefaultAsync();
+        ViewBag.PublicUrl = DocumentLinks.Url(Request, DocumentLinks.Quote, await DocumentLinks.EnsureQuoteAsync(_db, quote.Id, quote.PublicToken));
         return View(quote);
     }
 
@@ -147,12 +148,10 @@ public sealed class QuotesController : Controller
     {
         var quote = await _db.Quotes.AsNoTracking().Include(x => x.Customer).Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == id);
         if (quote is null) return NotFound();
-        var content = DocumentJson.ParseContent(quote.DocumentJson);
-        var template = await DocumentViews.TemplateForAsync(_db, DocumentKinds.Quote, quote.SnapshotJson);
-        var attachments = await DocumentViews.LoadAttachmentsAsync(_db, content.DesignIds);
         var customer = quote.Customer?.Name ?? "";
         var presentation = withPresentation == 1 ? await _presentation.BuildAsync(new PresentationCover(customer, quote.Title, quote.QuoteNumber, quote.DocumentDate), portrait: true) : null;
-        return View("~/Areas/Admin/Views/Documents/QuotePrint.cshtml", new QuotePrintVm(quote, customer, template, content, DocumentViews.BuildBlocks(quote, content), attachments, presentation));
+        ViewData["Qr"] = DocumentLinks.Qr(Request, DocumentLinks.Quote, await DocumentLinks.EnsureQuoteAsync(_db, quote.Id, quote.PublicToken));
+        return View("~/Areas/Admin/Views/Documents/QuotePrint.cshtml", await DocumentViews.QuotePrintAsync(_db, quote, presentation));
     }
 
     // Taslak teklif, şablon ayarlarındaki güncel logo ve firma bilgilerini alır.
@@ -165,6 +164,16 @@ public sealed class QuotesController : Controller
         quote.SnapshotJson = DocumentJson.Serialize(await DocumentViews.CurrentTemplateAsync(_db, DocumentKinds.Quote));
         await _db.SaveChangesAsync();
         TempData["Notice"] = "Teklif, güncel şablon ayarlarını kullanacak şekilde yenilendi.";
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    // QR bağlantısını yeniler: eski QR kodlu çıktılar artık açılmaz (örn. belge yanlış kişiye gittiyse).
+    [HttpPost("baglantiyi-yenile/{id:int}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> RenewLink(int id)
+    {
+        if (await _db.Quotes.Where(x => x.Id == id).ExecuteUpdateAsync(s => s.SetProperty(x => x.PublicToken, DocumentLinks.NewToken())) == 0) return NotFound();
+        await _audit.RecordAsync("renew-link", "Quote", id.ToString(), "QR bağlantısı yenilendi");
+        TempData["Notice"] = "QR bağlantısı yenilendi. Önceki çıktılardaki QR kodu artık açılmaz; belgeyi yeniden yazdırın.";
         return RedirectToAction(nameof(Details), new { id });
     }
 

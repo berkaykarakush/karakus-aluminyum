@@ -19,6 +19,7 @@
   <link rel="stylesheet" href="~/css/poz-list.css" asp-append-version="true" />
 </head>
 <body class="doc doc--contract">
+  @if (ViewData["PublicNote"] is string publicNote) { <partial name="~/Areas/Admin/Views/Documents/_PublicBanner.cshtml" model="publicNote" /> }
   <div class="doc-toolbar"><button type="button" onclick="window.print()">Yazdır / PDF kaydet</button></div>
   <table class="doc-sheet">
     <thead><tr><td><partial name="~/Areas/Admin/Views/Documents/_DocumentHead.cshtml" model="t" /></td></tr></thead>

@@ -36,3 +36,5 @@
     }
   </div>
 </div>
+@{ var link = ((string)ViewBag.PublicUrl, "/yonetim/sozlesmeler/baglantiyi-yenile/" + Model.Id); }
+<partial name="_DocumentLink" model="link" />
