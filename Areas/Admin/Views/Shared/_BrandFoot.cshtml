@@ -1,0 +1,15 @@
+@inject KarakusAluminyum.Web.Services.Documents.DocumentBrandingProvider Brand
+@{
+    // Belgelerin ortak alt bilgisi: firma, adres, seçilen iletişim bilgileri, vergi bilgisi ve not.
+    var b = await Brand.GetAsync();
+    var items = b.FooterItems().ToList();
+}
+<div class="doc-foot">
+  <div class="doc-foot__line">
+    @if (!string.IsNullOrWhiteSpace(b.CompanyName)) { <strong>@b.CompanyName</strong> }
+    @if (b.FooterAddress && !string.IsNullOrWhiteSpace(b.Address)) { <span>@b.Address</span> }
+  </div>
+  @if (items.Count > 0) { <div class="doc-foot__line">@foreach (var item in items) { <span>@item</span> }</div> }
+  @if (b.FooterTaxInfo && !string.IsNullOrWhiteSpace(b.TaxInfo)) { <div class="doc-foot__line"><span>VD / VKN: @b.TaxInfo</span></div> }
+  @if (!string.IsNullOrWhiteSpace(b.FooterNote)) { <div class="doc-foot__note">@b.FooterNote</div> }
+</div>

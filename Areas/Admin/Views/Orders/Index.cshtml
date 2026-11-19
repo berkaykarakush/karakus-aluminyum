@@ -1,0 +1,59 @@
+@model List<KarakusAluminyum.Web.Models.Production.ProductionOrder>
+@using KarakusAluminyum.Web.Models.Production
+@using KarakusAluminyum.Web.Services.Production
+@{
+    ViewData["Title"] = "Siparişler";
+    var counts = (Dictionary<OrderStatus, int>)ViewBag.Counts;
+    var loads = (Dictionary<int, OrderLoad>)ViewBag.Loads;
+    var current = ViewBag.Status as OrderStatus?;
+    var today = DateOnly.FromDateTime(DateTime.Today);
+    var open = counts.Where(c => OrderStatuses.IsOpen(c.Key)).Sum(c => c.Value);
+    var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
+}
+<link rel="stylesheet" href="~/css/orders.css" asp-append-version="true" />
+<div class="or-page">
+<div class="admin-actions">
+  <h1>Siparişler</h1>
+  <a class="admin-btn" href="/yonetim/siparisler/ekle">+ Yeni sipariş</a>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler/planlama">Üretim planı</a>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler/montajcilar">Montajcılar</a>
+</div>
+<p class="admin-muted">Kabul edilen tekliften veya sözleşmeden "Sipariş oluştur" ile de açılır. Ercom'daki gibi Plan → Onay → Üretim → Sevkiyat → Teslim akışıyla takip edilir.</p>
+<nav class="or-tabs" aria-label="Sipariş durumu">
+  <a class="@(current is null && !(bool)ViewBag.Late ? "is-active" : "")" href="/yonetim/siparisler">Açık <b>@open</b></a>
+  @foreach (var status in OrderStatuses.Flow.Append(OrderStatus.Cancelled))
+  {
+    <a class="@(current == status ? "is-active" : "")" href="/yonetim/siparisler?durum=@status">@OrderStatuses.Label(status) <b>@counts.GetValueOrDefault(status)</b></a>
+  }
+  <a class="@((bool)ViewBag.Late ? "is-active" : "")" href="/yonetim/siparisler?geciken=true">Gecikenler</a>
+</nav>
+<form class="admin-actions" method="get" action="/yonetim/siparisler">
+  @if (current is not null) { <input type="hidden" name="durum" value="@current" /> }
+  <input name="q" value="@ViewBag.Query" placeholder="Sipariş no, başlık veya müşteri" aria-label="Sipariş ara" style="max-width:320px" />
+  <button class="admin-btn admin-btn--secondary">Ara</button>
+</form>
+<div class="admin-panel" style="overflow-x:auto">
+  <table class="admin-table">
+    <thead><tr><th>Sipariş</th><th>Müşteri</th><th>Durum</th><th>Poz / Adet</th><th>m²</th><th>Sevk tarihi</th><th>Montaj</th><th>İşaretler</th></tr></thead>
+    <tbody>
+    @foreach (var order in Model)
+    {
+      var load = order.DrawingListId is int listId ? loads.GetValueOrDefault(listId, OrderLoad.Empty) : OrderLoad.Empty;
+      var late = OrderService.IsLate(order, today);
+      <tr>
+        <td><a href="/yonetim/siparisler/detay/@order.Id"><strong>@order.OrderNumber</strong></a><div class="admin-muted">@order.Title</div></td>
+        <td>@order.Customer?.Name</td>
+        <td><partial name="_Status" model="order.Status" /></td>
+        <td>@load.Positions / @load.Units</td>
+        <td>@load.AreaM2.ToString("0.00", culture)</td>
+        <td class="@(late ? "or-late" : "")">@OrdersDate(order.PlannedShipDate)@(late ? " (gecikti)" : "")</td>
+        <td>@if (order.InstallationExcluded) { <span class="admin-muted">Hariç</span> } else { @order.Installer?.Name @if (order.InstallationDate is not null) { <div class="admin-muted">@OrdersDate(order.InstallationDate)</div> } }</td>
+        <td><partial name="_Flags" model="order" /></td>
+      </tr>
+    }
+    </tbody>
+  </table>
+  @if (Model.Count == 0) { <p class="admin-muted">Bu görünümde sipariş yok.</p> }
+</div>
+</div>
+@functions { static string OrdersDate(DateOnly? d) => KarakusAluminyum.Web.Areas.Admin.Controllers.OrdersController.Date(d); }

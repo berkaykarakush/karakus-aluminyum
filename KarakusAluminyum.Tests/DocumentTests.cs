@@ -490,23 +490,26 @@ public sealed class DocumentTemplateTests(PostgresFixture postgres)
     }
 
     [Fact]
-    public async Task Save_ChangesLogoAndFirmDetails_ForNewDocuments()
+    public async Task Save_ChangesTitleAndSignatory_LogoAndContactComeFromBranding()
     {
         await using var app = postgres.CreateApp("doc_template_save");
         var (client, token) = await QuoteDocumentTests.AdminAsync(app);
 
+        var saved = await client.PostFormAsync("/yonetim/sablonlar/quote", token, ("Title", "YENİ TEKLİF"), ("Signatory", "Yetkili Kişi"), ("SignOff", "Saygılarımla,"));
+        Assert.Equal(HttpStatusCode.Redirect, saved.StatusCode);
         var form = new MultipartFormDataContent
         {
             { new StringContent(token), "__RequestVerificationToken" },
-            { new StringContent("YENİ TEKLİF"), "Title" },
-            { new StringContent("Yetkili Kişi"), "Signatory" },
             { new StringContent("+90 000 000 00 00"), "Phone" },
-            { new StringContent("Yeni Adres"), "FooterAddress" },
-            { new StringContent("Saygılarımla,"), "SignOff" },
+            { new StringContent("Yeni Adres"), "Address" },
+            { new StringContent("Karakuş Test"), "CompanyName" },
+            { new StringContent("16"), "LogoHeightMm" },
+            { new StringContent("true"), "FooterAddress" }, { new StringContent("true"), "FooterPhone" },
+            { new StringContent("logo"), "WatermarkMode" }, { new StringContent("6"), "WatermarkOpacity" }, { new StringContent("60"), "WatermarkSize" }, { new StringContent("-30"), "WatermarkAngle" },
+            { new StringContent("#b0202a"), "AccentColor" },
             { new ByteArrayContent(TestImages.Png(40, 30)), "logoFile", "logo.png" }
         };
-        var saved = await client.PostAsync("/yonetim/sablonlar/quote", form);
-        Assert.Equal(HttpStatusCode.Redirect, saved.StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, (await client.PostAsync("/yonetim/sablonlar/antet", form)).StatusCode);
 
         var html = WebUtility.HtmlDecode(await client.GetStringAsync("/yonetim/sablonlar/quote/onizleme"));
         Assert.Contains("YENİ TEKLİF", html);
@@ -593,6 +596,7 @@ public sealed class DocumentTemplateTests(PostgresFixture postgres)
             await first.WithDbAsync(db => db.Database.ExecuteSqlRawAsync("""
                 ALTER TABLE "Invoices" DROP COLUMN "ProjectId";
                 ALTER TABLE "Expenses" DROP COLUMN "ProjectId";
+                DROP TABLE IF EXISTS "DeliveryNoteLines", "DeliveryNotes", "OrderEvents", "ProductionOrders", "Installers";
                 DROP TABLE "ProjectCostItems"; DROP TABLE "CostProjects";
                 DROP TABLE "Contracts"; DROP TABLE "DocumentTemplates"; DROP TABLE "TemplateClauses";
                 ALTER TABLE "Quotes" DROP COLUMN "DocumentDate", DROP COLUMN "VatMode", DROP COLUMN "DocumentJson", DROP COLUMN "SnapshotJson",
@@ -895,7 +899,7 @@ public sealed class DocumentQrTests(PostgresFixture postgres)
         var listId = await DrawingLists.ListIdAsync(app, list);
 
         var details = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/cizim/detay/{listId}"));
-        Assert.Contains("class=\"poz-sheet__qr\"", details);
+        Assert.Contains("class=\"doc-qr\"", details);
         var link = Token(details, "cizim");
         var html = WebUtility.HtmlDecode(await app.NewClient().GetStringAsync($"/belge/cizim/{link}"));
         Assert.Contains("Poz : 1 / Ad : 3 - Salon", html);
@@ -908,4 +912,89 @@ public sealed class DocumentQrTests(PostgresFixture postgres)
     [Fact]
     public async Task Robots_ClosesDocumentLinks()
         => Assert.Contains("Disallow: /belge/", await postgres.Shared.NewClient().GetStringAsync("/robots.txt"));
+}
+
+// Ortak antet: logo, iletişim, alt bilgi, sayfa numarası ve filigran tüm belgelerde aynı ayardan gelir.
+[Collection("postgres")]
+public sealed class BrandingTests(PostgresFixture postgres)
+{
+    private static Task<HttpResponseMessage> SaveAsync(HttpClient client, string token, params (string, string)[] extra)
+    {
+        var fields = new Dictionary<string, string>
+        {
+            ["CompanyName"] = "Karakuş Alüminyum", ["Slogan"] = "Doğrama sistemleri", ["Phone"] = "+90 553 000 00 01", ["Phone2"] = "0232 000 00 02", ["WhatsApp"] = "+90 553 000 00 03",
+            ["Email"] = "info@ornek.test", ["Website"] = "www.ornek.test", ["Instagram"] = "@ornek", ["TaxInfo"] = "Bornova VD 123", ["Address"] = "Karacaoğlan Mah. Bornova",
+            ["FooterNote"] = "TSE belgeli üretim", ["LogoHeightMm"] = "18", ["AccentColor"] = "#123456", ["HeaderContact"] = "true", ["FooterAddress"] = "true", ["FooterPhone"] = "true",
+            ["FooterEmail"] = "true", ["FooterWebsite"] = "true", ["FooterSocial"] = "true", ["FooterTaxInfo"] = "true", ["PageNumbers"] = "true",
+            ["WatermarkMode"] = "text", ["WatermarkText"] = "ASIL NÜSHA", ["WatermarkOpacity"] = "7", ["WatermarkSize"] = "50", ["WatermarkAngle"] = "-25"
+        };
+        foreach (var (key, value) in extra) fields[key] = value;
+        return client.PostFormAsync("/yonetim/sablonlar/antet", token, fields.Select(f => (f.Key, f.Value)).ToArray());
+    }
+
+    [Fact]
+    public async Task Branding_AppearsOnQuoteContractDrawingAndOrderPrints()
+    {
+        await using var app = postgres.CreateApp("branding_everywhere");
+        var (client, token) = await QuoteDocumentTests.AdminAsync(app);
+        Assert.Contains("Antet ve filigran", WebUtility.HtmlDecode(await client.GetStringAsync("/yonetim/sablonlar")));
+        Assert.Equal(HttpStatusCode.Redirect, (await SaveAsync(client, token)).StatusCode);
+
+        var list = "Antet listesi";
+        await DrawingLists.PostAsync(client, token, list, DrawingLists.Rows(DrawingLists.Row("Salon")));
+        var listId = await DrawingLists.ListIdAsync(app, list);
+        var customer = await QuoteDocumentTests.NewCustomerAsync(app);
+        await client.PostFormAsync("/yonetim/siparisler/ekle", token, ("CustomerId", customer.ToString()), ("Title", "Antet siparişi"), ("DrawingListId", listId.ToString()), ("OrderDate", "2026-11-19"));
+        var orderId = await app.WithDbAsync(db => db.ProductionOrders.Where(o => o.Title == "Antet siparişi").Select(o => o.Id).SingleAsync());
+
+        foreach (var url in new[] { "/yonetim/sablonlar/quote/onizleme", "/yonetim/sablonlar/contract/onizleme", $"/yonetim/cizim/detay/{listId}", $"/yonetim/siparisler/is-emri/{orderId}", $"/yonetim/siparisler/teslim-tutanagi/{orderId}" })
+        {
+            var html = WebUtility.HtmlDecode(await client.GetStringAsync(url));
+            Assert.Contains("class=\"doc-head\"", html);
+            Assert.Contains("Doğrama sistemleri", html); // slogan
+            Assert.Contains("<div>+90 553 000 00 01</div>", html); // üst bilgide iletişim
+            Assert.Contains("<span>Tel: 0232 000 00 02</span>", html); // alt bilgi
+            Assert.Contains("<span>WhatsApp: +90 553 000 00 03</span>", html);
+            Assert.Contains("<span>Instagram: @ornek</span>", html);
+            Assert.Contains("VD / VKN: Bornova VD 123", html);
+            Assert.Contains("TSE belgeli üretim", html);
+            Assert.Contains("class=\"doc-watermark\"", html);
+            Assert.Contains("ASIL NÜSHA", html);
+            Assert.Contains("rotate(-25deg)", html);
+            Assert.Contains("counter(pages)", html); // sayfa numarası
+            Assert.Contains("--doc-accent:#123456", html);
+        }
+    }
+
+    [Fact]
+    public async Task Branding_CanHideParts_AndRejectsBadValues()
+    {
+        await using var app = postgres.CreateApp("branding_options");
+        var (client, token) = await QuoteDocumentTests.AdminAsync(app);
+        await SaveAsync(client, token, ("HeaderContact", "false"), ("FooterSocial", "false"), ("PageNumbers", "false"), ("WatermarkMode", "none"));
+        var html = WebUtility.HtmlDecode(await client.GetStringAsync("/yonetim/sablonlar/quote/onizleme"));
+        Assert.DoesNotContain("doc-brand__contact", html);
+        Assert.DoesNotContain("Instagram:", html);
+        Assert.DoesNotContain("counter(pages)", html);
+        Assert.DoesNotContain("class=\"doc-watermark\"", html);
+
+        foreach (var bad in new[] { ("WatermarkOpacity", "80"), ("WatermarkMode", "resim"), ("AccentColor", "kırmızı"), ("LogoHeightMm", "3") })
+            Assert.Equal(HttpStatusCode.OK, (await SaveAsync(client, token, bad)).StatusCode);
+        // Logo kaldırılırsa logo filigranı seçilemez; yerine firma adı yazılır.
+        Assert.Equal(HttpStatusCode.OK, (await SaveAsync(client, token, ("removeLogo", "true"), ("WatermarkMode", "logo"))).StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, (await SaveAsync(client, token, ("removeLogo", "true"), ("WatermarkMode", "none"))).StatusCode);
+        Assert.Contains("class=\"doc-brand__name\">Karakuş Alüminyum", WebUtility.HtmlDecode(await client.GetStringAsync("/yonetim/sablonlar/quote/onizleme")));
+    }
+
+    // Kaydedilmemiş kurulum: mevcut şablondaki logo ve telefonla başlar, belgeler boş antetle basılmaz.
+    [Fact]
+    public async Task UnsavedBranding_StartsFromExistingTemplate()
+    {
+        await using var app = postgres.CreateApp("branding_defaults");
+        var (client, _) = await QuoteDocumentTests.AdminAsync(app);
+        var html = WebUtility.HtmlDecode(await client.GetStringAsync("/yonetim/sablonlar/quote/onizleme"));
+        Assert.Contains("/images/transparent.webp", html);
+        Assert.Contains("+90 553 835 48 72", html);
+        Assert.Contains("class=\"doc-watermark\"", html); // varsayılan: logo filigranı
+    }
 }

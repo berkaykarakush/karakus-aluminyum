@@ -13,21 +13,9 @@
   @Html.AntiForgeryToken()
   <div asp-validation-summary="All"></div>
   <div class="admin-panel">
-    <h2>Antet</h2>
-    <label>Logo</label>
-    <div class="admin-image-picker">
-      <img class="admin-image-preview" id="logoPreview" style="object-fit:contain" src="@(string.IsNullOrWhiteSpace(Model.LogoPath) ? "/images/image-placeholder.svg" : Model.LogoPath)" alt="Logo önizleme" />
-      <div>
-        <input type="file" name="logoFile" accept="image/jpeg,image/png,image/webp,image/gif" data-image-preview="logoPreview" />
-        <div class="admin-image-hint">JPG, PNG, WEBP veya GIF · En fazla 8 MB.</div>
-        <p><label><input type="checkbox" name="removeLogo" value="true" style="width:auto" /> Logoyu kaldır</label></p>
-      </div>
-    </div>
-    <div class="admin-grid">
-      <div><label asp-for="Title">Belge başlığı</label><input asp-for="Title" required /></div>
-      <div><label asp-for="Phone">Telefon (alt bilgi)</label><input asp-for="Phone" /></div>
-    </div>
-    <label asp-for="FooterAddress">Adres (alt bilgi)</label><input asp-for="FooterAddress" />
+    <h2>Belge başlığı</h2>
+    <p class="admin-muted">Logo, telefon, e-posta, adres, alt bilgi ve filigran tüm belgelerde ortaktır: <a href="/yonetim/sablonlar/antet">Antet ve filigran</a> sayfasından değiştirilir.</p>
+    <label asp-for="Title">Belge başlığı</label><input asp-for="Title" required />
   </div>
   <div class="admin-panel">
     <h2>Firma ve imza</h2>

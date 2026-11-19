@@ -1,0 +1,19 @@
+@inject KarakusAluminyum.Web.Services.Documents.DocumentBrandingProvider Brand
+@{
+    // Filigran (her basılan sayfanın ortasında), vurgu rengi ve sayfa numarası. Sayfa başına bir kez eklenir.
+    var b = await Brand.GetAsync();
+    var opacity = (b.WatermarkOpacity / 100m).ToString(System.Globalization.CultureInfo.InvariantCulture);
+    var showLogo = b.WatermarkMode == KarakusAluminyum.Web.Services.Documents.WatermarkModes.Logo && !string.IsNullOrWhiteSpace(b.LogoPath);
+    var showText = b.WatermarkMode == KarakusAluminyum.Web.Services.Documents.WatermarkModes.Text && !string.IsNullOrWhiteSpace(b.WatermarkLabel);
+}
+<style>
+  :root{--doc-accent:@b.AccentColor}
+  @if (b.PageNumbers) { <text>@@page{@@bottom-center{content:"Sayfa " counter(page) " / " counter(pages);font:8pt Arial,Helvetica,sans-serif;color:#666}}</text> }
+</style>
+@if (showLogo || showText)
+{
+  <div class="doc-watermark" aria-hidden="true" style="opacity:@opacity;transform:translate(-50%,-50%) rotate(@(b.WatermarkAngle)deg);width:@(b.WatermarkSize)vw">
+    @if (showLogo) { <img src="@b.LogoPath" alt="" /> }
+    else { <span style="font-size:@((b.WatermarkSize * 0.14m).ToString(System.Globalization.CultureInfo.InvariantCulture))vw">@b.WatermarkLabel</span> }
+  </div>
+}

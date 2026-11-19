@@ -105,6 +105,7 @@ public sealed class DrawingController : Controller
         var materials = DrawingMaterials.Build(list.Items.OrderBy(x => x.SortOrder).ThenBy(x => x.Id));
         ViewBag.Materials = materials;
         ViewBag.Quotes = await _db.Quotes.AsNoTracking().Where(x => x.DrawingListId == id).OrderByDescending(x => x.CreatedUtc).ToListAsync();
+        ViewBag.Orders = await _db.ProductionOrders.AsNoTracking().Where(x => x.DrawingListId == id).OrderByDescending(x => x.Id).ToListAsync();
         ViewData["Qr"] = DocumentLinks.Qr(Request, DocumentLinks.Drawing, await DocumentLinks.EnsureDrawingAsync(_db, list.Id, list.PublicToken));
         return View(list);
     }

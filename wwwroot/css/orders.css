@@ -1,0 +1,45 @@
+/* Üretim siparişleri (Ercom sipariş formu) */
+.or-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+.or-tabs a{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;font-size:13px;font-weight:600;color:var(--ink);text-decoration:none;background:#fff;border:1px solid var(--line);border-radius:8px}
+.or-tabs a.is-active{color:#fff;background:#2463eb;border-color:#2463eb}
+.or-tabs b{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 5px;font-size:11px;color:#34435c;background:#eef2f8;border-radius:10px}
+.or-tabs a.is-active b{color:#2463eb;background:#fff}
+.or-status{display:inline-block;padding:2px 8px;font-size:12px;font-weight:700;border-radius:999px;white-space:nowrap;background:#eef2f8;color:#34435c}
+.or-status--0,.or-status--1{background:#fff4dc;color:#7a5200}
+.or-status--2{background:#e4edff;color:#1d4fb8}
+.or-status--3{background:#f0e7ff;color:#5a2db0}
+.or-status--4{background:#e1f5f3;color:#0b6b62}
+.or-status--5{background:#e3f4e8;color:#1f6b35}
+.or-status--6{background:#d9efe0;color:#14532d}
+.or-status--7{background:#fdecec;color:#8e1f1f}
+.or-late{color:#b42318;font-weight:700}
+.or-flags{display:flex;flex-wrap:wrap;gap:4px}
+.or-flag{padding:1px 6px;font-size:11px;font-weight:600;color:#34435c;background:#f1f4f9;border:1px solid var(--line);border-radius:5px;white-space:nowrap}
+.or-steps{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px;padding:0;list-style:none}
+.or-steps li{flex:1 1 120px}
+.or-steps button{width:100%;padding:10px 6px;font-size:12px;font-weight:700;color:#34435c;background:#f4f7fb;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.or-steps .is-done button{color:#1f6b35;background:#e8f6ee;border-color:#9fd5b4}
+.or-steps .is-current button{color:#fff;background:#2463eb;border-color:#2463eb;cursor:default}
+.or-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;align-items:start}
+.or-grid .admin-panel{margin:0}
+.or-dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0;font-size:14px}
+.or-dl dt{color:var(--muted)}
+.or-dl dd{margin:0;font-weight:600}
+.or-checks{display:grid;gap:6px;margin:6px 0 10px}
+.or-checks label{display:flex;align-items:center;gap:8px;margin:0;font-weight:600}
+.or-checks input{width:auto!important}
+.or-form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.or-form-row label{margin:6px 0 3px;font-size:12px}
+.or-timeline{margin:0;padding:0;list-style:none;font-size:13px}
+.or-timeline li{padding:7px 0;border-bottom:1px solid #edf1f6}
+.or-timeline time{display:block;font-size:11px;color:var(--muted)}
+.or-week{display:grid;grid-template-columns:150px minmax(0,1fr) 140px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid #edf1f6;font-size:13px}
+.or-bar{position:relative;height:14px;overflow:hidden;background:#eef2f8;border-radius:7px}
+.or-bar span{position:absolute;inset:0 auto 0 0;background:#2463eb;border-radius:7px}
+.or-bar.is-over span{background:#d92d20}
+@media(max-width:700px){.or-week{grid-template-columns:1fr}}
+/* Sipariş detayındaki küçük formlar: diğer panel alanlarıyla aynı görünüm */
+.or-page select,.or-page input:not([type=checkbox]):not([type=hidden]),.or-page textarea{width:100%;min-width:0;padding:8px 10px;font:inherit;font-size:13px;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:7px}
+.or-page .admin-actions input{width:auto;flex:1 1 220px}
+.or-page label{display:block;margin:8px 0 4px;font-size:12px;font-weight:600;color:#34435c}
+.or-page .or-checks label{display:flex;margin:0;font-size:14px}

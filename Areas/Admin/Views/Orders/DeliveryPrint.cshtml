@@ -1,0 +1,54 @@
+@model KarakusAluminyum.Web.Models.Production.DeliveryNote
+@{
+    // Sevk belgesi: sevk edilen pozlar ve imzalar. Resmi (matbu veya e-) irsaliye yerine geçmez.
+    Layout = null;
+    var t = (KarakusAluminyum.Web.Models.Documents.DocumentTemplate)ViewBag.Template;
+    var order = Model.ProductionOrder!;
+    var customer = order.Customer;
+    var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
+    string D(DateOnly? d) => KarakusAluminyum.Web.Areas.Admin.Controllers.OrdersController.Date(d);
+    var head = new KarakusAluminyum.Web.Services.Documents.BrandHeadVm("SEVK BELGESİ", D(Model.Date));
+    var tax = string.Join(" / ", new[] { customer?.TaxOffice, customer?.TaxNumber }.Where(x => !string.IsNullOrWhiteSpace(x)));
+}
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sevk belgesi - @Model.Number</title>
+  <link rel="stylesheet" href="~/css/document-print.css" asp-append-version="true" />
+  <link rel="stylesheet" href="~/css/brand.css" asp-append-version="true" />
+</head>
+<body class="doc doc--proforma">
+  <partial name="~/Areas/Admin/Views/Shared/_BrandLayer.cshtml" />
+  <div class="doc-toolbar"><a class="doc-toolbar__link" href="/yonetim/siparisler/detay/@order.Id">Siparişe dön</a><button type="button" onclick="window.print()">Yazdır / PDF kaydet</button></div>
+  <table class="doc-sheet">
+    <thead><tr><td><partial name="~/Areas/Admin/Views/Shared/_BrandHead.cshtml" model="head" /></td></tr></thead>
+    <tfoot><tr><td><partial name="~/Areas/Admin/Views/Shared/_BrandFoot.cshtml" /></td></tr></tfoot>
+    <tbody><tr><td class="doc-body">
+      <div class="pf-parties">
+        <section class="pf-party"><h3>Gönderen</h3><strong>@(t.SellerLegalName ?? t.SellerName)</strong>@if (!string.IsNullOrWhiteSpace(t.SellerAddress)) { <div>@t.SellerAddress</div> }@if (!string.IsNullOrWhiteSpace(t.SellerTaxInfo)) { <div>VD / VKN: @t.SellerTaxInfo</div> }@if (!string.IsNullOrWhiteSpace(t.Phone)) { <div>Tel: @t.Phone</div> }</section>
+        <section class="pf-party"><h3>Alıcı</h3><strong>@customer?.Name</strong>@if (!string.IsNullOrWhiteSpace(customer?.Address)) { <div>@customer.Address</div> }@if (tax.Length > 0) { <div>VD / VKN: @tax</div> }@if (!string.IsNullOrWhiteSpace(customer?.Phone)) { <div>Tel: @customer.Phone</div> }</section>
+        <dl class="pf-info"><dt>Belge no</dt><dd>@Model.Number</dd><dt>Sevk tarihi</dt><dd>@D(Model.Date)</dd><dt>Sipariş</dt><dd>@order.OrderNumber</dd>@if (!string.IsNullOrWhiteSpace(Model.Vehicle)) { <dt>Araç</dt><dd>@Model.Vehicle</dd> }</dl>
+      </div>
+      @if (!string.IsNullOrWhiteSpace(Model.Address)) { <p><strong>Sevk adresi:</strong> @Model.Address</p> }
+      <table class="pf-lines">
+        <thead><tr><th class="pf-no">Sıra</th><th>Açıklama</th><th class="pf-num">Miktar</th><th>Birim</th></tr></thead>
+        <tbody>
+        @foreach (var (line, i) in Model.Lines.OrderBy(x => x.SortOrder).Select((l, i) => (l, i)))
+        {
+          <tr><td class="pf-no">@(i + 1)</td><td>@line.Description</td><td class="pf-num">@line.Quantity.ToString("0.###", culture)</td><td>@line.Unit</td></tr>
+        }
+        </tbody>
+      </table>
+      <p class="pf-words">Toplam: @Model.Lines.Sum(l => l.Quantity).ToString("0.###", culture) kalem adedi</p>
+      @if (!string.IsNullOrWhiteSpace(Model.Notes)) { <p><strong>Not:</strong> @Model.Notes</p> }
+      <p class="pf-legal">Bu belge sevk edilen malların listesidir; resmi irsaliye (matbu veya e-İrsaliye) yerine geçmez.</p>
+      <table class="pf-sign"><tbody><tr>
+        <td><strong>Teslim eden</strong><div>@(Model.Driver ?? "")</div><div class="pf-sign__field">Ad Soyad:</div><div class="pf-sign__line">İmza</div></td>
+        <td><strong>Teslim alan</strong><div class="pf-sign__field">Ad Soyad:</div><div class="pf-sign__field">Tarih:</div><div class="pf-sign__line">Kaşe / İmza</div></td>
+      </tr></tbody></table>
+    </td></tr></tbody>
+  </table>
+  <div class="doc-print-foot"><partial name="~/Areas/Admin/Views/Shared/_BrandFoot.cshtml" /></div>
+</body>
+</html>

@@ -1,0 +1,24 @@
+@model KarakusAluminyum.Web.Services.Documents.BrandHeadVm
+@inject KarakusAluminyum.Web.Services.Documents.DocumentBrandingProvider Brand
+@{
+    // Belgelerin ortak üst bilgisi: logo, slogan, iletişim satırı, tarih ve QR kodu; altında belge başlığı.
+    var b = await Brand.GetAsync();
+}
+<div class="doc-head">
+  <div class="doc-brand__logo">
+    @if (!string.IsNullOrWhiteSpace(b.LogoPath)) { <img class="doc-logo" src="@b.LogoPath" alt="@b.CompanyName" style="height:@(b.LogoHeightMm)mm" /> }
+    else if (!string.IsNullOrWhiteSpace(b.CompanyName)) { <strong class="doc-brand__name">@b.CompanyName</strong> }
+    @if (!string.IsNullOrWhiteSpace(b.Slogan)) { <div class="doc-brand__slogan">@b.Slogan</div> }
+  </div>
+  <div class="doc-head__side">
+    @if (b.HeaderContact && b.HeaderItems().Any()) { <div class="doc-brand__contact">@foreach (var item in b.HeaderItems()) { <div>@item</div> }</div> }
+    <div class="doc-head__meta">
+      @if (!string.IsNullOrWhiteSpace(Model.Date)) { <div class="doc-date">@Model.Date</div> }
+      @if (ViewData["Qr"] is KarakusAluminyum.Web.Services.Documents.DocumentQr qr)
+      {
+        <a class="doc-qr" href="@qr.Url" title="Belgenin asıl halini aç">@Html.Raw(qr.Svg)<span>Asıl belge</span></a>
+      }
+    </div>
+  </div>
+</div>
+@if (!string.IsNullOrWhiteSpace(Model.Title)) { <div class="doc-title">@Model.Title</div> }

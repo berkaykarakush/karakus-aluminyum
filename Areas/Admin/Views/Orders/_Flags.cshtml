@@ -1,0 +1,10 @@
+@model KarakusAluminyum.Web.Models.Production.ProductionOrder
+<span class="or-flags">
+  @if (Model.SentToCutting) { <span class="or-flag" title="Kesime gönderildi">Kesimde</span> }
+  @if (Model.StockDeducted) { <span class="or-flag" title="Stok düşüldü">Stok</span> }
+  @if (Model.GlassExcluded) { <span class="or-flag" title="Cam hariç">Cam hariç</span> }
+  else if (Model.GlassReceivedOn is not null) { <span class="or-flag" title="Camlar geldi">Cam geldi</span> }
+  else if (Model.GlassOrderedOn is not null) { <span class="or-flag" title="Cam sipariş edildi">Cam bekleniyor</span> }
+  @if (Model.InstallationExcluded) { <span class="or-flag" title="Montaj hariç">Montaj hariç</span> }
+  @if (Model.Reserved) { <span class="or-flag" title="Rezerve">Rezerve</span> }
+</span>

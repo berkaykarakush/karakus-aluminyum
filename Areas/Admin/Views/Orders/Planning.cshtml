@@ -1,0 +1,107 @@
+@model List<KarakusAluminyum.Web.Models.Production.ProductionOrder>
+@using KarakusAluminyum.Web.Models.Production
+@using KarakusAluminyum.Web.Services.Production
+@{
+    // Ercom'daki "Kapasite / Detaylar": sevk tarihine göre haftalık üretim yükü (m²) ve kapasite karşılaştırması.
+    ViewData["Title"] = "Üretim planı";
+    var loads = (Dictionary<int, OrderLoad>)ViewBag.Loads;
+    var capacity = (decimal)ViewBag.Capacity;
+    var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
+    var today = DateOnly.FromDateTime(DateTime.Today);
+    var monday = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
+    OrderLoad Load(ProductionOrder o) => o.DrawingListId is int id ? loads.GetValueOrDefault(id, OrderLoad.Empty) : OrderLoad.Empty;
+    string D(DateOnly? d) => KarakusAluminyum.Web.Areas.Admin.Controllers.OrdersController.Date(d);
+    // Üretimi bitmemiş siparişler (sevk edilenler üretim yükü sayılmaz).
+    var producing = Model.Where(o => o.Status < OrderStatus.Shipped).ToList();
+    var late = producing.Where(o => OrderService.IsLate(o, today)).OrderBy(o => o.PlannedShipDate).ToList();
+    var undated = producing.Where(o => o.PlannedShipDate is null).ToList();
+    var weeks = Enumerable.Range(0, 8).Select(i => monday.AddDays(7 * i)).ToList();
+    var later = producing.Where(o => o.PlannedShipDate >= monday.AddDays(56)).ToList();
+    var installs = Model.Where(o => !o.InstallationExcluded && o.InstallationDate is DateOnly d && d >= today && d < today.AddDays(14)).OrderBy(o => o.InstallationDate).ThenBy(o => o.Installer?.Name).ToList();
+    var glass = Model.Where(o => !o.GlassExcluded && o.GlassOrderedOn is not null && o.GlassReceivedOn is null).OrderBy(o => o.GlassExpectedOn).ToList();
+}
+<link rel="stylesheet" href="~/css/orders.css" asp-append-version="true" />
+<div class="or-page">
+<div class="admin-actions"><h1>Üretim planı</h1><a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler">Siparişler</a><a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler/montajcilar">Montajcılar</a></div>
+
+<div class="admin-panel">
+  <form class="admin-actions" method="post" action="/yonetim/siparisler/planlama/kapasite">
+    @Html.AntiForgeryToken()
+    <label for="capacity" style="margin:0">Haftalık üretim kapasitesi (m²)</label>
+    <input id="capacity" name="capacity" type="number" min="0" step="0.1" value="@capacity.ToString(System.Globalization.CultureInfo.InvariantCulture)" style="max-width:140px" />
+    <button class="admin-btn admin-btn--secondary">Kaydet</button>
+    <span class="admin-muted">@(capacity > 0 ? "Haftalık yük bu değerle karşılaştırılır; aşan hafta kırmızı görünür." : "Kapasite girilirse haftalık yük doluluk oranıyla gösterilir.")</span>
+  </form>
+</div>
+
+@if (late.Count > 0)
+{
+  <div class="admin-panel">
+    <h2 class="or-late" style="margin-top:0">Sevk tarihi geçen siparişler (@late.Count)</h2>
+    <partial name="_PlanRows" model="late" view-data='new ViewDataDictionary(ViewData) { ["Loads"] = loads }' />
+  </div>
+}
+
+<div class="admin-panel">
+  <h2 style="margin-top:0">Haftalık üretim yükü (sevk tarihine göre)</h2>
+  @foreach (var start in weeks)
+  {
+    var orders = producing.Where(o => o.PlannedShipDate is DateOnly d && d >= start && d < start.AddDays(7)).OrderBy(o => o.PlannedShipDate).ToList();
+    var area = orders.Sum(o => Load(o).AreaM2);
+    var ratio = capacity > 0 ? area / capacity : 0;
+    <details @(start == monday ? "open" : "")>
+      <summary class="or-week">
+        <strong>@start.ToString("dd.MM") - @start.AddDays(6).ToString("dd.MM")@(start == monday ? " (bu hafta)" : "")</strong>
+        <span class="or-bar @(ratio > 1 ? "is-over" : "")" title="@(capacity > 0 ? $"Doluluk %{ratio * 100:0}" : "")"><span style="width:@(Math.Min(100, capacity > 0 ? ratio * 100 : (area > 0 ? 100 : 0)).ToString("0", System.Globalization.CultureInfo.InvariantCulture))%"></span></span>
+        <span>@orders.Count sipariş · @area.ToString("0.0", culture) m²@(capacity > 0 ? $" · %{ratio * 100:0}" : "")</span>
+      </summary>
+      @if (orders.Count > 0) { <partial name="_PlanRows" model="orders" view-data='new ViewDataDictionary(ViewData) { ["Loads"] = loads }' /> }
+    </details>
+  }
+  @if (later.Count > 0) { <p class="admin-muted">Sonraki haftalara planlı: @later.Count sipariş, @later.Sum(o => Load(o).AreaM2).ToString("0.0", culture) m².</p> }
+</div>
+
+@if (undated.Count > 0)
+{
+  <div class="admin-panel">
+    <h2 style="margin-top:0">Sevk tarihi girilmemiş (@undated.Count)</h2>
+    <partial name="_PlanRows" model="undated" view-data='new ViewDataDictionary(ViewData) { ["Loads"] = loads }' />
+  </div>
+}
+
+<div class="or-grid">
+  <div class="admin-panel">
+    <h2 style="margin-top:0">Montaj takvimi (14 gün)</h2>
+    @if (installs.Count == 0) { <p class="admin-muted">Önümüzdeki 14 günde planlı montaj yok.</p> }
+    else
+    {
+      <table class="admin-table">
+        <thead><tr><th>Tarih</th><th>Ekip</th><th>Sipariş</th><th>Adres</th></tr></thead>
+        <tbody>
+        @foreach (var o in installs)
+        {
+          <tr><td>@D(o.InstallationDate)</td><td>@(o.Installer?.Name ?? "Atanmadı")</td><td><a href="/yonetim/siparisler/detay/@o.Id">@o.OrderNumber</a><div class="admin-muted">@o.Customer?.Name</div></td><td>@o.InstallAddress</td></tr>
+        }
+        </tbody>
+      </table>
+    }
+  </div>
+  <div class="admin-panel">
+    <h2 style="margin-top:0">Beklenen camlar</h2>
+    @if (glass.Count == 0) { <p class="admin-muted">Gelmesi beklenen cam siparişi yok.</p> }
+    else
+    {
+      <table class="admin-table">
+        <thead><tr><th>Sipariş</th><th>Sipariş verildi</th><th>Beklenen</th></tr></thead>
+        <tbody>
+        @foreach (var o in glass)
+        {
+          var overdue = o.GlassExpectedOn is DateOnly e && e < today;
+          <tr><td><a href="/yonetim/siparisler/detay/@o.Id">@o.OrderNumber</a><div class="admin-muted">@o.Customer?.Name</div></td><td>@D(o.GlassOrderedOn)</td><td class="@(overdue ? "or-late" : "")">@D(o.GlassExpectedOn)@(overdue ? " (gecikti)" : "")</td></tr>
+        }
+        </tbody>
+      </table>
+    }
+  </div>
+</div>
+</div>

@@ -1,0 +1,44 @@
+@model KarakusAluminyum.Web.Models.Production.ProductionOrder
+@using KarakusAluminyum.Web.Services.Drawing
+@{
+    // İş emri: atölyeye giden sipariş özeti ve poz listesi (çizim, ölçü, cam). Fiyat ve maliyet yoktur.
+    Layout = null;
+    var t = (KarakusAluminyum.Web.Models.Documents.DocumentTemplate)ViewBag.Template;
+    var pozlar = (List<PozView>)ViewBag.Pozlar;
+    var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
+    string D(DateOnly? d) => KarakusAluminyum.Web.Areas.Admin.Controllers.OrdersController.Date(d);
+    var head = new KarakusAluminyum.Web.Services.Documents.BrandHeadVm("İŞ EMRİ", D(DateOnly.FromDateTime(DateTime.Today)));
+}
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>İş emri - @Model.OrderNumber</title>
+  <link rel="stylesheet" href="~/css/document-print.css" asp-append-version="true" />
+  <link rel="stylesheet" href="~/css/brand.css" asp-append-version="true" />
+  <link rel="stylesheet" href="~/css/poz-list.css" asp-append-version="true" />
+</head>
+<body class="doc doc--proforma">
+  <partial name="~/Areas/Admin/Views/Shared/_BrandLayer.cshtml" />
+  <div class="doc-toolbar"><a class="doc-toolbar__link" href="/yonetim/siparisler/detay/@Model.Id">Siparişe dön</a><button type="button" onclick="window.print()">Yazdır / PDF kaydet</button></div>
+  <table class="doc-sheet">
+    <thead><tr><td><partial name="~/Areas/Admin/Views/Shared/_BrandHead.cshtml" model="head" /></td></tr></thead>
+    <tfoot><tr><td><partial name="~/Areas/Admin/Views/Shared/_BrandFoot.cshtml" /></td></tr></tfoot>
+    <tbody><tr><td class="doc-body">
+      <div class="pf-parties">
+        <dl class="pf-info"><dt>Sipariş no</dt><dd>@Model.OrderNumber</dd><dt>Müşteri</dt><dd>@Model.Customer?.Name</dd><dt>İş</dt><dd>@Model.Title</dd></dl>
+        <dl class="pf-info"><dt>Sipariş</dt><dd>@D(Model.OrderDate)</dd><dt>Sevk</dt><dd>@D(Model.PlannedShipDate)</dd><dt>Montaj</dt><dd>@(Model.InstallationExcluded ? "Hariç" : $"{Model.Installer?.Name ?? "-"} {D(Model.InstallationDate)}")</dd></dl>
+        <dl class="pf-info"><dt>Cam</dt><dd>@(Model.GlassExcluded ? "Hariç (müşteri)" : Model.GlassSupplier?.Name ?? "-")</dd><dt>Poz / Adet</dt><dd>@pozlar.Count / @pozlar.Sum(x => x.Design.Quantity)</dd><dt>Alan</dt><dd>@pozlar.Sum(x => x.AreaM2 * x.Design.Quantity).ToString("0.00", culture) m²</dd></dl>
+      </div>
+      @if (!string.IsNullOrWhiteSpace(Model.InstallAddress)) { <p><strong>Montaj adresi:</strong> @Model.InstallAddress @(string.IsNullOrWhiteSpace(Model.ContactPhone) ? "" : $"· Tel: {Model.ContactPhone}")</p> }
+      @if (!string.IsNullOrWhiteSpace(Model.Notes)) { <p style="white-space:pre-wrap"><strong>Not:</strong> @Model.Notes</p> }
+      @if (pozlar.Count == 0) { <p>Siparişe çizim listesi bağlı değil.</p> }
+      else { <div class="doc-attachments"><partial name="~/Areas/Admin/Views/Shared/_PozList.cshtml" model="pozlar" view-data='new ViewDataDictionary(ViewData) { ["PozListWidthMm"] = 180 }' /></div> }
+    </td></tr></tbody>
+  </table>
+  <script src="~/js/units.js" asp-append-version="true"></script>
+  <script src="~/js/window-drawing.js" asp-append-version="true"></script>
+  <script src="~/js/poz-list.js" asp-append-version="true"></script>
+  <div class="doc-print-foot"><partial name="~/Areas/Admin/Views/Shared/_BrandFoot.cshtml" /></div>
+</body>
+</html>

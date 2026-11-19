@@ -1,0 +1,80 @@
+@model KarakusAluminyum.Web.Services.Documents.DocumentBranding
+@using KarakusAluminyum.Web.Services.Documents
+@{ ViewData["Title"] = "Antet ve filigran"; }
+<div class="admin-actions">
+  <h1>Antet ve filigran</h1>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/sablonlar">Belge şablonları</a>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/sablonlar/quote/onizleme" target="_blank" rel="noopener">Teklif önizleme</a>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/sablonlar/contract/onizleme" target="_blank" rel="noopener">Sözleşme önizleme</a>
+</div>
+<p class="admin-muted">Teklif, sözleşme, çizim listesi, QR ile açılan sayfalar, iş emri, sevk belgesi ve teslim tutanağı bu ayarla basılır: üstte logo ve iletişim, altta firma ve iletişim bilgileri, her sayfanın ortasında soluk filigran, altta sayfa numarası.</p>
+<form class="admin-form" method="post" enctype="multipart/form-data" action="/yonetim/sablonlar/antet">
+  @Html.AntiForgeryToken()
+  <div asp-validation-summary="All"></div>
+  <div class="admin-panel">
+    <h2>Logo ve firma</h2>
+    <div class="admin-image-picker">
+      <img class="admin-image-preview" id="logoPreview" style="object-fit:contain" src="@(string.IsNullOrWhiteSpace(Model.LogoPath) ? "/images/image-placeholder.svg" : Model.LogoPath)" alt="Logo önizleme" />
+      <div>
+        <input type="file" name="logoFile" accept="image/jpeg,image/png,image/webp,image/gif" data-image-preview="logoPreview" aria-label="Logo yükle" />
+        <div class="admin-image-hint">Şeffaf arka planlı PNG veya WEBP önerilir. En fazla 8 MB.</div>
+        <p><label><input type="checkbox" name="removeLogo" value="true" style="width:auto" /> Logoyu kaldır (yerine firma adı yazılır)</label></p>
+      </div>
+    </div>
+    <div class="admin-grid">
+      <div><label asp-for="LogoHeightMm">Logo yüksekliği (mm)</label><input asp-for="LogoHeightMm" type="number" min="8" max="40" /></div>
+      <div><label asp-for="CompanyName">Firma adı (alt bilgide)</label><input asp-for="CompanyName" /></div>
+      <div><label asp-for="Slogan">Slogan (logonun altında, isteğe bağlı)</label><input asp-for="Slogan" placeholder="Örn. Alüminyum ve PVC doğrama sistemleri" /></div>
+      <div><label asp-for="AccentColor">Vurgu rengi (üst ve alt çizgi)</label><input asp-for="AccentColor" type="color" style="height:38px;padding:2px" /></div>
+    </div>
+  </div>
+  <div class="admin-panel">
+    <h2>İletişim bilgileri</h2>
+    <div class="admin-grid">
+      <div><label asp-for="Phone">Telefon</label><input asp-for="Phone" placeholder="+90 532 000 00 00" /></div>
+      <div><label asp-for="Phone2">İkinci telefon</label><input asp-for="Phone2" /></div>
+      <div><label asp-for="WhatsApp">WhatsApp</label><input asp-for="WhatsApp" /></div>
+      <div><label asp-for="Email">E-posta</label><input asp-for="Email" type="email" /></div>
+      <div><label asp-for="Website">Web sitesi</label><input asp-for="Website" placeholder="www.karakusaluminyum.com" /></div>
+      <div><label asp-for="Instagram">Instagram</label><input asp-for="Instagram" placeholder="@@karakusaluminyum" /></div>
+      <div><label asp-for="TaxInfo">Vergi dairesi ve no</label><input asp-for="TaxInfo" /></div>
+    </div>
+    <label asp-for="Address">Adres</label><input asp-for="Address" />
+  </div>
+  <div class="admin-panel">
+    <h2>Üst ve alt bilgi</h2>
+    <label><input asp-for="HeaderContact" style="width:auto" /> Üst bilgide logonun yanında telefon, e-posta ve web sitesi yazsın</label>
+    <p class="admin-muted" style="margin:10px 0 4px">Alt bilgide gösterilecekler (firma adı her zaman yazar):</p>
+    <div class="admin-grid">
+      <label><input asp-for="FooterAddress" style="width:auto" /> Adres</label>
+      <label><input asp-for="FooterPhone" style="width:auto" /> Telefon ve WhatsApp</label>
+      <label><input asp-for="FooterEmail" style="width:auto" /> E-posta</label>
+      <label><input asp-for="FooterWebsite" style="width:auto" /> Web sitesi</label>
+      <label><input asp-for="FooterSocial" style="width:auto" /> Instagram</label>
+      <label><input asp-for="FooterTaxInfo" style="width:auto" /> Vergi bilgisi</label>
+      <label><input asp-for="PageNumbers" style="width:auto" /> Sayfa numarası (Sayfa 1 / 3)</label>
+    </div>
+    <label asp-for="FooterNote">Alt bilgi notu (isteğe bağlı)</label><input asp-for="FooterNote" placeholder="Örn. TSE belgeli üretim · 2 yıl işçilik garantisi" />
+  </div>
+  <div class="admin-panel">
+    <h2>Filigran</h2>
+    <p class="admin-muted">Her basılan sayfanın ortasında çok soluk görünür; belgenin kopyalanmasını zorlaştırır, metnin okunmasını engellemez.</p>
+    <div class="admin-grid">
+      <label><input type="radio" name="WatermarkMode" value="@WatermarkModes.None" checked="@(Model.WatermarkMode == WatermarkModes.None)" style="width:auto" /> Filigran yok</label>
+      <label><input type="radio" name="WatermarkMode" value="@WatermarkModes.Logo" checked="@(Model.WatermarkMode == WatermarkModes.Logo)" style="width:auto" /> Logo</label>
+      <label><input type="radio" name="WatermarkMode" value="@WatermarkModes.Text" checked="@(Model.WatermarkMode == WatermarkModes.Text)" style="width:auto" /> Yazı</label>
+    </div>
+    <div class="admin-grid">
+      <div><label asp-for="WatermarkText">Filigran yazısı (boşsa firma adı)</label><input asp-for="WatermarkText" placeholder="Örn. KARAKUŞ ALÜMİNYUM" /></div>
+      <div><label asp-for="WatermarkOpacity">Saydamlık (%)</label><input asp-for="WatermarkOpacity" type="number" min="2" max="30" /></div>
+      <div><label asp-for="WatermarkSize">Boyut (sayfa genişliğinin %'si)</label><input asp-for="WatermarkSize" type="number" min="20" max="100" /></div>
+      <div><label asp-for="WatermarkAngle">Açı (derece)</label><input asp-for="WatermarkAngle" type="number" min="-60" max="60" /></div>
+    </div>
+  </div>
+  <div class="admin-actions"><button class="admin-btn" type="submit">Kaydet</button></div>
+</form>
+<div class="admin-panel">
+  <h2>Önizleme</h2>
+  <p class="admin-muted">Kaydettikten sonra güncellenir. Baskıda filigran her sayfada, sayfa numarası alt kenarda görünür.</p>
+  <iframe src="/yonetim/sablonlar/quote/onizleme" title="Teklif önizleme" style="width:100%;height:900px;border:1px solid var(--line);border-radius:8px;background:#fff"></iframe>
+</div>

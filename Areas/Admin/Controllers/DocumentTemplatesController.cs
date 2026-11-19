@@ -15,7 +15,37 @@ public sealed class DocumentTemplatesController : Controller
     private readonly AppDbContext _db;
     private readonly IWebHostEnvironment _env;
     private readonly IAuditService _audit;
-    public DocumentTemplatesController(AppDbContext db, IWebHostEnvironment env, IAuditService audit) { _db = db; _env = env; _audit = audit; }
+    private readonly DocumentBrandingProvider _branding;
+    public DocumentTemplatesController(AppDbContext db, IWebHostEnvironment env, IAuditService audit, DocumentBrandingProvider branding) { _db = db; _env = env; _audit = audit; _branding = branding; }
+
+    // Tüm belgelerin ortak anteti: logo, iletişim, alt bilgi, sayfa numarası ve filigran.
+    [HttpGet("antet")]
+    public async Task<IActionResult> Branding() => View(await _branding.GetAsync());
+
+    [HttpPost("antet"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> Branding(DocumentBranding input, IFormFile? logoFile, bool removeLogo = false)
+    {
+        var current = await _branding.GetAsync();
+        if (!WatermarkModes.All.Contains(input.WatermarkMode)) ModelState.AddModelError(nameof(input.WatermarkMode), "Geçersiz filigran seçeneği.");
+        string? uploaded = null;
+        try { uploaded = await AdminImageUpload.SaveAsync(logoFile, _env); }
+        catch (InvalidOperationException ex) { ModelState.AddModelError(string.Empty, ex.Message); }
+        input.LogoPath = uploaded ?? (removeLogo ? null : current.LogoPath);
+        if (input.WatermarkMode == WatermarkModes.Logo && string.IsNullOrWhiteSpace(input.LogoPath)) ModelState.AddModelError(nameof(input.WatermarkMode), "Logo filigranı için önce logo yükleyin.");
+        foreach (var property in typeof(DocumentBranding).GetProperties().Where(p => p.PropertyType == typeof(string) && p.CanWrite))
+            if (property.GetValue(input) is string text) property.SetValue(input, string.IsNullOrWhiteSpace(text) ? null : text.Trim());
+        input.AccentColor ??= "#b0202a";
+        input.WatermarkMode ??= WatermarkModes.None;
+        if (ModelState.IsValid)
+        {
+            try { await _branding.SaveAsync(input); }
+            catch (InvalidOperationException ex) { ModelState.AddModelError(string.Empty, ex.Message); }
+        }
+        if (!ModelState.IsValid) return View(input);
+        await _audit.RecordAsync("update", "DocumentBranding", "1", "Antet ve filigran");
+        TempData["Notice"] = "Antet ve filigran kaydedildi. Tüm belgeler yeni ayarla basılır.";
+        return RedirectToAction(nameof(Branding));
+    }
 
     [HttpGet("")]
     public async Task<IActionResult> Index() => View(await _db.TemplateClauses.AsNoTracking().OrderBy(x => x.SortOrder).ThenBy(x => x.Id).ToListAsync());
@@ -31,7 +61,7 @@ public sealed class DocumentTemplatesController : Controller
     }
 
     [HttpPost("{kind:regex(^(quote|contract)$)}"), ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(string kind, DocumentTemplate input, List<ContractArticle>? articles, List<BlockClause>? terms, string? variablesText, IFormFile? logoFile, bool removeLogo = false)
+    public async Task<IActionResult> Edit(string kind, DocumentTemplate input, List<ContractArticle>? articles, List<BlockClause>? terms, string? variablesText)
     {
         var row = await _db.DocumentTemplates.FirstAsync(x => x.Kind == kind);
         var cleanArticles = (articles ?? new()).Where(a => !string.IsNullOrWhiteSpace(a.Title)).ToList();
@@ -46,9 +76,6 @@ public sealed class DocumentTemplatesController : Controller
                 if (cleanArticles.Count(a => a.Kind == required) != 1)
                     ModelState.AddModelError(string.Empty, "Sözleşmede konu, bedel ve ödeme maddelerinden tam birer tane olmalıdır.");
 
-        string? uploaded = null;
-        try { uploaded = await AdminImageUpload.SaveAsync(logoFile, _env); }
-        catch (InvalidOperationException ex) { ModelState.AddModelError(string.Empty, ex.Message); }
 
         if (!ModelState.IsValid)
         {
@@ -61,15 +88,12 @@ public sealed class DocumentTemplatesController : Controller
         }
 
         row.Title = input.Title.Trim();
-        row.LogoPath = uploaded ?? (removeLogo ? null : row.LogoPath);
         row.SellerName = input.SellerName?.Trim();
         row.SellerLegalName = input.SellerLegalName?.Trim();
         row.Signatory = input.Signatory?.Trim();
         row.SignatoryTitle = input.SignatoryTitle?.Trim();
         row.SellerAddress = input.SellerAddress?.Trim();
         row.SellerTaxInfo = input.SellerTaxInfo?.Trim();
-        row.Phone = input.Phone?.Trim();
-        row.FooterAddress = input.FooterAddress?.Trim();
         row.Intro = input.Intro;
         row.Closing = input.Closing;
         row.SignOff = input.SignOff;

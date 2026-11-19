@@ -1,0 +1,31 @@
+/* Ortak belge anteti (Belge şablonları > Antet ve filigran): teklif, sözleşme, çizim listesi ve sipariş çıktıları. */
+.doc-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding-top:12mm;padding-bottom:2mm;border-bottom:.6mm solid var(--doc-accent,#b0202a)}
+.doc-logo{display:block;width:auto;max-width:90mm;height:16mm;object-fit:contain}
+.doc-date{font-family:Arial,Helvetica,sans-serif;font-size:11pt}
+/* Ortak antet: logo, iletişim satırı, tarih ve QR; alt bilgi; filigran */
+.doc-brand__name{font:700 18pt Arial,Helvetica,sans-serif;color:var(--doc-accent,#b0202a)}
+.doc-brand__slogan{margin-top:1mm;font:8.5pt Arial,Helvetica,sans-serif;color:#555}
+.doc-head__side{display:flex;align-items:flex-end;gap:5mm}
+.doc-head__meta{display:flex;flex-direction:column;align-items:flex-end;gap:1.5mm}
+.doc-brand__contact{font:8.5pt/1.45 Arial,Helvetica,sans-serif;color:#333;text-align:right}
+.doc-foot__line{display:flex;flex-wrap:wrap;justify-content:center;gap:0 5mm;text-align:center}
+.doc-foot__note{margin-top:.5mm;text-align:center;color:#555;font-size:8pt}
+.doc-watermark{position:fixed;top:50%;left:50%;z-index:5;display:flex;align-items:center;justify-content:center;pointer-events:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.doc-watermark img{display:block;width:100%;height:auto}
+.doc-watermark span{font:700 1em Arial,Helvetica,sans-serif;color:#000;white-space:nowrap;text-transform:uppercase;letter-spacing:.06em}
+@media screen{.doc-watermark{position:absolute;top:calc(50vh + 40px)}}
+/* QR kodu: antette tarihin altında, küçük. Okutulunca belgenin asıl hali açılır. */
+.doc-qr{display:flex;flex-direction:column;align-items:center;gap:.5mm;color:#555;font:7pt Arial,Helvetica,sans-serif;text-decoration:none}
+.doc-qr svg{display:block;width:17mm;height:17mm}
+.doc-foot{padding:3mm 0 6mm;border-top:.3mm solid var(--doc-accent,#b0202a);font:8.5pt/1.45 Arial,Helvetica,sans-serif;color:#333}
+@media print{.doc-head{padding-top:0}}
+/* Çizim listesi (yönetim paneli içinde): antet tablo başlığında, alt bilgi yalnızca baskıda */
+.poz-sheet .doc-head{padding-top:0;margin-bottom:3mm}
+.poz-print-foot,.poz-foot-space,.poz-print-only{display:none}
+@media print{
+  .poz-foot-space,.poz-print-only{display:block}
+  .poz-foot-space{height:20mm}
+  .poz-print-foot{position:fixed;right:0;bottom:0;left:0;display:block}
+  .poz-print-foot .doc-foot{padding-bottom:0}
+}
+@media screen and (max-width:700px){.doc-head{flex-wrap:wrap}.doc-head__side{flex-wrap:wrap;justify-content:flex-end}.doc-logo{max-width:60vw}}

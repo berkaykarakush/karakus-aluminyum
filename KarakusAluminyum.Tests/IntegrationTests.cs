@@ -1039,7 +1039,7 @@ public sealed class AdminPanelTests(PostgresFixture postgres)
         var app = postgres.Shared;
         var (admin, _) = await AdminAsync(app);
         var html = WebUtility.HtmlDecode(await admin.GetStringAsync("/yonetim/crm/teklifler"));
-        foreach (var group in new[] { "Satış", "Çizim ve cam", "Site içeriği", "Raporlar", "Yönetim" }) Assert.Contains(group, html);
+        foreach (var group in new[] { "Satış", "Üretim", "Site içeriği", "Raporlar", "Yönetim" }) Assert.Contains(group, html);
         Assert.Contains("data-nav-group=\"sales\" data-active=\"1\"", html);
 
         await using var scope = app.Services.CreateAsyncScope();

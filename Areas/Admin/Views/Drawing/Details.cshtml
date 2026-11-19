@@ -13,6 +13,8 @@
 }
 <link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
 <link rel="stylesheet" href="~/css/poz-list.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/brand.css" asp-append-version="true" />
+<div class="poz-print-only"><partial name="_BrandLayer" /></div>
 <div class="admin-actions wd-noprint">
   <h1>@Model.Name</h1>
   <a class="admin-btn admin-btn--secondary" href="/yonetim/cizim">Çizim listeleri</a>
@@ -32,11 +34,13 @@
   <label>Ölçek <input type="range" min="0.6" max="1.6" step="0.1" data-poz-option="zoom" /></label>
 </div>
 <style>@@page{size:A4;margin:10mm}</style>
+<div class="poz-print-foot"><partial name="_BrandFoot" /></div>
 <div class="wd-sheet wd-pages">
   <table class="poz-sheet wd-page">
     <thead><tr><td>
       <partial name="_PozSheetHead" model="new PozSheetHeadVm(Model, pozlar)" />
     </td></tr></thead>
+    <tfoot><tr><td><div class="poz-foot-space"></div></td></tr></tfoot>
     <tbody><tr><td>
       <partial name="_PozList" model="pozlar" />
       <div class="poz-totals">
@@ -64,6 +68,13 @@
     <div class="admin-panel wd-noprint">
       <h2>İmalat föyleri</h2>
       <div class="admin-actions">@foreach (var poz in pozlar.Where(x => x.Design.ProfileSystemId is not null)) { <a class="admin-btn admin-btn--secondary" href="/yonetim/cizim/imalat/@poz.Design.Id">Poz @poz.Position</a> }</div>
+    </div>
+  }
+  @if (ViewBag.Orders is List<KarakusAluminyum.Web.Models.Production.ProductionOrder> orders && orders.Count > 0)
+  {
+    <div class="admin-panel wd-noprint">
+      <h2>Siparişler</h2>
+      <div class="admin-actions">@foreach (var o in orders) { <a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler/detay/@o.Id">@o.OrderNumber · @KarakusAluminyum.Web.Models.Production.OrderStatuses.Label(o.Status)</a> }</div>
     </div>
   }
   <div class="admin-panel wd-noprint">

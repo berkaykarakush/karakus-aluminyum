@@ -9,6 +9,8 @@
 <div class="admin-actions">
   <h1>Sözleşme @Model.ContractNumber</h1>
   <a class="admin-btn" href="/yonetim/sozlesmeler">Sözleşme listesi</a>
+  @if (ViewBag.OrderId is int orderId) { <a class="admin-btn" href="/yonetim/siparisler/detay/@orderId">Siparişi aç</a> }
+  else if (Model.Status != ContractStatus.Cancelled && (User.IsInRole("Admin") || User.IsInRole("Editor"))) { <form method="post" action="/yonetim/siparisler/sozlesmeden/@Model.Id">@Html.AntiForgeryToken()<button class="admin-btn">Sipariş oluştur</button></form> }
   @if ((User.IsInRole("Admin") || User.IsInRole("Accountant")) && !isDraft && Model.Status != ContractStatus.Cancelled) { <a class="admin-btn" href="/yonetim/muhasebe/faturalar/ekle?sozlesme=@Model.Id">Faturaya dönüştür</a> }
   <a class="admin-btn" href="/yonetim/sozlesmeler/yazdir/@Model.Id" target="_blank" rel="noopener">Görüntüle / PDF</a>
   @if (isDraft) { <a class="admin-btn" href="/yonetim/sozlesmeler/duzenle/@Model.Id">Düzenle</a> }
