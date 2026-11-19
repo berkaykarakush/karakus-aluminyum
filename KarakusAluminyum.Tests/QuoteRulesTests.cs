@@ -115,4 +115,20 @@ public sealed class QuoteRulesTests
         QuoteRules.Calculate(new[] { line }, 0m, 0m);
         Assert.Equal(37.5m, line.LineTotal);
     }
+
+    // Proforma sırası: satır iskontosu satır tutarından, genel iskonto ara toplamdan düşülür; KDV en son eklenir.
+    [Fact]
+    public void Calculate_AppliesLineDiscount_ThenGeneralDiscount_ThenTax()
+    {
+        var lines = new[] { new QuoteItem { Quantity = 2, UnitPrice = 1000m, DiscountRate = 10m }, new QuoteItem { Quantity = 1, UnitPrice = 500m } };
+        var totals = QuoteRules.Calculate(lines, 5m, 20m);
+        Assert.Equal((1800m, 500m), (lines[0].LineTotal, lines[1].LineTotal));
+        Assert.Equal((2300m, 115m, 437m, 2622m), totals);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(101)]
+    public void Calculate_RejectsInvalidLineDiscount(int rate)
+        => Assert.Throws<ArgumentException>(() => QuoteRules.Calculate(new[] { new QuoteItem { Quantity = 1, UnitPrice = 10m, DiscountRate = rate } }, 0m, 20m));
 }

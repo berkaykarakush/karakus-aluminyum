@@ -221,6 +221,15 @@ ALTER TABLE "GlassTypes" ADD COLUMN IF NOT EXISTS "SheetHeightMm" numeric(10,2) 
 ALTER TABLE "GlassTypes" ADD COLUMN IF NOT EXISTS "CutGapMm" numeric(10,2) NOT NULL DEFAULT 2;
 ALTER TABLE "WindowDesigns" DROP COLUMN IF EXISTS "GlassTypeId";
 ALTER TABLE "WindowDesigns" ADD COLUMN IF NOT EXISTS "GlassSpec" character varying(60);
+-- Proforma teklif ve ayrıntılı sözleşme
+ALTER TABLE "QuoteItems" ADD COLUMN IF NOT EXISTS "DiscountRate" numeric(5,2) NOT NULL DEFAULT 0;
+ALTER TABLE "DocumentTemplates" ADD COLUMN IF NOT EXISTS "SellerEmail" character varying(160);
+ALTER TABLE "DocumentTemplates" ADD COLUMN IF NOT EXISTS "BankInfo" character varying(1000);
+ALTER TABLE "DocumentTemplates" ADD COLUMN IF NOT EXISTS "AcceptanceText" character varying(1000);
+ALTER TABLE "DocumentTemplates" ADD COLUMN IF NOT EXISTS "TermsJson" text NOT NULL DEFAULT '[]';
+ALTER TABLE "DocumentTemplates" ADD COLUMN IF NOT EXISTS "VariablesJson" text NOT NULL DEFAULT '{{}}';
+ALTER TABLE "Contracts" ADD COLUMN IF NOT EXISTS "TaxRate" numeric(5,2) NOT NULL DEFAULT 20;
+ALTER TABLE "Contracts" ADD COLUMN IF NOT EXISTS "DiscountRate" numeric(5,2) NOT NULL DEFAULT 0;
 -- Çizimler profil sistemine bağlı olmak zorunda değildir (üretim detayları ayarı).
 ALTER TABLE "WindowDesigns" ADD COLUMN IF NOT EXISTS "ProfileSystemId" integer REFERENCES "ProfileSystems"("Id") ON DELETE RESTRICT;
 ALTER TABLE "WindowDesigns" ALTER COLUMN "ProfileSystemId" DROP NOT NULL;

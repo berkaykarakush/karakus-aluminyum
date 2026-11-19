@@ -41,13 +41,13 @@
 
   <section class="doc-card">
     <h2>Değişkenler</h2>
-    <p class="admin-muted">Tüm belgede geçerli değerler. Henüz bilinmeyenleri boş bırakın; çıktıda elle doldurulacak çizgi olarak basılır.</p>
+    <p class="admin-muted">Tüm belgede geçerli değerler; sözleşme maddelerindekiler de burada (ör. teslim süresi, garanti süresi, gecikme cezası). Varsayılanları şablon ayarlarından gelir. Henüz bilinmeyenleri boş bırakın; çıktıda elle doldurulacak çizgi olarak basılır.</p>
     <div id="doc-variables" class="doc-grid"></div>
   </section>
 
   <section class="doc-card">
-    <h2>Bloklar ve iş kalemleri</h2>
-    <p class="admin-muted">Hazır maddeleri seçin. Blok kopyalayıp yalnızca adet gibi değerleri değiştirebilirsiniz.</p>
+    <h2>Bloklar, teknik özellikler ve iş kalemleri</h2>
+    <p class="admin-muted">Hazır maddeleri seçin (konu maddesinde basılır). İş kalemleri sözleşmede proformadaki gibi fiyat tablosu olarak basılır; kalem girerseniz toplam bedel kalemlerden hesaplanır. Tekliften oluşturulan sözleşmede kalemler tekliften gelir.</p>
     <div id="doc-blocks"></div>
     <div class="doc-row"><button type="button" class="doc-btn" id="doc-add-block">+ Blok ekle</button></div>
   </section>
@@ -55,13 +55,21 @@
   <section class="doc-card">
     <h2>Bedel ve ödeme planı</h2>
     <div class="doc-grid">
-      <div><label asp-for="TotalAmount">İşin toplam bedeli (TL)</label><input asp-for="TotalAmount" type="number" step="0.01" min="0" /></div>
+      <div><label asp-for="TotalAmount">İşin toplam bedeli (TL)</label><input asp-for="TotalAmount" type="number" step="0.01" min="0" /><p class="doc-help" id="doc-total-note"></p></div>
       <div><label asp-for="VatMode">KDV gösterimi</label>
-        <select asp-for="VatMode"><option value="@VatMode.Included">KDV dahil</option><option value="@VatMode.None">KDV belirtilmesin</option><option value="@VatMode.Added">+ KDV</option></select></div>
+        <select asp-for="VatMode"><option value="@VatMode.Included">Fiyatlar KDV dahil</option><option value="@VatMode.Added">KDV hariç fiyat, KDV eklensin</option><option value="@VatMode.None">KDV belirtilmesin</option></select></div>
+      <div><label asp-for="TaxRate">KDV oranı (%)</label><input asp-for="TaxRate" type="number" step="0.01" min="0" max="100" /></div>
+      <div><label asp-for="DiscountRate">Genel iskonto (%)</label><input asp-for="DiscountRate" type="number" step="0.01" min="0" max="100" /></div>
     </div>
     <label for="doc-price-note">Bedel notu</label><textarea id="doc-price-note" rows="2" data-content="priceNote" placeholder="Örn. fatura ile ilgili özel not"></textarea>
     <h3 style="margin:14px 0 6px;font-size:13px">Ödeme planı</h3>
     <div id="doc-payments"></div>
+  </section>
+
+  <section class="doc-card">
+    <h2>Özel şartlar</h2>
+    <p class="admin-muted">"Özel Şartlar" maddesinde basılır. Tekliften oluşturulan sözleşmede teklifin şartları gelir; boş bırakılırsa madde basılmaz ve madde numaraları kendiliğinden kayar.</p>
+    <div id="doc-terms"></div>
   </section>
 
   <section class="doc-card">
@@ -72,6 +80,7 @@
 
   <div class="doc-actions"><button class="admin-btn" type="submit">Kaydet</button><a class="admin-btn" href="/yonetim/sozlesmeler">İptal</a></div>
 </form>
+<script type="application/json" id="doc-template-texts">@Html.Raw(JsonSerializer.Serialize((List<string>)ViewBag.TemplateTexts))</script>
 <script type="application/json" id="doc-customers">@Html.Raw(JsonSerializer.Serialize(ViewBag.CustomerDetails))</script>
 <script type="application/json" id="doc-clauses">@Html.Raw(JsonSerializer.Serialize(clauses))</script>
 <script type="application/json" id="doc-designs">@Html.Raw(JsonSerializer.Serialize(ViewBag.Designs))</script>

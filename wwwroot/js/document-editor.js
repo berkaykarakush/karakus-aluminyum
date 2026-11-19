@@ -6,12 +6,15 @@
   const mode = form.dataset.mode; // "quote" veya "contract"
   const clauses = JSON.parse(document.getElementById("doc-clauses").textContent);
   const designs = JSON.parse(document.getElementById("doc-designs").textContent);
-  const SYSTEM = new Set(["musteri", "tarih", "toplam", "toplam_yazi", "alici", "alici_adres", "satici", "satici_adres", "konu", "madde_sayisi", "madde_sayisi_yazi", "sayfa_sayisi", "sayfa_sayisi_yazi"]);
+  const SYSTEM = new Set(["musteri", "tarih", "gecerlilik", "belge_no", "toplam", "toplam_yazi", "alici", "alici_adres", "satici", "satici_adres", "konu", "madde_sayisi", "madde_sayisi_yazi", "sayfa_sayisi", "sayfa_sayisi_yazi"]);
   const content = JSON.parse(form.elements.DocumentJson.value || "{}");
   content.variables ||= {};
   content.blocks ||= [];
   content.payments ||= [];
   content.designIds ||= [];
+  content.terms ||= [];
+  // Sözleşme şablonunun maddelerindeki değişkenler de doldurulabilsin (ör. {{teslim_suresi}}).
+  const templateTexts = JSON.parse(document.getElementById("doc-template-texts")?.textContent || "[]");
   content.blocks.forEach((b) => { b.variables ||= {}; b.clauses ||= []; b.items ||= []; });
 
   const money = (v) => Number(v || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
@@ -32,7 +35,7 @@
   const label = (name) => name.replaceAll("_", " ");
 
   function allPlaceholders() {
-    const names = [content.intro, content.closing, content.note, content.subject, content.priceNote].flatMap(placeholders);
+    const names = [content.intro, content.closing, content.note, content.subject, content.priceNote, ...content.terms.map((t) => t.text), ...templateTexts].flatMap(placeholders);
     content.blocks.forEach((b) => names.push(...blockPlaceholders(b)));
     return [...new Set(names)];
   }
@@ -106,18 +109,45 @@
     renderTotals();
   }
 
-  function blockSubtotal(b) { return b.items.reduce((sum, i) => sum + round2((Number(i.quantity) || 0) * (Number(i.unitPrice) || 0)), 0); }
-  const lineMargin = (i) => Number(i.unitCost) > 0 ? `%${((Number(i.unitPrice) / Number(i.unitCost) - 1) * 100).toLocaleString("tr-TR", { maximumFractionDigits: 1 })}` : "—";
+  // Satır tutarı satır iskontosu düşülmüş tutardır (sunucudaki QuoteRules.LineTotal ile aynı).
+  const lineTotal = (i) => round2((Number(i.quantity) || 0) * (Number(i.unitPrice) || 0) * (1 - (Number(i.discountRate) || 0) / 100));
+  function blockSubtotal(b) { return b.items.filter((i) => mode === "quote" || i.description?.trim()).reduce((sum, i) => sum + lineTotal(i), 0); }
+  // Genel iskonto ve KDV: QuoteRules.Calculate ile aynı sıra.
+  function grandTotal(subtotal) {
+    const discount = round2(subtotal * num("DiscountRate") / 100), net = subtotal - discount, tax = num("TaxRate") / 100;
+    return form.elements.VatMode.value === "Added" ? round2(net + round2(net * tax)) : net;
+  }
+  const lineMargin = (i) => Number(i.unitCost) > 0 ? `%${((Number(i.unitPrice) * (1 - (Number(i.discountRate) || 0) / 100) / Number(i.unitCost) - 1) * 100).toLocaleString("tr-TR", { maximumFractionDigits: 1 })}` : "—";
+
+  // Sözleşme: kalem varsa bedel kalemlerden hesaplanır ve alan kilitlenir; yoksa bedel elle yazılır.
+  function renderContractTotal() {
+    const items = allItems().filter((i) => i.description?.trim());
+    const field = form.elements.TotalAmount, note = document.getElementById("doc-total-note");
+    document.querySelectorAll("[data-line]").forEach((row) => {
+      const item = content.blocks[Number(row.dataset.block)].items[Number(row.dataset.line)];
+      row.querySelector("[data-line-total]").textContent = money(lineTotal(item));
+    });
+    document.querySelectorAll("[data-block-total]").forEach((el) => { el.textContent = money(blockSubtotal(content.blocks[Number(el.dataset.blockTotal)])); });
+    if (!field) return;
+    field.readOnly = items.length > 0;
+    if (items.length) {
+      const subtotal = content.blocks.reduce((sum, b) => sum + blockSubtotal(b), 0);
+      field.value = grandTotal(subtotal).toFixed(2);
+      field.dispatchEvent(new Event("input"));
+    }
+    if (note) note.textContent = items.length ? "Kalemlerden hesaplanır (genel iskonto ve KDV dahil genel toplam)." : "Kalem girilmediği için bedel elle yazılır.";
+  }
 
   function renderTotals() {
     const box = document.getElementById("doc-total");
-    if (!box || mode !== "quote") return;
+    if (mode === "contract") { renderContractTotal(); return; }
+    if (!box) return;
     const subtotal = content.blocks.reduce((sum, b) => sum + blockSubtotal(b), 0);
     box.textContent = `Bloklar toplamı: ${money(subtotal)}`;
     document.querySelectorAll("[data-block-total]").forEach((el) => { el.textContent = money(blockSubtotal(content.blocks[Number(el.dataset.blockTotal)])); });
     document.querySelectorAll("[data-line]").forEach((row) => {
       const item = content.blocks[Number(row.dataset.block)].items[Number(row.dataset.line)];
-      row.querySelector("[data-line-total]").textContent = money(round2((Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)));
+      row.querySelector("[data-line-total]").textContent = money(lineTotal(item));
       row.querySelector("[data-line-margin]").textContent = lineMargin(item);
       const cost = row.querySelector("[data-line-cost]");
       if (cost) cost.textContent = "Birim: " + money(item.unitCost);
@@ -130,6 +160,7 @@
     const vat = form.elements.VatMode.value;
     const netExVat = vat === "Included" ? round2(net / (1 + tax)) : net;
     const cost = round2(allItems().filter((i) => i.description?.trim()).reduce((sum, i) => sum + (Number(i.unitCost) || 0) * (Number(i.quantity) || 0), 0));
+    // Satır iskontosu marjdan düşer: marj sütunu iskontolu birim fiyata göre hesaplanır.
     const profit = netExVat - cost;
     const rows = [
       ["Toplam maliyet", money(cost)],
@@ -157,22 +188,35 @@
         : h("td", {}, h("input", { type: "number", min: "0", step: "0.01", value: item.unitCost ?? 0, "aria-label": "Birim maliyet", title: "Elle girilen maliyet", oninput: (e) => { item.unitCost = Number(e.target.value); if (!item.manualPrice) { item.unitPrice = priceFromCost(item.unitCost); priceInput.value = item.unitPrice; } renderTotals(); } }));
       const priceInput = h("input", { type: "number", min: "0", step: "0.01", value: item.unitPrice ?? 0, "aria-label": "Birim fiyat", className: item.manualPrice ? "doc-manual" : "", "data-price": "",
         oninput: (e) => { item.unitPrice = Number(e.target.value); if (!item.manualPrice) { item.manualPrice = true; renderBlocks(); return; } renderTotals(); } });
-      body.append(h("tr", { "data-block": index, "data-line": i },
+      const discount = h("td", {}, h("input", { type: "number", min: "0", max: "100", step: "0.01", value: item.discountRate ?? 0, "aria-label": "Satır iskontosu (%)", oninput: update("discountRate") }));
+      const basics = [
         h("td", {}, h("input", { value: item.description || "", placeholder: "Örn. Montaj ve nakliye", "aria-label": "Açıklama", oninput: update("description") })),
         h("td", {}, h("input", { type: "number", min: "0", step: "0.001", value: item.quantity ?? 1, "aria-label": "Miktar", oninput: update("quantity") })),
-        h("td", {}, h("input", { value: item.unit || "Adet", "aria-label": "Birim", oninput: update("unit") })),
+        h("td", {}, h("input", { value: item.unit || "Adet", "aria-label": "Birim", oninput: update("unit") }))];
+      if (mode === "contract") {
+        body.append(h("tr", { "data-block": index, "data-line": i }, basics,
+          h("td", {}, h("input", { type: "number", min: "0", step: "0.01", value: item.unitPrice ?? 0, "aria-label": "Birim fiyat", oninput: update("unitPrice") })),
+          discount,
+          h("td", { className: "doc-num", "data-line-total": "" }),
+          h("td", {}, h("button", { type: "button", className: "doc-link", textContent: "Sil", onclick: () => { block.items.splice(i, 1); renderBlocks(); } }))));
+        return;
+      }
+      body.append(h("tr", { "data-block": index, "data-line": i },
+        basics,
         costCell,
         h("td", { className: "doc-price-cell" }, priceInput,
           item.manualPrice ? h("button", { type: "button", className: "doc-link", textContent: "↺", title: "Fiyatı marja göre hesapla", onclick: () => { item.manualPrice = false; item.unitPrice = priceFromCost(item.unitCost); renderBlocks(); } }) : null),
+        discount,
         h("td", { className: "doc-num", "data-line-total": "" }),
         h("td", { className: "doc-num", "data-line-margin": "" }),
         h("td", {}, h("button", { type: "button", className: "doc-link", textContent: "Sil", onclick: () => { block.items.splice(i, 1); renderBlocks(); } }))));
     });
+    const headers = mode === "contract" ? ["Açıklama", "Miktar", "Birim", "Birim fiyat", "İsk. %", "Tutar", ""] : ["Açıklama", "Miktar", "Birim", "Birim maliyet", "Birim fiyat", "İsk. %", "Tutar", "Marj", ""];
     return h("div", { className: "doc-subpanel" },
-      h("h3", { textContent: "Fiyat kalemleri" }),
-      h("table", { className: "doc-items doc-items--priced" }, h("thead", {}, h("tr", {}, ["Açıklama", "Miktar", "Birim", "Birim maliyet", "Birim fiyat", "Tutar", "Marj", ""].map((t) => h("th", { textContent: t })))), body),
+      h("h3", { textContent: mode === "contract" ? "İş kalemleri ve birim fiyatlar (sözleşmede fiyat tablosu olarak basılır)" : "Fiyat kalemleri" }),
+      h("table", { className: `doc-items ${mode === "contract" ? "doc-items--contract" : "doc-items--priced"}` }, h("thead", {}, h("tr", {}, headers.map((t) => h("th", { textContent: t })))), body),
       h("div", { className: "doc-row" },
-        h("button", { type: "button", className: "doc-btn", textContent: "+ Kalem ekle", onclick: () => { block.items.push({ description: "", quantity: 1, unit: "Adet", unitCost: 0, unitPrice: 0 }); renderBlocks(); } }),
+        h("button", { type: "button", className: "doc-btn", textContent: "+ Kalem ekle", onclick: () => { block.items.push({ description: "", quantity: 1, unit: "Adet", unitCost: 0, unitPrice: 0, discountRate: 0 }); renderBlocks(); } }),
         h("strong", { "data-block-total": index })));
   }
 
@@ -212,10 +256,25 @@
         renderClauses(block),
         mode === "contract" ? h("div", { className: "doc-subpanel" },
           h("h3", { textContent: "Blok kapanış metni (isteğe bağlı)" }),
-          h("textarea", { rows: 2, value: block.footer || "", "aria-label": "Blok kapanış metni", oninput: (e) => { block.footer = e.target.value; }, onchange: () => { renderBlocks(); renderVariables(); } })) : renderItems(block, index)));
+          h("textarea", { rows: 2, value: block.footer || "", "aria-label": "Blok kapanış metni", oninput: (e) => { block.footer = e.target.value; }, onchange: () => { renderBlocks(); renderVariables(); } })) : null,
+        renderItems(block, index)));
     });
     refreshBlockHints();
     renderTotals();
+  }
+
+  // Şartlar: ödeme, teslim, montaj, hariç tutulanlar, garanti... Proformada "Teklif şartları", sözleşmede "Özel şartlar".
+  function renderTerms() {
+    const box = document.getElementById("doc-terms");
+    if (!box) return;
+    box.textContent = "";
+    content.terms.forEach((term, i) => box.append(h("div", { className: "doc-clause" },
+      h("input", { value: term.title || "", placeholder: "Başlık (örn. Teslim süresi)", "aria-label": `${i + 1}. şart başlığı`, oninput: (e) => { term.title = e.target.value; } }),
+      h("textarea", { rows: 2, value: term.text || "", "aria-label": `${i + 1}. şart metni`, oninput: (e) => { term.text = e.target.value; }, onchange: renderVariables }),
+      h("div", { className: "doc-row" },
+        h("button", { type: "button", className: "doc-link", textContent: "Yukarı", disabled: i === 0, onclick: () => { content.terms.splice(i - 1, 0, content.terms.splice(i, 1)[0]); renderTerms(); } }),
+        h("button", { type: "button", className: "doc-link", textContent: "Sil", onclick: () => { content.terms.splice(i, 1); renderTerms(); renderVariables(); } })))));
+    box.append(h("button", { type: "button", className: "doc-btn", textContent: "+ Şart ekle", onclick: () => { content.terms.push({ title: "", text: "" }); renderTerms(); } }));
   }
 
   function renderPayments() {
@@ -288,10 +347,12 @@
     input.addEventListener("change", renderVariables);
   });
   document.getElementById("doc-add-block").addEventListener("click", () => {
-    content.blocks.push({ name: "", variables: {}, clauses: [], items: mode === "quote" ? [{ description: "", quantity: 1, unit: "Adet", unitCost: 0, unitPrice: 0 }] : [] });
+    content.blocks.push({ name: "", variables: {}, clauses: [], items: mode === "quote" ? [{ description: "", quantity: 1, unit: "Adet", unitCost: 0, unitPrice: 0, discountRate: 0 }] : [] });
     renderBlocks();
   });
   form.addEventListener("submit", () => { form.elements.DocumentJson.value = JSON.stringify(content); });
+  if (mode === "contract") ["DiscountRate", "TaxRate"].forEach((name) => form.elements[name]?.addEventListener("input", renderTotals));
+  if (mode === "contract") form.elements.VatMode?.addEventListener("change", renderTotals);
   if (mode === "quote") {
     ["MarginPercent", "GlassTypeId"].forEach((name) => form.elements[name]?.addEventListener(name === "GlassTypeId" ? "change" : "input", () => { reprice(); renderBlocks(); }));
     ["DiscountRate", "TaxRate", "VatMode"].forEach((name) => form.elements[name]?.addEventListener("input", renderTotals));
@@ -300,6 +361,7 @@
 
   renderVariables();
   renderBlocks();
+  renderTerms();
   renderPayments();
   renderDesigns();
 })();

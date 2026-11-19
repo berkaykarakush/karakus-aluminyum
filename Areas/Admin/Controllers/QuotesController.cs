@@ -35,7 +35,8 @@ public sealed class QuotesController : Controller
     {
         var template = await DocumentViews.CurrentTemplateAsync(_db, DocumentKinds.Quote);
         var block = new DocumentBlock();
-        var content = new DocumentContent { Intro = template.Intro, Closing = template.Closing, Note = template.DefaultNote, Blocks = { block } };
+        // Proforma şartları (ödeme, teslim, garanti) ve değerleri şablondan gelir; teklifte değiştirilebilir.
+        var content = new DocumentContent { Intro = template.Intro, Closing = template.Closing, Note = template.DefaultNote, Blocks = { block }, Terms = DocumentJson.ParseTerms(template.TermsJson), Variables = DocumentJson.ParseVariables(template.VariablesJson) };
         var input = new QuoteInputViewModel { ValidUntilUtc = DateTime.UtcNow.Date.AddDays(14) };
         var list = listId is null ? null : await _db.DrawingLists.AsNoTracking().FirstOrDefaultAsync(x => x.Id == listId);
         if (list is not null)
@@ -97,7 +98,7 @@ public sealed class QuotesController : Controller
             {
                 var manual = i.UnitPrice != QuoteRules.PriceFromCost(i.UnitCost, quote.MarginPercent);
                 var cost = i.WindowDesignId is int d && costs.TryGetValue(d, out var c) ? c.LineCost(glassPrice, i.ManualBaseCost, i.ManualGlassCost) : i.UnitCost;
-                return new BlockItem { Description = i.Description, Quantity = i.Quantity, Unit = i.Unit, DesignId = i.WindowDesignId, UnitCost = cost, ManualPrice = manual, ManualBaseCost = i.ManualBaseCost, ManualGlassCost = i.ManualGlassCost, UnitPrice = manual ? i.UnitPrice : QuoteRules.PriceFromCost(cost, quote.MarginPercent) };
+                return new BlockItem { Description = i.Description, Quantity = i.Quantity, Unit = i.Unit, DiscountRate = i.DiscountRate, DesignId = i.WindowDesignId, UnitCost = cost, ManualPrice = manual, ManualBaseCost = i.ManualBaseCost, ManualGlassCost = i.ManualGlassCost, UnitPrice = manual ? i.UnitPrice : QuoteRules.PriceFromCost(cost, quote.MarginPercent) };
             }).ToList();
             return view.Block;
         }).ToList();
@@ -225,6 +226,8 @@ public sealed class QuotesController : Controller
         if (items.Count == 0) ModelState.AddModelError(string.Empty, "En az bir teklif kalemi girin (açıklama zorunludur).");
         if (items.Any(i => i.UnitCost < 0 || i.ManualBaseCost < 0 || i.ManualGlassCost < 0)) ModelState.AddModelError(string.Empty, "Kalem maliyeti sıfır veya daha büyük olmalıdır.");
         if (items.Any(i => i.Quantity <= 0 || i.UnitPrice < 0)) ModelState.AddModelError(string.Empty, "Kalem miktarı sıfırdan büyük, fiyatı sıfır veya daha büyük olmalıdır.");
+        if (items.Any(i => i.DiscountRate is < 0 or > 100)) ModelState.AddModelError(string.Empty, "Satır iskontosu %0 ile %100 arasında olmalıdır.");
+        DocumentTerms.Validate(content, ModelState);
         if (items.Any(i => i.Description!.Trim().Length > 200)) ModelState.AddModelError(string.Empty, "Kalem açıklaması en fazla 200 karakter olabilir.");
         if (items.Any(i => (i.Unit?.Trim().Length ?? 0) > 20)) ModelState.AddModelError(string.Empty, "Birim en fazla 20 karakter olabilir.");
         return content;
@@ -260,7 +263,7 @@ public sealed class QuotesController : Controller
                 var unitCost = linked?.LineCost(glassPrice, manualBase, manualGlass) ?? decimal.Round(item.UnitCost, 2, MidpointRounding.AwayFromZero);
                 // Marj fiyatı yalnızca çizime bağlı, elle yazılmamış kalemde sunucuda yeniden hesaplanır.
                 var unitPrice = linked is not null && !item.ManualPrice ? QuoteRules.PriceFromCost(unitCost, quote.MarginPercent) : item.UnitPrice;
-                quote.Items.Add(new QuoteItem { BlockName = name, SortOrder = order++, Description = item.Description!.Trim(), Quantity = item.Quantity, Unit = string.IsNullOrWhiteSpace(item.Unit) ? "Adet" : item.Unit.Trim(), UnitPrice = unitPrice, UnitCost = unitCost, WindowDesignId = linked?.DesignId, ManualBaseCost = manualBase, ManualGlassCost = manualGlass });
+                quote.Items.Add(new QuoteItem { BlockName = name, SortOrder = order++, Description = item.Description!.Trim(), Quantity = item.Quantity, Unit = string.IsNullOrWhiteSpace(item.Unit) ? "Adet" : item.Unit.Trim(), UnitPrice = unitPrice, DiscountRate = decimal.Round(item.DiscountRate, 2, MidpointRounding.AwayFromZero), UnitCost = unitCost, WindowDesignId = linked?.DesignId, ManualBaseCost = manualBase, ManualGlassCost = manualGlass });
             }
             block.Items.Clear(); // kalemlerin tek kaynağı QuoteItems tablosudur
         }
@@ -278,9 +281,12 @@ public sealed class QuotesController : Controller
     private async Task<decimal> GlassPriceAsync(int? glassTypeId)
         => glassTypeId is int id ? await _db.GlassTypes.Where(x => x.Id == id).Select(x => x.PricePerM2).FirstOrDefaultAsync() : 0m;
 
+    // Proforma kalemi: poz adı, ürün türü, tipi ve dış ölçüsü (ör. "Poz 1 - Plastik Doğrama, Açılır, 1200 × 2200 mm").
     private string Describe(WindowDesign row)
     {
-        var text = $"{row.Name} - {_units.Format(row.WidthMm)}x{_units.Format(row.HeightMm)} {_units.Code} ({ProductCategories.Label(row.Category)})";
+        var type = KarakusAluminyum.Web.Services.Drawing.PozSheet.TypeLabel(row);
+        var kind = ProductCategories.Label(row.Category);
+        var text = $"{row.Name} - {kind}{(type == kind ? "" : ", " + type)}, {_units.Format(row.WidthMm)} × {_units.Format(row.HeightMm)} {_units.Code}";
         return text.Length > 200 ? text[..200] : text;
     }
 

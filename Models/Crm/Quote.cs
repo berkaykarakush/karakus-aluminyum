@@ -50,7 +50,8 @@ public sealed class QuoteItem
     [Column(TypeName = "numeric(18,3)")] public decimal Quantity { get; set; } = 1;
     [StringLength(20)] public string Unit { get; set; } = "Adet";
     [Column(TypeName = "numeric(18,2)")] public decimal UnitPrice { get; set; }
-    [Column(TypeName = "numeric(18,2)")] public decimal LineTotal { get; set; }
+    [Column(TypeName = "numeric(5,2)")] public decimal DiscountRate { get; set; } // satır iskontosu (%)
+    [Column(TypeName = "numeric(18,2)")] public decimal LineTotal { get; set; } // satır iskontosu düşülmüş tutar
     public int? WindowDesignId { get; set; } // çizimden gelen kalem; maliyeti çizimden hesaplanır
     [Column(TypeName = "numeric(18,2)")] public decimal UnitCost { get; set; }
     // Taşerona verilen parça: dolu ise sistem hesabı yerine bu birim maliyet kullanılır.

@@ -19,14 +19,15 @@
   <div asp-validation-summary="All" class="doc-errors"></div>
 
   <section class="doc-card">
-    <h2>Teklif bilgileri</h2>
+    <h2>Proforma bilgileri</h2>
+    <p class="admin-muted">Teklif proforma fatura olarak basılır: satıcı ve alıcı bilgileri, kalem tablosu, iskonto ve KDV dökümü, şartlar, banka bilgileri ve müşteri onay kutusu. Alıcının adresi ve vergi bilgileri müşteri kartından gelir.</p>
     <div class="doc-grid">
       <div><label asp-for="CustomerId">Müşteri *</label><select asp-for="CustomerId" asp-items="customers" required><option value="">Müşteri seçin</option></select></div>
       <div><label asp-for="Title">Teklif başlığı *</label><input asp-for="Title" required placeholder="Örn. 3 blok inşaat doğrama işi" /></div>
       <div><label asp-for="DocumentDate">Teklif tarihi</label><input asp-for="DocumentDate" type="date" value="@Model.DocumentDate.ToString("yyyy-MM-dd")" /></div>
       <div><label asp-for="ValidUntilUtc">Geçerlilik tarihi</label><input asp-for="ValidUntilUtc" type="date" value="@Model.ValidUntilUtc?.ToString("yyyy-MM-dd")" /></div>
       <div><label asp-for="VatMode">KDV gösterimi</label>
-        <select asp-for="VatMode"><option value="@VatMode.Included">Fiyatlar KDV dahil</option><option value="@VatMode.None">KDV belirtilmesin</option><option value="@VatMode.Added">KDV toplama eklensin</option></select></div>
+        <select asp-for="VatMode"><option value="@VatMode.Added">KDV hariç fiyat, KDV toplama eklensin</option><option value="@VatMode.Included">Fiyatlar KDV dahil</option><option value="@VatMode.None">KDV belirtilmesin</option></select></div>
       <div><label asp-for="TaxRate">KDV oranı (%)</label><input asp-for="TaxRate" type="number" step="0.01" min="0" max="100" /></div>
     </div>
   </section>
@@ -34,8 +35,8 @@
   <section class="doc-card">
     <h2>Metinler</h2>
     <p class="admin-muted">Şablondan gelir, bu teklife özel değiştirebilirsiniz. <code>{{alan}}</code> yazdığınız her yer aşağıda değişkene dönüşür, <code>**metin**</code> kalın basılır.</p>
-    <label for="doc-intro">Giriş metni</label><textarea id="doc-intro" rows="3" data-content="intro"></textarea>
-    <label for="doc-closing">Fiyat öncesi metin</label><textarea id="doc-closing" rows="2" data-content="closing"></textarea>
+    <label for="doc-intro">Açıklama (tablonun üstünde)</label><textarea id="doc-intro" rows="2" data-content="intro"></textarea>
+    <label for="doc-closing">Ek açıklama (isteğe bağlı)</label><textarea id="doc-closing" rows="2" data-content="closing"></textarea>
     <label for="doc-note">Not</label><textarea id="doc-note" rows="2" data-content="note" placeholder="Örn. Bodrum kattaki doğramalar fiyata dahil değildir."></textarea>
   </section>
 
@@ -46,10 +47,16 @@
   </section>
 
   <section class="doc-card">
-    <h2>Bloklar</h2>
-    <p class="admin-muted">Her blok ayrı sayfada basılır. Çıktıda kalemler yazmaz, yalnızca işin toplam tutarı basılır. Maliyet ve marj sütunları sadece bu ekranda görünür.</p>
+    <h2>Bölümler ve kalemler</h2>
+    <p class="admin-muted">Her blok proformada bir bölüm başlığıdır (ör. A Blok); birden çok bölümde bölüm toplamları da basılır. Kalemler, miktarlar, birim fiyatlar ve satır iskontoları basılır. Maddeler "Teknik özellikler" başlığı altında yazar. Maliyet ve marj yalnızca bu ekranda görünür.</p>
     <div id="doc-blocks"></div>
     <div class="doc-row"><button type="button" class="doc-btn" id="doc-add-block">+ Blok ekle</button><strong id="doc-total"></strong></div>
+  </section>
+
+  <section class="doc-card">
+    <h2>Teklif şartları</h2>
+    <p class="admin-muted">Ödeme, teslim süresi, montaj, fiyata dahil olmayanlar ve garanti gibi şartlar. Şablondan gelir; bu teklife özel değiştirebilirsiniz. Değerler (ör. teslim süresi) yukarıdaki değişkenlerdendir.</p>
+    <div id="doc-terms"></div>
   </section>
 
   <section class="doc-card doc-pricing">
@@ -62,9 +69,9 @@
         <select asp-for="GlassTypeId"><option value="">Cam maliyete eklenmesin</option>
           @foreach (var g in glassTypes.Where(g => g.Active || g.Id == Model.GlassTypeId)) { <option value="@g.Id">@g.Name (@g.PricePerM2.ToString("N2", KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture) ₺/m²)</option> }
         </select></div>
-      <div><label asp-for="DiscountRate">İskonto (%)</label><input asp-for="DiscountRate" type="number" step="0.01" min="0" max="100" /></div>
+      <div><label asp-for="DiscountRate">Genel iskonto (%)</label><input asp-for="DiscountRate" type="number" step="0.01" min="0" max="100" /></div>
     </div>
-    <p class="admin-muted">Marjı değiştirince elle yazılmamış tüm fiyatlar yeniden hesaplanır. Elle yazdığınız fiyatın yanında ↺ çıkar, tıklarsanız fiyat marja döner. İskonto çıktıda ayrı satır olarak basılır.</p>
+    <p class="admin-muted">Marjı değiştirince elle yazılmamış tüm fiyatlar yeniden hesaplanır. Elle yazdığınız fiyatın yanında ↺ çıkar, tıklarsanız fiyat marja döner. Genel iskonto ara toplama uygulanır ve çıktıda ayrı satır olarak basılır; kalem bazında iskonto için satırdaki "İsk. %" alanını kullanın.</p>
     <p class="admin-muted">İmalatı veya camı taşerona verdiğiniz pozda kalemin maliyet hücresinde <strong>Taşeron</strong> kutusunu işaretleyip taşeronun birim fiyatını yazın. İşaretli parça sistemden hesaplanmaz, çizim ve ölçüler yine sistemden gelir.</p>
     <table class="doc-summary-table" id="doc-pricing-summary"></table>
   </section>

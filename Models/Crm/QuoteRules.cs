@@ -9,8 +9,10 @@ public static class QuoteRules
         if (taxRate is < 0 or > 100) throw new ArgumentOutOfRangeException(nameof(taxRate));
         var lines = items.ToList();
         if (lines.Any(x => x.Quantity <= 0 || x.UnitPrice < 0)) throw new ArgumentException("Teklif kalemlerinde miktar pozitif, birim fiyat sıfır veya daha büyük olmalıdır.", nameof(items));
+        if (lines.Any(x => x.DiscountRate is < 0 or > 100)) throw new ArgumentException("Satır iskontosu %0 ile %100 arasında olmalıdır.", nameof(items));
+        // Satır tutarı satır iskontosu düşülmüş tutardır; genel iskonto ara toplama uygulanır (ERP'lerdeki sıra).
         foreach (var line in lines)
-            line.LineTotal = decimal.Round(line.Quantity * line.UnitPrice, 2, MidpointRounding.AwayFromZero);
+            line.LineTotal = LineTotal(line.Quantity, line.UnitPrice, line.DiscountRate);
         var subtotal = lines.Sum(x => x.LineTotal);
         var discount = decimal.Round(subtotal * discountRate / 100m, 2, MidpointRounding.AwayFromZero);
         var net = subtotal - discount;
@@ -25,6 +27,13 @@ public static class QuoteRules
                 return (subtotal, discount, tax, net + tax);
         }
     }
+
+    public static decimal LineTotal(decimal quantity, decimal unitPrice, decimal discountRate)
+        => decimal.Round(quantity * unitPrice * (1 - discountRate / 100m), 2, MidpointRounding.AwayFromZero);
+
+    // İskontosuz satır tutarı: proformada "brüt toplam" ve "satır iskontoları" için.
+    public static decimal GrossTotal(decimal quantity, decimal unitPrice)
+        => decimal.Round(quantity * unitPrice, 2, MidpointRounding.AwayFromZero);
 
     // Maliyetten marjla satış fiyatı: kuruşa yuvarlanır.
     public static decimal PriceFromCost(decimal unitCost, decimal marginPercent)

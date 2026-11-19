@@ -31,6 +31,11 @@ public sealed class DocumentTemplate
     [StringLength(2000)] public string? DefaultNote { get; set; }
     [StringLength(40)] public string? BuyerLabel { get; set; }
     [StringLength(40)] public string? SellerLabel { get; set; }
+    [StringLength(160)] public string? SellerEmail { get; set; }
+    [StringLength(1000)] public string? BankInfo { get; set; } // proformada basılır: banka, şube, IBAN
+    [StringLength(1000)] public string? AcceptanceText { get; set; } // proformanın onay kutusundaki metin
+    public string TermsJson { get; set; } = "[]"; // yeni belgeye gelen şartlar: List<BlockClause>
+    public string VariablesJson { get; set; } = "{}"; // yeni belgeye gelen değişken değerleri (ör. teslim_suresi)
     public string ArticlesJson { get; set; } = "[]";
     public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
 }
@@ -50,7 +55,9 @@ public static class ContractArticleKinds
     public const string Subject = "subject"; // ardından bloklar ve maddeleri basılır
     public const string Price = "price";     // ardından toplam bedel basılır
     public const string Payment = "payment"; // ardından ödeme planı basılır
-    public static readonly string[] All = { Text, Subject, Price, Payment };
+    public const string Items = "items";     // ardından fiyat tablosu (kalemler, iskonto, KDV) basılır
+    public const string Terms = "terms";     // ardından belgenin özel şartları basılır
+    public static readonly string[] All = { Text, Subject, Price, Payment, Items, Terms };
 }
 
 // Bloklarda seçilebilen hazır madde. Aynı iş kaleminin teklif ve sözleşme metni birlikte tutulur.
@@ -80,8 +87,10 @@ public sealed class Contract
     [Required, StringLength(240)] public string BuyerName { get; set; } = "";
     [StringLength(500)] public string? BuyerAddress { get; set; }
     [StringLength(160)] public string? BuyerTaxInfo { get; set; }
-    [Column(TypeName = "numeric(18,2)")] public decimal TotalAmount { get; set; }
+    [Column(TypeName = "numeric(18,2)")] public decimal TotalAmount { get; set; } // kalem varsa kalemlerden hesaplanır
     public VatMode VatMode { get; set; } = VatMode.Included;
+    [Column(TypeName = "numeric(5,2)")] public decimal TaxRate { get; set; } = 20m;
+    [Column(TypeName = "numeric(5,2)")] public decimal DiscountRate { get; set; }
     public int PageCount { get; set; } = 1;
     public string DocumentJson { get; set; } = "{}";
     public string SnapshotJson { get; set; } = "{}";
@@ -100,6 +109,7 @@ public sealed class DocumentContent
     public Dictionary<string, string> Variables { get; set; } = new();
     public List<DocumentBlock> Blocks { get; set; } = new();
     public List<PaymentLine> Payments { get; set; } = new();
+    public List<BlockClause> Terms { get; set; } = new(); // ödeme, teslim, garanti gibi şartlar
     public List<int> DesignIds { get; set; } = new();
 }
 
@@ -124,6 +134,7 @@ public sealed class BlockItem
     public decimal Quantity { get; set; } = 1;
     public string? Unit { get; set; } = "Adet";
     public decimal UnitPrice { get; set; }
+    public decimal DiscountRate { get; set; } // satır iskontosu (%)
     public int? DesignId { get; set; }
     public decimal UnitCost { get; set; }
     public bool ManualPrice { get; set; } // fiyat elle yazıldıysa marj değişince korunur
@@ -158,6 +169,8 @@ public sealed class ContractInputVm
     [StringLength(160)] public string? BuyerTaxInfo { get; set; }
     [Range(0, 100000000000)] public decimal TotalAmount { get; set; }
     public VatMode VatMode { get; set; } = VatMode.Included;
+    [Range(0, 100)] public decimal TaxRate { get; set; } = 20m;
+    [Range(0, 100)] public decimal DiscountRate { get; set; }
     [Range(1, 500, ErrorMessage = "Sayfa sayısı en az 1 olmalıdır.")] public int PageCount { get; set; } = 1;
     public string DocumentJson { get; set; } = "{}";
 }
