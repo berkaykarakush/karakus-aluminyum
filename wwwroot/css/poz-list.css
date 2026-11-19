@@ -1,0 +1,25 @@
+/* Poz listesi (Ercom toplu resim listesi): çizim listesi ve teklif/sözleşme ekleri ortak kullanır. */
+.poz-list{display:flex;flex-wrap:wrap;align-items:flex-start;gap:6mm 8mm;font-family:Arial,Helvetica,sans-serif;color:#111}
+.poz{margin:0;break-inside:avoid;page-break-inside:avoid}
+.poz__title{margin:0 0 1.5mm;font-size:10pt;line-height:1.2;white-space:nowrap}
+.poz__brand{color:#555}
+.poz-list .poz svg{display:block;width:auto;height:auto;max-width:none;margin:0}
+.poz__lines{margin-top:1mm;font-size:7.5pt;line-height:1.25}
+.poz-list[data-hide-lines] .poz__lines{display:none}
+.poz svg,.poz-sheet__brands img{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+/* Sayfa başlığı her basılan sayfada tekrar eder (thead). */
+.poz-sheet{width:100%;border-collapse:collapse}
+.poz-sheet>thead>tr>td,.poz-sheet>tbody>tr>td{padding:0}
+.poz-sheet__head{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:1mm 6mm;align-items:start;padding:0 0 2mm;margin:0 0 4mm;font:9.5pt/1.35 Arial,Helvetica,sans-serif;border-bottom:1px solid #999}
+.poz-sheet__head dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 2mm;margin:0}
+.poz-sheet__head dt{color:#444}
+.poz-sheet__head dt::after{content:" :"}
+.poz-sheet__head dd{margin:0;font-weight:700;overflow-wrap:anywhere}
+.poz-sheet__brands{display:flex;flex-wrap:wrap;gap:3mm;justify-content:flex-end;align-items:center;max-width:60mm}
+.poz-sheet__brands img{display:block;max-height:10mm;max-width:45mm;object-fit:contain}
+.poz-sheet__brands span{font-weight:700;font-size:12pt}
+.poz-totals{display:flex;flex-wrap:wrap;gap:2mm 8mm;margin-top:5mm;font:9pt Arial,Helvetica,sans-serif;break-inside:avoid}
+.poz-options{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;font-size:13px}
+.poz-options label{display:inline-flex;align-items:center;gap:6px;margin:0;font-weight:600}
+.poz-options input[type=range]{width:140px}
+@media(max-width:700px){.poz-sheet__head{grid-template-columns:minmax(0,1fr)}.poz-sheet__brands{justify-content:flex-start}}

@@ -33,7 +33,7 @@ public sealed class SearchController : Controller
         hits.AddRange((await _db.DrawingLists.AsNoTracking().Where(x => EF.Functions.ILike(x.Name, like)).OrderByDescending(x => x.UpdatedUtc).Take(PerGroup).ToListAsync())
             .Select(x => new SearchHit("Çizim listeleri", x.Name, "", $"/yonetim/cizim/detay/{x.Id}")));
         hits.AddRange((await _db.WindowDesigns.AsNoTracking().Where(x => EF.Functions.ILike(x.Name, like)).OrderByDescending(x => x.UpdatedUtc).Take(PerGroup).ToListAsync())
-            .Select(x => new SearchHit("Çizimler", x.Name, KarakusAluminyum.Web.Models.Drawing.ProductCategories.Label(x.Category), $"/yonetim/cizim/poz/{x.Id}")));
+            .Select(x => new SearchHit("Çizimler", x.Name, KarakusAluminyum.Web.Models.Drawing.ProductCategories.Label(x.Category), $"/yonetim/cizim/duzenle/{x.DrawingListId}?poz={x.Id}")));
         hits.AddRange((await _db.GlassLists.AsNoTracking().Where(x => EF.Functions.ILike(x.Name, like)).OrderByDescending(x => x.UpdatedUtc).Take(PerGroup).ToListAsync())
             .Select(x => new SearchHit("Cam listeleri", x.Name, "", $"/yonetim/camlar/detay/{x.Id}")));
         hits.AddRange((await _db.ContactMessages.AsNoTracking().Where(x => EF.Functions.ILike(x.Name, like) || EF.Functions.ILike(x.ContactInfo, like) || EF.Functions.ILike(x.Message, like)).OrderByDescending(x => x.CreatedUtc).Take(PerGroup).ToListAsync())

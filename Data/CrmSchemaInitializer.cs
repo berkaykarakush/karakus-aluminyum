@@ -220,6 +220,7 @@ ALTER TABLE "GlassTypes" ADD COLUMN IF NOT EXISTS "SheetWidthMm" numeric(10,2) N
 ALTER TABLE "GlassTypes" ADD COLUMN IF NOT EXISTS "SheetHeightMm" numeric(10,2) NOT NULL DEFAULT 2250;
 ALTER TABLE "GlassTypes" ADD COLUMN IF NOT EXISTS "CutGapMm" numeric(10,2) NOT NULL DEFAULT 2;
 ALTER TABLE "WindowDesigns" DROP COLUMN IF EXISTS "GlassTypeId";
+ALTER TABLE "WindowDesigns" ADD COLUMN IF NOT EXISTS "GlassSpec" character varying(60);
 -- Çizimler profil sistemine bağlı olmak zorunda değildir (üretim detayları ayarı).
 ALTER TABLE "WindowDesigns" ADD COLUMN IF NOT EXISTS "ProfileSystemId" integer REFERENCES "ProfileSystems"("Id") ON DELETE RESTRICT;
 ALTER TABLE "WindowDesigns" ALTER COLUMN "ProfileSystemId" DROP NOT NULL;

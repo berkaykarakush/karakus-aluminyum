@@ -526,14 +526,39 @@ public sealed class WindowDrawingsTests
     public void UnknownCategory_IsRejected()
         => Assert.NotEmpty(WindowDrawings.Validate("masa", 1500, 1400, "rect", 0, 1, Leaf, "{}"));
 
+    // Adı verilmemiş pozun başlığında Ercom'daki gibi tipi yazar.
+    [Theory]
+    [InlineData("{\"opening\":\"fixed\"}", "Sabit")]
+    [InlineData("{\"opening\":\"tilt\"}", "Vasistas")]
+    [InlineData("{\"split\":\"v\",\"sizes\":[500,500],\"children\":[{\"opening\":\"fixed\"},{\"opening\":\"tiltRight\"}]}", "Açılır")]
+    [InlineData("{\"split\":\"v\",\"sliding\":true,\"sizes\":[500,500],\"children\":[{\"opening\":\"slideRight\"},{\"opening\":\"slideLeft\"}]}", "Sürme")]
+    [InlineData("{\"split\":\"h\",\"sizes\":[300,700],\"children\":[{\"opening\":\"tilt\"},{\"opening\":\"doorLeft\"}]}", "Kapı")]
+    public void PozTitle_UsesTypeForAutoNames_AndNameOtherwise(string layout, string type)
+    {
+        var design = new WindowDesign { Name = "Poz 3", Quantity = 8, WidthMm = 1000, HeightMm = 1000, LayoutJson = layout, ColorHex = "#3a4046", GlassSpec = "4+16+4" };
+        var poz = PozSheet.Build(design, 3);
+        Assert.Equal($"Poz : 3 / Ad : 8 - {type}", poz.Title);
+        Assert.Contains("4+16+4 cam", poz.Lines);
+        Assert.Contains("Antrasit", poz.Lines);
+        design.Name = "Salon";
+        Assert.Equal("Poz : 3 / Ad : 8 - Salon", PozSheet.Build(design, 3).Title);
+    }
+
     [Fact]
     public void Drawing_CarriesOnlyTheShape()
     {
         var json = JsonSerializer.Serialize(WindowDrawings.Drawing(new WindowDesign { WidthMm = 1500, HeightMm = 1400, LayoutJson = Leaf }), new JsonSerializerOptions(JsonSerializerDefaults.Web));
         Assert.Contains("\"root\":{", json);
         Assert.Contains("\"widthMm\":1500", json);
-        foreach (var removed in new[] { "cut", "price", "cost", "profile", "frameWidth" })
+        Assert.Contains("\"profile\":null", json); // sistemsiz çizimde profil genişliği yok
+        foreach (var removed in new[] { "cut", "price", "cost", "frameWidth" })
             Assert.DoesNotContain(removed, json, StringComparison.OrdinalIgnoreCase);
+
+        // Sistemli doğramada yalnızca çizim için profil genişlikleri gider; fiyatlar gitmez.
+        var system = new ProfileSystem { FrameWidthMm = 58, SashWidthMm = 78, MullionWidthMm = 76, SashOverlapMm = 8, GlassClearanceMm = 5, FramePricePerM = 999 };
+        var withSystem = JsonSerializer.Serialize(WindowDrawings.Drawing(new WindowDesign { WidthMm = 1500, HeightMm = 1400, LayoutJson = Leaf, ProfileSystem = system, GlassSpec = "4+16+4" }), new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        Assert.Contains("\"profile\":{\"frame\":58,\"sash\":78,\"mullion\":76,\"overlap\":8,\"clearance\":5}", withSystem);
+        Assert.DoesNotContain("999", withSystem);
     }
 }
 
@@ -566,25 +591,28 @@ internal static class DrawingLists
 [Collection("postgres")]
 public sealed class DrawingPageTests(PostgresFixture postgres)
 {
+    // Ercom'daki toplu resim listesi: tüm pozlar tek listede, sırasıyla ve "Poz : n / Ad : adet - tip" başlığıyla.
     [Theory]
-    [InlineData(1, 1)]
-    [InlineData(5, 1)]
-    [InlineData(9, 1)]
-    [InlineData(10, 2)]
-    [InlineData(19, 3)]
-    public async Task DrawingList_PrintsAtMostNineOnEachPage(int count, int pageCount)
+    [InlineData(1)]
+    [InlineData(10)]
+    [InlineData(19)]
+    public async Task DrawingList_PrintsEveryPozInOneOrderedList(int count)
     {
         await using var app = postgres.CreateApp($"drawing_pages_{count}");
         var (client, token) = await AdminAsync(app);
         var list = "Liste" + count;
-        var rows = Enumerable.Range(1, count).Select(i => DrawingLists.Row($"Poz {i}", width: i % 2 == 0 ? 3000 : 800, height: i % 2 == 0 ? 900 : 2400)).ToArray();
+        var rows = Enumerable.Range(1, count).Select(i => DrawingLists.Row(i == 1 ? "Salon" : null, width: i % 2 == 0 ? 3000 : 800, height: i % 2 == 0 ? 900 : 2400, quantity: i)).ToArray();
         await DrawingLists.PostAsync(client, token, list, DrawingLists.Rows(rows));
-        var html = await client.GetStringAsync($"/yonetim/cizim/detay/{await DrawingLists.ListIdAsync(app, list)}");
+        var html = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/cizim/detay/{await DrawingLists.ListIdAsync(app, list)}"));
 
-        var pages = html.Split("<section class=\"wd-page\">").Skip(1).ToList();
-        Assert.Equal(pageCount, pages.Count);
-        Assert.All(pages, page => Assert.True(page.Split("class=\"wd-pos\"").Length - 1 <= 9));
-        Assert.Equal(count, pages.Sum(page => page.Split("class=\"wd-pos\"").Length - 1));
+        var lists = html.Split("data-poz-list").Skip(1).ToList();
+        var pozlar = Assert.Single(lists).Split("<figure class=\"poz\">").Skip(1).ToList();
+        Assert.Equal(count, pozlar.Count);
+        Assert.Contains("Poz : 1 / Ad : 1 - Salon", pozlar[0]); // adı verilmiş poz adıyla
+        for (var i = 1; i < count; i++) Assert.Contains($"Poz : {i + 1} / Ad : {i + 1} - Açılır", pozlar[i]); // adsız pozda tip yazar
+        Assert.All(pozlar, poz => Assert.Contains("data-poz=", poz));
+        Assert.Contains("poz-list.js", html);
+        Assert.DoesNotContain("wd-pos", html);
     }
 
     [Fact]
@@ -618,8 +646,8 @@ public sealed class DrawingPageTests(PostgresFixture postgres)
 
         Assert.Contains("window.print()", html);
         Assert.Contains("3 çizim · 6 adet", html);
-        Assert.Contains("150 × 120", html);
-        Assert.Contains("Kemer yüksekliği 20 cm", html);
+        Assert.Contains("1500 × 1200", html);
+        Assert.Contains("Kemer yüksekliği 200 mm", html);
         Assert.True(html.IndexOf("Salon", StringComparison.Ordinal) < html.IndexOf("Mutfak", StringComparison.Ordinal));
         Assert.True(html.IndexOf("Mutfak", StringComparison.Ordinal) < html.IndexOf("Banyo", StringComparison.Ordinal));
         Assert.DoesNotContain("data-drawing", html);
@@ -714,7 +742,7 @@ public sealed class DrawingPageTests(PostgresFixture postgres)
         var editor = await client.GetStringAsync(DrawingLists.Url);
         Assert.Contains("id=\"dl-rows\"", editor);
         Assert.Contains("drawing-list.js", editor);
-        Assert.DoesNotContain("wd-canvas", editor);
+        Assert.Contains("id=\"wd-canvas\"", editor); // poz çizimi listenin içinde düzenlenir
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/yonetim/cizim/toplu-ekle")).StatusCode);
     }
 
@@ -730,19 +758,22 @@ public sealed class DrawingPageTests(PostgresFixture postgres)
         Assert.Equal(1, await app.WithDbAsync(db => db.WindowDesigns.CountAsync(d => d.DrawingListId == listId)));
 
         var page = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/cizim/detay/{listId}"));
-        Assert.Contains("data-drawing", page);
+        Assert.Contains("data-poz=", page);
         Assert.Contains("\"opening\":\"tiltRight\"", page);
-        Assert.Contains("100 × 100 cm", page);
+        Assert.Contains("Poz : 1 / Ad : 2 - ", page);
         Assert.Contains("Malzeme listesi", page);
         Assert.Contains("Maliyet (camlar hariç)", page);
         Assert.Contains(name, WebUtility.HtmlDecode(await client.GetStringAsync("/yonetim/cizim")));
 
         var designId = await DrawingLists.DesignIdAsync(app, name);
-        var editor = await client.GetStringAsync($"/yonetim/cizim/poz/{designId}");
+        // Eski tek çizim adresi pozun listesinde, poz seçili açılır; tek başına çizim sayfası yoktur.
+        var old = await client.GetAsync($"/yonetim/cizim/poz/{designId}");
+        Assert.Equal(HttpStatusCode.Redirect, old.StatusCode);
+        Assert.Equal($"/yonetim/cizim/duzenle/{listId}?poz={designId}", old.Headers.Location!.ToString());
+        var editor = await client.GetStringAsync($"/yonetim/cizim/duzenle/{listId}?poz={designId}");
         Assert.Contains("id=\"wd-canvas\"", editor);
-        Assert.Contains($"/yonetim/cizim/duzenle/{listId}", editor);
-        var saved = await client.PostFormAsync($"/yonetim/cizim/poz/{designId}", token, ("Name", name), ("Category", "aluminum"), ("ColorHex", "#3a4046"),
-            ("WidthMm", "1500"), ("HeightMm", "1000"), ("Shape", "rect"), ("ShapeParamMm", "0"), ("Quantity", "2"), ("LayoutJson", DrawingLists.Layout));
+        Assert.Contains($"data-selected-poz=\"{designId}\"", editor);
+        var saved = await DrawingLists.PostToAsync(client, token, $"/yonetim/cizim/duzenle/{listId}", name, DrawingLists.Rows(DrawingLists.Row(name, width: 1500, id: designId)));
         Assert.Equal(HttpStatusCode.Redirect, saved.StatusCode);
         Assert.Equal(1500, await app.WithDbAsync(db => db.WindowDesigns.Where(d => d.Id == designId).Select(d => d.WidthMm).SingleAsync()));
     }
@@ -935,7 +966,7 @@ public sealed class DrawingPageTests(PostgresFixture postgres)
         Assert.Equal(3000m, await second.WithDbAsync(db => db.GlassTypes.Where(g => g.Name == "Eski cam").Select(g => g.SheetWidthMm).SingleAsync()));
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/yonetim/cizim/detay/{row.DrawingListId}")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/yonetim/cizim/duzenle/{row.DrawingListId}")).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/yonetim/cizim/poz/{designId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, (await client.GetAsync($"/yonetim/cizim/poz/{designId}")).StatusCode);
 
         // İkinci açılışta yeniden taşıma yapılmaz.
         await using var third = postgres.CreateApp("shape_upgrade", schemaMode: "existing");
@@ -1012,7 +1043,7 @@ public sealed class GlassListTests(PostgresFixture postgres)
         var id = await app.WithDbAsync(db => db.GlassLists.Where(g => g.Name == name).Select(g => g.Id).SingleAsync());
         var html = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/camlar/detay/{id}"));
         Assert.Contains("P1", html);
-        Assert.Contains("100 × 100", html); // varsayılan birim cm
+        Assert.Contains("1000 × 1000", html); // ölçüler hep mm
         Assert.Contains("Plaka yerleşimi", html);
         // 3 m² + 2 m² = 5 m² x 500 = 2500; 1 m² x 1000 = 1000; toplam 3500
         var list = await app.WithDbAsync(db => db.GlassLists.AsNoTracking().Include(g => g.Items).ThenInclude(i => i.GlassType).SingleAsync(g => g.Id == id));
@@ -1153,19 +1184,22 @@ public sealed class CategoryPageTests(PostgresFixture postgres)
     }
 
     [Theory]
-    [InlineData("aluminum", "wd-canvas", true)]
-    [InlineData("pvc", "wd-canvas", true)]
-    [InlineData("shutter", "pd-canvas", false)]
-    [InlineData("railing", "pd-canvas", false)]
-    [InlineData("balcony", "pd-canvas", false)]
-    public async Task EachCategory_OpensItsDrawingEditor(string category, string canvas, bool isWindow)
+    [InlineData("aluminum", true)]
+    [InlineData("pvc", true)]
+    [InlineData("shutter", false)]
+    [InlineData("railing", false)]
+    [InlineData("balcony", false)]
+    public async Task EachCategory_IsEditedInTheListEditor(string category, bool isWindow)
     {
         var app = postgres.Shared;
         var (client, token) = await AdminAsync(app);
         var name = "Tür " + Guid.NewGuid().ToString("N")[..8];
         var row = isWindow ? DrawingLists.Row(name, category: category) : DrawingLists.Product(name, category, "{}");
         await DrawingLists.PostAsync(client, token, name, DrawingLists.Rows(row));
-        Assert.Contains(canvas, await client.GetStringAsync($"/yonetim/cizim/poz/{await DrawingLists.DesignIdAsync(app, name)}"));
+        var editor = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/cizim/duzenle/{await DrawingLists.ListIdAsync(app, name)}"));
+        Assert.Contains("id=\"wd-canvas\"", editor);
+        Assert.Contains($"\"category\":\"{category}\"", editor);
+        Assert.Contains($"data-for=\"{(isWindow ? "window" : category)}\"", editor);
     }
 
     [Fact]
@@ -1195,24 +1229,16 @@ public sealed class CategoryPageTests(PostgresFixture postgres)
 public sealed class LengthUnitTests
 {
     [Theory]
-    [InlineData(1500, "mm", "1500")]
-    [InlineData(1500, "cm", "150")]
-    [InlineData(1505, "cm", "150,5")]
-    [InlineData(1500, "m", "1,5")]
-    [InlineData(1234.5, "mm", "1234,5")]
-    [InlineData(12345, "m", "12,345")]
-    public void Format_ConvertsFromMillimetres(decimal mm, string code, string expected)
-        => Assert.Equal(expected, KarakusAluminyum.Web.Services.LengthUnits.Format(mm, code));
-
-    [Theory]
-    [InlineData(null, "cm")]
-    [InlineData("", "cm")]
-    [InlineData("inch", "cm")]
-    [InlineData("<script>", "cm")]
-    [InlineData("mm", "mm")]
-    [InlineData("m", "m")]
-    public void Normalize_FallsBackToCentimetres(string? code, string expected)
-        => Assert.Equal(expected, KarakusAluminyum.Web.Services.LengthUnits.Normalize(code));
+    [InlineData(1500, "1500")]
+    [InlineData(1234.5, "1234,5")]
+    [InlineData(12345, "12345")]
+    public void Format_WritesMillimetres(decimal mm, string expected)
+    {
+        var units = new KarakusAluminyum.Web.Services.LengthUnits();
+        Assert.Equal(expected, units.Format(mm));
+        Assert.Equal("mm", units.Code);
+        Assert.Equal($"{expected} mm", units.WithLabel(mm));
+    }
 }
 
 [Collection("postgres")]
@@ -1240,21 +1266,18 @@ public sealed class LengthUnitPageTests(PostgresFixture postgres)
         return WebUtility.HtmlDecode(await (await client.SendAsync(request)).Content.ReadAsStringAsync());
     }
 
-    [Fact]
-    public async Task DefaultUnit_IsCentimetres()
-    {
-        var (_, client, id) = await SetupAsync();
-        Assert.Contains("150 × 140 cm", WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/cizim/detay/{id}")));
-    }
-
+    // Tüm ölçüler mm yazılır; eski birim çerezi (cm, m) yok sayılır.
     [Theory]
-    [InlineData("mm", "1500 × 1400 mm")]
-    [InlineData("m", "1,5 × 1,4 m")]
-    [InlineData("cm", "150 × 140 cm")]
-    public async Task Cookie_ChangesDisplayedUnit(string unit, string expected)
+    [InlineData(null)]
+    [InlineData("cm")]
+    [InlineData("m")]
+    public async Task Sizes_AreAlwaysMillimetres_EvenWithOldUnitCookie(string? unit)
     {
         var (_, client, id) = await SetupAsync();
-        Assert.Contains(expected, await GetWithUnitAsync(client, $"/yonetim/cizim/detay/{id}", unit));
+        var html = unit is null ? WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/cizim/olcu-listesi/{id}")) : await GetWithUnitAsync(client, $"/yonetim/cizim/olcu-listesi/{id}", unit);
+        Assert.Contains("G × Y (mm)", html);
+        Assert.Contains("1500 × 1400", html);
+        Assert.DoesNotContain("id=\"unit-global\"", html);
     }
 
     [Fact]
@@ -1265,12 +1288,13 @@ public sealed class LengthUnitPageTests(PostgresFixture postgres)
     }
 
     [Fact]
-    public async Task AdminLayout_LoadsUnitSelector()
+    public async Task AdminLayout_HasNoUnitSelector_ButMarksSizeFieldsAsMm()
     {
         var (_, client, _) = await SetupAsync();
         var html = await client.GetStringAsync("/yonetim/cizim");
-        Assert.Contains("id=\"unit-global\"", html);
-        Assert.Contains("/js/units.js", html);
+        Assert.DoesNotContain("unit-global", html);
+        Assert.Contains("/js/units.js", html); // ölçü alanlarının yanına "mm" yazar
+        Assert.Contains("unit-suffix", await client.GetStringAsync("/js/units.js"));
     }
 }
 
@@ -1319,8 +1343,9 @@ public sealed class DrawingGuardTests(PostgresFixture postgres)
         });
 
         var name = "Değişti " + Guid.NewGuid().ToString("N")[..6];
-        await client.PostFormAsync($"/yonetim/cizim/poz/{id}", token, ("Name", name), ("Category", "shutter"), ("ColorHex", "#3a4046"), ("WidthMm", "1000"), ("HeightMm", "1000"),
-            ("Shape", "rect"), ("Quantity", "1"), ("LayoutJson", "{\"opening\":\"fixed\"}"), ("ParamsJson", "{\"drive\":\"manual\"}"));
+        var listId = await app.WithDbAsync(db => db.WindowDesigns.Where(d => d.Id == id).Select(d => d.DrawingListId).SingleAsync());
+        var rows = JsonSerializer.Serialize(new[] { new { id, category = "shutter", name, widthMm = 1000, heightMm = 1000, quantity = 1, shape = "rect", layoutJson = "{\"opening\":\"fixed\"}", paramsJson = "{\"drive\":\"manual\"}" } });
+        await DrawingLists.PostToAsync(client, token, $"/yonetim/cizim/duzenle/{listId}", "Tür", rows);
         var row = await app.WithDbAsync(db => db.WindowDesigns.AsNoTracking().SingleAsync(d => d.Id == id));
         Assert.Equal(name, row.Name);
         Assert.Equal(ProductCategories.Aluminum, row.Category);
@@ -1353,9 +1378,12 @@ public sealed class ProductionDetailsTests(PostgresFixture postgres)
     private static Task<HttpResponseMessage> SaveAsync(HttpClient client, string token, string name, int? system)
         => DrawingLists.PostAsync(client, token, name, DrawingLists.Rows(DrawingLists.Row(name, system: system)));
 
-    private static Task<HttpResponseMessage> SaveDrawingAsync(HttpClient client, string token, int id, string name, int? system)
-        => client.PostFormAsync($"/yonetim/cizim/poz/{id}", token, ("Name", name), ("Category", "aluminum"), ("ProfileSystemId", system?.ToString() ?? ""), ("ColorHex", "#3a4046"),
-            ("WidthMm", "1000"), ("HeightMm", "1000"), ("Shape", "rect"), ("ShapeParamMm", "0"), ("Quantity", "2"), ("LayoutJson", Layout));
+    // Pozun listesini kaydeder; sistem 0 gönderilince poz sistemsiz kalır (editördeki "Seçilmedi").
+    private static async Task<HttpResponseMessage> SaveDrawingAsync(AppFactory app, HttpClient client, string token, int id, string name, int? system)
+    {
+        var listId = await app.WithDbAsync(db => db.WindowDesigns.Where(d => d.Id == id).Select(d => d.DrawingListId).SingleAsync());
+        return await DrawingLists.PostToAsync(client, token, $"/yonetim/cizim/duzenle/{listId}", name, DrawingLists.Rows(DrawingLists.Row(name, system: system ?? 0, id: id)));
+    }
 
     private static Task<int> IdAsync(AppFactory app, string name)
         => app.WithDbAsync(db => db.WindowDesigns.Where(d => d.Name == name).Select(d => d.Id).SingleAsync());
@@ -1378,9 +1406,9 @@ public sealed class ProductionDetailsTests(PostgresFixture postgres)
         Assert.Contains($"/yonetim/cizim/imalat/{id}", list);
         Assert.Contains($"/yonetim/cizim/optimizasyon?ids={id}", list);
         Assert.Contains("/yonetim/cizim/sistemler", await client.GetStringAsync("/yonetim/cizim"));
-        var designer = await client.GetStringAsync($"/yonetim/cizim/poz/{id}");
-        Assert.Contains("drawing-production.js", designer);
-        Assert.Contains("name=\"ProfileSystemId\"", designer);
+        var designer = await client.GetStringAsync($"/yonetim/cizim/duzenle/{listId}");
+        Assert.Contains("/yonetim/cizim/hesapla", await client.GetStringAsync("/js/drawing-list.js"));
+        Assert.Contains("id=\"pz-system\"", designer);
         Assert.DoesNotContain("ProductionDetailsEnabled", await client.GetStringAsync("/yonetim/ayarlar"));
     }
 
@@ -1533,12 +1561,12 @@ public sealed class ProductionDetailsTests(PostgresFixture postgres)
         var name = Name();
         await SaveAsync(client, token, name, null);
         var id = await IdAsync(app, name);
-        Assert.Equal(HttpStatusCode.Redirect, (await SaveDrawingAsync(client, token, id, name, null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, (await SaveDrawingAsync(app, client, token, id, name, null)).StatusCode);
         Assert.Null(await app.WithDbAsync(db => db.WindowDesigns.Where(d => d.Id == id).Select(d => d.ProfileSystemId).SingleAsync()));
 
         var response = await client.GetAsync($"/yonetim/cizim/imalat/{id}");
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Contains($"/yonetim/cizim/poz/{id}", response.Headers.Location!.ToString(), StringComparison.OrdinalIgnoreCase);
+        Assert.Contains($"/yonetim/cizim/duzenle/{await DrawingLists.ListIdAsync(app, name)}?poz={id}", response.Headers.Location!.ToString(), StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("/yonetim/cizim/optimizasyon", await client.GetStringAsync($"/yonetim/cizim/detay/{await DrawingLists.ListIdAsync(app, name)}"));
     }
 
@@ -1595,7 +1623,7 @@ public sealed class ProductionDetailsTests(PostgresFixture postgres)
         foreach (var name in names) await SaveAsync(client, token, name, system);
         var without = Name();
         await SaveAsync(client, token, without, null);
-        await SaveDrawingAsync(client, token, await IdAsync(app, without), without, null);
+        await SaveDrawingAsync(app, client, token, await IdAsync(app, without), without, null);
         var ids = await app.WithDbAsync(db => db.WindowDesigns.Where(d => names.Contains(d.Name) || d.Name == without).Select(d => d.Id).ToListAsync());
 
         var html = WebUtility.HtmlDecode(await client.GetStringAsync("/yonetim/cizim/optimizasyon?" + string.Join("&", ids.Select(i => $"ids={i}"))));
@@ -1712,8 +1740,8 @@ public sealed class DrawingListTests(PostgresFixture postgres)
         var response = await DrawingLists.PostAsync(client, token, list, rows);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var html = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync());
-        foreach (var row in new[] { "2. satır", "3. satır", "4. satır", "5. satır" }) Assert.Contains(row, html);
-        Assert.DoesNotContain("1. satır", html);
+        foreach (var row in new[] { "Poz 2:", "Poz 3:", "Poz 4:", "Poz 5:" }) Assert.Contains(row, html);
+        Assert.DoesNotContain("Poz 1:", html);
         Assert.Contains(good, html);
         Assert.False(await app.WithDbAsync(db => db.DrawingLists.AnyAsync(l => l.Name == list)));
         Assert.False(await app.WithDbAsync(db => db.WindowDesigns.AnyAsync(d => d.Name == good)));
@@ -1781,8 +1809,8 @@ public sealed class DrawingListTests(PostgresFixture postgres)
             return (design.DrawingListId, design.Id);
         });
 
-        // Kemer ölçüsü listeden gelmez: satır şekli korunur, kemer kuralı yine uygulanır.
-        var rows = JsonSerializer.Serialize(new[] { new { id, category = "shutter", name, widthMm = 1500, heightMm = 1400, quantity = 3, shape = "rect", layoutJson = "{\"opening\":\"tiltLeft\"}", paramsJson = "{\"drive\":\"manual\"}" } });
+        // Şekil gönderilmezse (toplu ekleme, eski istemci) kayıtlı şekil korunur, kemer kuralı yine uygulanır.
+        var rows = JsonSerializer.Serialize(new[] { new { id, category = "shutter", name, widthMm = 1500, heightMm = 1400, quantity = 3, layoutJson = "{\"opening\":\"tiltLeft\"}", paramsJson = "{\"drive\":\"manual\"}" } });
         Assert.Equal(HttpStatusCode.Redirect, (await DrawingLists.PostToAsync(client, token, $"/yonetim/cizim/duzenle/{listId}", name, rows)).StatusCode);
         var row = await app.WithDbAsync(db => db.WindowDesigns.AsNoTracking().SingleAsync(d => d.Id == id));
         Assert.Equal((ProductCategories.Aluminum, "arch", 400, 3, "#3a4046".Length), (row.Category, row.Shape, row.ShapeParamMm, row.Quantity, row.ColorHex.Length));
@@ -1793,6 +1821,35 @@ public sealed class DrawingListTests(PostgresFixture postgres)
         var narrow = JsonSerializer.Serialize(new[] { new { id, name, widthMm = 700, heightMm = 1400, quantity = 3, layoutJson = "{\"opening\":\"fixed\"}" } });
         Assert.Equal(HttpStatusCode.OK, (await DrawingLists.PostToAsync(client, token, $"/yonetim/cizim/duzenle/{listId}", name, narrow)).StatusCode);
         Assert.Equal(1500, await app.WithDbAsync(db => db.WindowDesigns.Where(d => d.Id == id).Select(d => d.WidthMm).SingleAsync()));
+    }
+
+    // Editör pozun şeklini, camını ve notunu listeyle birlikte kaydeder; poz listesi bunları çizimin altında yazar.
+    [Fact]
+    public async Task EditingList_SavesShapeGlassAndNotes_AndShowsThemUnderTheDrawing()
+    {
+        var app = postgres.Shared;
+        var (client, token) = await AdminAsync(app);
+        var name = Tag();
+        await DrawingLists.PostAsync(client, token, name, DrawingLists.Rows(DrawingLists.Row(null)));
+        var listId = await DrawingLists.ListIdAsync(app, name);
+        var id = await app.WithDbAsync(db => db.WindowDesigns.Where(d => d.DrawingListId == listId).Select(d => d.Id).SingleAsync());
+
+        var rows = JsonSerializer.Serialize(new[] { new { id, category = "aluminum", name = "", widthMm = 1500, heightMm = 1400, quantity = 4, shape = "arch", shapeParamMm = 300, colorHex = "#3a4046",
+            layoutJson = "{\"opening\":\"fixed\"}", glassSpec = " 4+16+4 Low-E ", notes = "Montajda dikkat", profileSystemId = 0 } });
+        Assert.Equal(HttpStatusCode.Redirect, (await DrawingLists.PostToAsync(client, token, $"/yonetim/cizim/duzenle/{listId}", name, rows)).StatusCode);
+        var row = await app.WithDbAsync(db => db.WindowDesigns.AsNoTracking().SingleAsync(d => d.Id == id));
+        Assert.Equal(("arch", 300, "4+16+4 Low-E", "Montajda dikkat"), (row.Shape, row.ShapeParamMm, row.GlassSpec, row.Notes));
+        Assert.Null(row.ProfileSystemId);
+
+        var html = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/cizim/detay/{listId}"));
+        Assert.Contains("Poz : 1 / Ad : 4 - Sabit", html);
+        Assert.Contains("<div>4+16+4 Low-E cam</div>", html);
+        Assert.Contains("<div>Antrasit</div>", html);
+        Assert.Contains("<div>Montajda dikkat</div>", html);
+        Assert.Contains("\"glass\":\"4\\u002B16\\u002B4 Low-E\"", html); // JSON '+' işaretini kaçışlı yazar
+
+        var tooLong = JsonSerializer.Serialize(new[] { new { id, category = "aluminum", name = "", widthMm = 1500, heightMm = 1400, quantity = 4, layoutJson = "{\"opening\":\"fixed\"}", glassSpec = new string('x', 61) } });
+        Assert.Equal(HttpStatusCode.OK, (await DrawingLists.PostToAsync(client, token, $"/yonetim/cizim/duzenle/{listId}", name, tooLong)).StatusCode);
     }
 
     [Fact]
@@ -1977,7 +2034,8 @@ public sealed class BrandTests(PostgresFixture postgres)
         var name = Tag();
         await DrawingLists.PostAsync(client, token, name, DrawingLists.Rows(DrawingLists.Row(name, brand: aluminum)));
         var id = await DrawingLists.DesignIdAsync(app, name);
-        Task<HttpResponseMessage> Post(int brand) => client.PostFormAsync($"/yonetim/cizim/poz/{id}", token, ("Name", name), ("ColorHex", "#3a4046"), ("WidthMm", "1000"), ("HeightMm", "1000"), ("Shape", "rect"), ("Quantity", "1"), ("LayoutJson", DrawingLists.Layout), ("BrandId", brand.ToString()));
+        var listId = await DrawingLists.ListIdAsync(app, name);
+        Task<HttpResponseMessage> Post(int brand) => DrawingLists.PostToAsync(client, token, $"/yonetim/cizim/duzenle/{listId}", name, DrawingLists.Rows(DrawingLists.Row(name, brand: brand, id: id)));
         Assert.Equal(HttpStatusCode.OK, (await Post(pvc)).StatusCode);
         var other = await NewBrandAsync(app, Tag());
         Assert.Equal(HttpStatusCode.Redirect, (await Post(other)).StatusCode);
@@ -2004,12 +2062,11 @@ public sealed class BrandTests(PostgresFixture postgres)
         var page = await client.GetStringAsync($"/yonetim/cizim/detay/{listId}");
         Assert.Contains($"<img src=\"{logo}\"", page);
         Assert.Contains(textName, page);
-        Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(page, "class=\"wd-brand\"").Count); // markasız çizimde boş alan yok
+        Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(page, "class=\"poz__brand\"").Count); // birden çok markada poz başlığında yazar; markasız pozda yok
 
-        var editor = await client.GetStringAsync($"/yonetim/cizim/poz/{await DrawingLists.DesignIdAsync(app, first)}");
+        var editor = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/cizim/duzenle/{listId}"));
         Assert.Contains("id=\"wd-brand-mark\"", editor);
-        Assert.Contains($"data-logo=\"{logo}\"", editor);
-        Assert.DoesNotContain(textName, editor); // başka türün markası seçilemez
+        Assert.Contains($"\"logo\":\"{logo}\"", editor);
 
         var design = await DrawingLists.DesignIdAsync(app, first);
         var attachments = await KarakusAluminyum.Web.Services.Documents.DocumentViews.LoadAttachmentsAsync(await Task.FromResult(app.Services.CreateScope().ServiceProvider.GetRequiredService<KarakusAluminyum.Web.Data.AppDbContext>()), new[] { design });
@@ -2026,9 +2083,9 @@ public sealed class BrandTests(PostgresFixture postgres)
         Assert.Contains($"\"active\":false", await client.GetStringAsync(DrawingLists.Url));
         var row = Tag();
         await DrawingLists.PostAsync(client, token, row, DrawingLists.Rows(DrawingLists.Row(row, brand: brand)));
-        Assert.Contains(name, await client.GetStringAsync($"/yonetim/cizim/poz/{await DrawingLists.DesignIdAsync(app, row)}"));
-        var other = Tag();
-        await DrawingLists.PostAsync(client, token, other, DrawingLists.Rows(DrawingLists.Row(other)));
-        Assert.DoesNotContain(name, await client.GetStringAsync($"/yonetim/cizim/poz/{await DrawingLists.DesignIdAsync(app, other)}"));
+        // Pasif marka seçim listesine yalnızca onu kullanan pozda gelir (drawing-list.js: b.active || b.id === r.brandId).
+        Assert.Equal(brand, await app.WithDbAsync(db => db.WindowDesigns.Where(d => d.Name == row).Select(d => d.BrandId).SingleAsync()));
+        Assert.Contains(name, WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/cizim/detay/{await DrawingLists.ListIdAsync(app, row)}")));
+        Assert.Contains("b.active || b.id === r.brandId", await client.GetStringAsync("/js/drawing-list.js"));
     }
 }

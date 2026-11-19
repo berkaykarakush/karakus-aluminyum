@@ -65,7 +65,7 @@
     <button class="admin-mobile-toggle" type="button" onclick="document.getElementById('adminApp').classList.toggle('sidebar-open')" aria-label="Menüyü aç">☰</button>
     @if (!accountantOnly) { <form class="admin-search" method="get" action="/yonetim/ara" role="search"><input type="search" name="q" value="@Context.Request.Query["q"]" placeholder="Müşteri, teklif, sözleşme, çizim ara..." aria-label="Panelde ara"/></form> }
     <div class="admin-top-right">
-      <label class="unit-global">Ölçü birimi <select id="unit-global" aria-label="Genel ölçü birimi"><option value="mm">mm</option><option value="cm">cm</option><option value="m">m</option></select></label>
+
       <span class="admin-avatar" title="@User.Identity?.Name">@(User.Identity?.Name?.FirstOrDefault().ToString().ToUpperInvariant() ?? "Y")</span>
       <form method="post" action="/yonetim-cikis">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--secondary" type="submit">Çıkış</button></form>
     </div>

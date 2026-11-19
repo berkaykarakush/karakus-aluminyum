@@ -5,7 +5,7 @@
   <div class="admin-panel">
     <h3>Profil sistemi seçilmemiş çizimler</h3>
     <p class="wd-warnings" style="list-style:none">Bu çizimler malzeme hesabına dahil değildir: @string.Join(", ", Model.WithoutSystem.Select(x => x.Name))</p>
-    <p class="admin-muted wd-noprint">Çizimi açıp sistem seçin. Listeyi düzenleyip kaydederseniz sistemsiz çizimlere türünün ilk aktif sistemi atanır.</p>
+    <p class="admin-muted wd-noprint">Listeyi düzenleyip pozun sistemini seçin. Listeyi kaydederseniz sistemsiz pozlara türünün ilk aktif sistemi atanır.</p>
   </div>
 }
 @if (Model.Invalid.Count > 0)

@@ -1,0 +1,18 @@
+@model IReadOnlyList<KarakusAluminyum.Web.Services.Drawing.PozView>
+@using System.Text.Json
+@{
+    // Ercom'daki toplu resim listesi: pozlar aynı ölçekle art arda dizilir, her pozun altında açıklaması yazar.
+    // Birden çok marka varsa poz başlığında markası da yazar.
+    var json = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+    var mixedBrands = Model.Select(x => x.Design.BrandId).Distinct().Count() > 1;
+}
+<div class="poz-list" data-poz-list data-width-mm="@(ViewData["PozListWidthMm"] ?? 190)">
+  @foreach (var poz in Model)
+  {
+    <figure class="poz">
+      <figcaption class="poz__title">@poz.Title@if (mixedBrands && poz.Design.Brand is not null) { <span class="poz__brand"> · @poz.Design.Brand.Name</span> }</figcaption>
+      <svg data-poz="@JsonSerializer.Serialize(poz.Drawing, json)" role="img" aria-label="@poz.Title çizimi"></svg>
+      <div class="poz__lines">@foreach (var line in poz.Lines) { <div>@line</div> }</div>
+    </figure>
+  }
+</div>

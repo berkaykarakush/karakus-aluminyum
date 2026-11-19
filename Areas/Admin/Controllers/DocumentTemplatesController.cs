@@ -80,7 +80,7 @@ public sealed class DocumentTemplatesController : Controller
     public async Task<IActionResult> Preview(string kind)
     {
         var template = await DocumentViews.CurrentTemplateAsync(_db, kind);
-        var none = new AttachmentList(Array.Empty<AttachmentItem>());
+        var none = new AttachmentList(Array.Empty<KarakusAluminyum.Web.Services.Drawing.PozView>());
         var content = new DocumentContent
         {
             Intro = template.Intro, Closing = template.Closing, Note = template.DefaultNote, Subject = "örnek işin tanımı burada yer alır.",

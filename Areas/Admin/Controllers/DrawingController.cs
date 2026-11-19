@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace KarakusAluminyum.Web.Areas.Admin.Controllers;
 
-// Çizim listeleri: her çizim bir listenin satırıdır. Ölçüye göre şekildir; teklif ve sözleşmelere eklenir. Sistem seçilen çizimlerin malzeme ve kesim hesabı çıkar.
+// Çizim listeleri: her çizim bir listenin pozudur ve yalnızca listesinin içinde düzenlenir. Ölçüye göre şekildir; teklif ve sözleşmelere eklenir. Sistem seçilen çizimlerin malzeme ve kesim hesabı çıkar.
 [Area("Admin"), Authorize(Roles = "Admin,Editor"), Route("yonetim/cizim")]
 public sealed class DrawingController : Controller
 {
@@ -58,19 +58,21 @@ public sealed class DrawingController : Controller
         return RedirectToAction(nameof(Details), new { id = list.Id });
     }
 
+    // Pozlar Ercom'daki sipariş ekranı gibi tek ekranda düzenlenir: liste solda, seçili pozun çizimi editörde.
     [HttpGet("duzenle/{id:int}")]
-    public async Task<IActionResult> Edit(int id)
+    public async Task<IActionResult> Edit(int id, int? poz)
     {
         var list = await _db.DrawingLists.AsNoTracking().Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == id);
         if (list is null) return NotFound();
         await LoadListOptions();
+        ViewBag.SelectedPoz = poz;
         return View("ListEditor", new DrawingListInputVm
         {
             Id = list.Id, Name = list.Name, CustomerId = list.CustomerId, Notes = list.Notes,
             ItemsJson = JsonSerializer.Serialize(list.Items.OrderBy(x => x.SortOrder).ThenBy(x => x.Id).Select(x => new DrawingRowInput
             {
                 Id = x.Id, Category = x.Category, BrandId = x.BrandId, ProfileSystemId = x.ProfileSystemId, Name = x.Name, WidthMm = x.WidthMm, HeightMm = x.HeightMm, Quantity = x.Quantity,
-                ColorHex = x.ColorHex, Shape = x.Shape, ShapeParamMm = x.ShapeParamMm, LayoutJson = x.LayoutJson, ParamsJson = x.ParamsJson
+                ColorHex = x.ColorHex, Shape = x.Shape, ShapeParamMm = x.ShapeParamMm, LayoutJson = x.LayoutJson, ParamsJson = x.ParamsJson, GlassSpec = x.GlassSpec, Notes = x.Notes
             }), RowJson)
         });
     }
@@ -112,38 +114,12 @@ public sealed class DrawingController : Controller
         return list is null ? NotFound() : View(list);
     }
 
-    // Listedeki tek çizimin ayrıntılı editörü: açılım, bölme, şekil ve ürün seçimleri.
+    // Eski tek çizim bağlantıları (arama, kayıtlı yer imleri) pozun listesinde açılır.
     [HttpGet("poz/{id:int}")]
-    public async Task<IActionResult> EditDrawing(int id)
+    public async Task<IActionResult> OpenPoz(int id)
     {
-        var row = await _db.WindowDesigns.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
-        if (row is null) return NotFound();
-        await LoadOptions(row.Category);
-        return View(DesignerView(row.Category), new DesignInputVm
-        {
-            Id = row.Id, DrawingListId = row.DrawingListId, Name = row.Name, Category = row.Category, ProfileSystemId = row.ProfileSystemId, BrandId = row.BrandId, ParamsJson = row.ParamsJson, ColorHex = row.ColorHex,
-            WidthMm = row.WidthMm, HeightMm = row.HeightMm, Shape = row.Shape, ShapeParamMm = row.ShapeParamMm, Quantity = row.Quantity, LayoutJson = row.LayoutJson, Notes = row.Notes
-        });
-    }
-
-    [HttpPost("poz/{id:int}"), ValidateAntiForgeryToken, RequestSizeLimit(256_000)]
-    public async Task<IActionResult> EditDrawing(int id, DesignInputVm input)
-    {
-        var row = await _db.WindowDesigns.FindAsync(id);
-        if (row is null) return NotFound();
-        input.Id = id;
-        input.DrawingListId = row.DrawingListId;
-        input.Category = row.Category; // tür sonradan değişmez
-        await Validate(input);
-        if (!ModelState.IsValid) { await LoadOptions(input.Category); return View(DesignerView(input.Category), input); }
-
-        Apply(row, input);
-        row.UpdatedUtc = DateTime.UtcNow;
-        await _db.DrawingLists.Where(x => x.Id == row.DrawingListId).ExecuteUpdateAsync(x => x.SetProperty(l => l.UpdatedUtc, DateTime.UtcNow));
-        await _db.SaveChangesAsync();
-        await _audit.RecordAsync("update", "WindowDesign", row.Id.ToString(), row.Name);
-        TempData["Notice"] = "Çizim kaydedildi.";
-        return RedirectToAction(nameof(EditDrawing), new { id });
+        var listId = await _db.WindowDesigns.Where(x => x.Id == id).Select(x => (int?)x.DrawingListId).FirstOrDefaultAsync();
+        return listId is null ? NotFound() : Redirect($"/yonetim/cizim/duzenle/{listId}?poz={id}");
     }
 
     // Editörün canlı özeti: ölçü ve maliyet her zaman sunucuda hesaplanır.
@@ -164,8 +140,8 @@ public sealed class DrawingController : Controller
         if (row is null) return NotFound();
         if (row.ProfileSystem is null)
         {
-            TempData["Notice"] = "İmalat föyü için önce çizime bir profil sistemi seçin.";
-            return RedirectToAction(nameof(EditDrawing), new { id });
+            TempData["Notice"] = "İmalat föyü için önce poza bir profil sistemi seçin.";
+            return Redirect($"/yonetim/cizim/duzenle/{row.DrawingListId}?poz={id}");
         }
         var calculation = DrawingCalculation.Calculate(row, row.ProfileSystem);
         if (calculation is null) return BadRequest();
@@ -214,7 +190,7 @@ public sealed class DrawingController : Controller
             Items = list.Items.OrderBy(x => x.SortOrder).ThenBy(x => x.Id).Select(x => new WindowDesign
             {
                 Name = x.Name, CustomerId = x.CustomerId, SortOrder = x.SortOrder, BrandId = x.BrandId, Category = x.Category, ProfileSystemId = x.ProfileSystemId, ParamsJson = x.ParamsJson, ColorHex = x.ColorHex,
-                WidthMm = x.WidthMm, HeightMm = x.HeightMm, Shape = x.Shape, ShapeParamMm = x.ShapeParamMm, Quantity = x.Quantity, LayoutJson = x.LayoutJson, Notes = x.Notes
+                WidthMm = x.WidthMm, HeightMm = x.HeightMm, Shape = x.Shape, ShapeParamMm = x.ShapeParamMm, Quantity = x.Quantity, LayoutJson = x.LayoutJson, GlassSpec = x.GlassSpec, Notes = x.Notes
             }).ToList()
         };
         _db.DrawingLists.Add(copy);
@@ -233,8 +209,6 @@ public sealed class DrawingController : Controller
         await _audit.RecordAsync("delete", "DrawingList", id.ToString(), list.Name);
         return RedirectToAction(nameof(Index));
     }
-
-    private static string DesignerView(string category) => ProductCategories.IsWindow(category) ? "Designer" : "ProductDesigner";
 
     // Satırların tamamı geçerli olmalıdır: hatalar satır numarasıyla bildirilir ve hiçbiri kaydedilmez.
     private async Task<bool> ApplyListAsync(DrawingList list, DrawingListInputVm input)
@@ -262,14 +236,16 @@ public sealed class DrawingController : Controller
             WindowDesign? current = null;
             if (item.Id is not null && !existing.TryGetValue(item.Id.Value, out current))
             {
-                ModelState.AddModelError(string.Empty, $"{i + 1}. satır: Bu çizim listeye ait değil.");
+                ModelState.AddModelError(string.Empty, $"Poz {i + 1}: Bu poz listeye ait değil.");
                 continue;
             }
-            // Kayıtlı çizimin türü ve şekli listeden değişmez; ayrıntılar çizim editöründedir.
+            // Kayıtlı pozun türü değişmez. Şekil yazılmamışsa (toplu ekleme, eski istemci) kayıtlı şekil korunur.
             var category = current?.Category ?? item.Category;
-            var shape = current?.Shape ?? WindowShapes.Rect;
-            var shapeParam = current?.ShapeParamMm ?? 0;
-            var systemId = item.ProfileSystemId ?? current?.ProfileSystemId ?? (systems.TryGetValue(category, out var found) ? found : null);
+            var window = ProductCategories.IsWindow(category);
+            var shape = !window ? WindowShapes.Rect : string.IsNullOrEmpty(item.Shape) ? current?.Shape ?? WindowShapes.Rect : item.Shape;
+            var shapeParam = shape == WindowShapes.Rect ? 0 : string.IsNullOrEmpty(item.Shape) ? current?.ShapeParamMm ?? 0 : item.ShapeParamMm;
+            // Sistem 0 gönderilirse poz sistemsiz kalır; boşsa kayıtlı sistemi, yeni pozda türün ilk aktif sistemini alır.
+            var systemId = item.ProfileSystemId == 0 ? null : item.ProfileSystemId ?? current?.ProfileSystemId ?? (systems.TryGetValue(category, out var found) ? found : null);
             // Sistemsiz kaydedilmiş eski çizim, otomatik atanan sistemin kuralına uymuyor diye kaydı engellemez; sistemsiz kalır.
             if (current is { ProfileSystemId: null } && item.ProfileSystemId is null && systemId is not null
                 && (await ErrorsAsync(category, item.WidthMm, item.HeightMm, shape, shapeParam, item.Quantity, item.LayoutJson, item.ParamsJson, systemId)).Count > 0) systemId = null;
@@ -278,7 +254,9 @@ public sealed class DrawingController : Controller
             if (item.BrandId is not null && (!brands.TryGetValue(item.BrandId.Value, out var brandCategory) || brandCategory != category)) errors.Add("Bu ürün türüne ait geçerli bir marka seçin.");
             if (!string.IsNullOrEmpty(item.ColorHex) && !Regex.IsMatch(item.ColorHex, "^#[0-9a-fA-F]{6}$")) errors.Add("Geçersiz renk.");
             if (item.Name?.Trim().Length > 160) errors.Add("Ad en fazla 160 karakter olabilir.");
-            foreach (var error in errors) ModelState.AddModelError(string.Empty, $"{i + 1}. satır: {error}");
+            if (item.GlassSpec?.Trim().Length > 60) errors.Add("Cam tanımı en fazla 60 karakter olabilir.");
+            if (item.Notes?.Trim().Length > 1000) errors.Add("Not en fazla 1000 karakter olabilir.");
+            foreach (var error in errors) ModelState.AddModelError(string.Empty, $"Poz {i + 1}: {error}");
             if (errors.Count > 0) continue;
 
             var name = item.Name?.Trim();
@@ -286,8 +264,13 @@ public sealed class DrawingController : Controller
             {
                 do name = $"Poz {nextName++}"; while (!used.Add(name));
             }
-            var row = current ?? new WindowDesign { Category = category, Shape = shape };
+            var row = current ?? new WindowDesign { Category = category };
             row.Name = name;
+            row.Shape = shape;
+            row.ShapeParamMm = shapeParam;
+            row.GlassSpec = window && !string.IsNullOrWhiteSpace(item.GlassSpec) ? item.GlassSpec.Trim() : null;
+            // Not yazılmamış eski istemciden gelen kayıt notu silmez.
+            if (item.Notes is not null) row.Notes = string.IsNullOrWhiteSpace(item.Notes) ? null : item.Notes.Trim();
             row.SortOrder = i;
             row.CustomerId = input.CustomerId;
             row.BrandId = item.BrandId;
@@ -297,7 +280,7 @@ public sealed class DrawingController : Controller
             row.HeightMm = item.HeightMm;
             row.Quantity = item.Quantity;
             row.UpdatedUtc = DateTime.UtcNow;
-            if (ProductCategories.IsWindow(category)) row.LayoutJson = WindowLayout.Serialize(WindowLayout.Parse(item.LayoutJson)!);
+            if (window) row.LayoutJson = WindowLayout.Serialize(WindowLayout.Parse(item.LayoutJson)!);
             else row.ParamsJson = WindowDrawings.Serialize(WindowDrawings.ParseParams(item.ParamsJson)!);
             kept.Add(row);
         }
@@ -309,14 +292,6 @@ public sealed class DrawingController : Controller
         foreach (var removed in list.Items.Except(kept).ToList()) _db.WindowDesigns.Remove(removed);
         list.Items = kept;
         return true;
-    }
-
-    private async Task Validate(DesignInputVm input)
-    {
-        if (input.BrandId is not null && !await _db.Brands.AnyAsync(x => x.Id == input.BrandId && x.Category == input.Category))
-            ModelState.AddModelError(nameof(input.BrandId), "Bu ürün türüne ait geçerli bir marka seçin.");
-        var errors = await ErrorsAsync(input.Category, input.WidthMm, input.HeightMm, input.Shape, input.ShapeParamMm, input.Quantity, input.LayoutJson, input.ParamsJson, input.ProfileSystemId);
-        foreach (var error in errors) ModelState.AddModelError(string.Empty, error);
     }
 
     // Şekil her zaman denetlenir; imalat kuralları sistem seçiliyken.
@@ -332,22 +307,6 @@ public sealed class DrawingController : Controller
         return errors;
     }
 
-    private static void Apply(WindowDesign row, DesignInputVm input)
-    {
-        row.Name = input.Name.Trim();
-        row.BrandId = input.BrandId;
-        row.ProfileSystemId = input.ProfileSystemId;
-        row.ColorHex = input.ColorHex;
-        row.WidthMm = input.WidthMm;
-        row.HeightMm = input.HeightMm;
-        row.Shape = input.Shape;
-        row.ShapeParamMm = input.Shape == WindowShapes.Rect ? 0 : input.ShapeParamMm;
-        row.Quantity = input.Quantity;
-        row.Notes = input.Notes?.Trim();
-        if (ProductCategories.IsWindow(input.Category)) row.LayoutJson = WindowLayout.Serialize(WindowLayout.Parse(input.LayoutJson)!);
-        else row.ParamsJson = WindowDrawings.Serialize(WindowDrawings.ParseParams(input.ParamsJson)!);
-    }
-
     private static object ToResponse(WindowCalculation c) => new
     {
         errors = c.Errors, warnings = c.Warnings, cuts = c.Cuts, glassCount = c.Glass.Sum(g => g.Count), hardware = c.Hardware,
@@ -359,11 +318,6 @@ public sealed class DrawingController : Controller
     {
         ViewBag.Customers = new SelectList(await _db.Customers.AsNoTracking().Where(x => x.Status != CustomerStatus.Passive).OrderBy(x => x.Name).Select(x => new { x.Id, x.Name }).ToListAsync(), "Id", "Name");
         ViewBag.Brands = await _db.Brands.AsNoTracking().OrderBy(x => x.SortOrder).ThenBy(x => x.Name).ToListAsync();
-    }
-
-    private async Task LoadOptions(string category)
-    {
-        ViewBag.Brands = await _db.Brands.AsNoTracking().Where(x => x.Category == category).OrderBy(x => x.SortOrder).ThenBy(x => x.Name).ToListAsync();
-        ViewBag.Systems = await _db.ProfileSystems.AsNoTracking().Where(x => x.Category == category).OrderBy(x => x.Name).ToListAsync();
+        ViewBag.Systems = await _db.ProfileSystems.AsNoTracking().OrderBy(x => x.Name).ToListAsync();
     }
 }

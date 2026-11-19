@@ -97,9 +97,21 @@ public sealed class WindowDesign
     public int Quantity { get; set; } = 1;
     public string LayoutJson { get; set; } = "{}";
     public string ParamsJson { get; set; } = "{}"; // panjur, korkuluk ve cam balkon seçimleri: ProductParams
+    [StringLength(60)] public string? GlassSpec { get; set; } // çizimde cam ölçüsünün altında yazar, ör. 4+16+4
     [StringLength(1000)] public string? Notes { get; set; }
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
+}
+
+// Çizim renkleri. Seçici ve çizim açıklaması aynı adları kullanır.
+public static class ProductColors
+{
+    public static readonly (string Name, string Hex)[] All =
+    {
+        ("Beyaz", "#f4f5f5"), ("Antrasit", "#3a4046"), ("Siyah", "#1d2023"), ("Gümüş eloksal", "#c3c8cc"), ("Vizon", "#8c7f70"), ("Altın meşe", "#a9743f"), ("Ceviz", "#5e3d27")
+    };
+
+    public static string? NameOf(string? hex) => All.FirstOrDefault(c => string.Equals(c.Hex, hex, StringComparison.OrdinalIgnoreCase)).Name;
 }
 
 public static class ProductCategories
@@ -242,6 +254,8 @@ public sealed class DrawingRowInput
     public int ShapeParamMm { get; set; }
     public string? LayoutJson { get; set; }
     public string? ParamsJson { get; set; }
+    public string? GlassSpec { get; set; }
+    public string? Notes { get; set; }
 }
 
 // Cam listesi: doğramalardan bağımsız cam siparişi. Her satır bir ölçüdür.
