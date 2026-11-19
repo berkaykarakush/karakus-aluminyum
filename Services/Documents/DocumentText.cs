@@ -104,6 +104,8 @@ public static class DocumentJson
     public static DocumentContent ParseContent(string? json) => Parse<DocumentContent>(json) ?? new DocumentContent();
     public static DocumentContent? TryParseContent(string? json) => Parse<DocumentContent>(json);
     public static List<ContractArticle> ParseArticles(string? json) => Parse<List<ContractArticle>>(json) ?? new();
+    public static List<BlockClause> ParseTerms(string? json) => Parse<List<BlockClause>>(json) ?? new();
+    public static Dictionary<string, string> ParseVariables(string? json) => Parse<Dictionary<string, string>>(json) ?? new();
     public static List<PresentationItem> ParseItems(string? json) => Parse<List<PresentationItem>>(json) ?? new();
     public static DocumentTemplate? ParseTemplate(string? json) => string.IsNullOrWhiteSpace(json) || json == "{}" ? null : Parse<DocumentTemplate>(json);
     public static string Serialize<T>(T value) => JsonSerializer.Serialize(value, Options);
@@ -151,5 +153,19 @@ public static class PaymentPlan
         var sum = lines.Sum(l => l.Amount);
         if (lines.Count > 0 && sum != total)
             yield return $"Ödeme planı toplamı ({TurkishNumbers.Money(sum)}) işin toplam bedeline ({TurkishNumbers.Money(total)}) eşit değil.";
+    }
+}
+
+// Teklif ve sözleşme şartları: başlık ve metin. Boş metinli şart basılmaz.
+public static class DocumentTerms
+{
+    public const int MaxTerms = 40;
+
+    public static void Validate(DocumentContent content, Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary state)
+    {
+        content.Terms = content.Terms.Where(t => !string.IsNullOrWhiteSpace(t.Title) || !string.IsNullOrWhiteSpace(t.Text)).ToList();
+        if (content.Terms.Count > MaxTerms) state.AddModelError(string.Empty, $"En fazla {MaxTerms} şart yazılabilir.");
+        if (content.Terms.Any(t => (t.Title?.Trim().Length ?? 0) > 120)) state.AddModelError(string.Empty, "Şart başlığı en fazla 120 karakter olabilir.");
+        if (content.Terms.Any(t => (t.Text?.Length ?? 0) > 2000)) state.AddModelError(string.Empty, "Şart metni en fazla 2000 karakter olabilir.");
     }
 }

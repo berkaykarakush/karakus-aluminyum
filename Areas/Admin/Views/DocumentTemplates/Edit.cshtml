@@ -4,7 +4,9 @@
     var isContract = Model.Kind == DocumentKinds.Contract;
     ViewData["Title"] = isContract ? "Sözleşme şablonu" : "Teklif şablonu";
     var articles = (List<ContractArticle>)ViewBag.Articles;
-    var kinds = new[] { (ContractArticleKinds.Text, "Metin"), (ContractArticleKinds.Subject, "Konu ve iş kalemleri"), (ContractArticleKinds.Price, "Toplam bedel"), (ContractArticleKinds.Payment, "Ödeme planı") };
+    var kinds = new[] { (ContractArticleKinds.Text, "Metin"), (ContractArticleKinds.Subject, "Konu ve teknik özellikler"), (ContractArticleKinds.Items, "Fiyat tablosu (kalemler, iskonto, KDV)"), (ContractArticleKinds.Price, "Toplam bedel"), (ContractArticleKinds.Payment, "Ödeme planı"), (ContractArticleKinds.Terms, "Özel şartlar") };
+    var terms = (List<BlockClause>)ViewBag.Terms;
+    var variables = (Dictionary<string, string>)ViewBag.Variables;
 }
 <div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/sablonlar">Belge şablonları</a><a class="admin-btn" href="/yonetim/sablonlar/@Model.Kind/onizleme" target="_blank" rel="noopener">Önizleme</a></div>
 <form class="admin-form" method="post" enctype="multipart/form-data" action="/yonetim/sablonlar/@Model.Kind">
@@ -32,18 +34,21 @@
     <div class="admin-grid">
       <div><label asp-for="SellerName">Firma adı</label><input asp-for="SellerName" /></div>
       <div><label asp-for="Signatory">İmza yetkilisi</label><input asp-for="Signatory" /></div>
+      <div><label asp-for="SellerTaxInfo">Vergi dairesi ve no</label><input asp-for="SellerTaxInfo" placeholder="Örn. Bornova VD 1234567890" /></div>
+      <div><label asp-for="SellerEmail">E-posta</label><input asp-for="SellerEmail" type="email" /></div>
       @if (isContract)
       {
         <div><label asp-for="SignatoryTitle">Yetkili sıfatı (ör. Vekil)</label><input asp-for="SignatoryTitle" /></div>
-        <div><label asp-for="SellerTaxInfo">Vergi dairesi ve no</label><input asp-for="SellerTaxInfo" /></div>
         <div><label asp-for="BuyerLabel">Alıcı etiketi</label><input asp-for="BuyerLabel" /></div>
         <div><label asp-for="SellerLabel">Satıcı etiketi</label><input asp-for="SellerLabel" /></div>
       }
     </div>
-    @if (isContract)
+    <label asp-for="SellerLegalName">@(isContract ? "Taraflar maddesindeki satıcı ifadesi (ör. firma, sahibi ve vekili)" : "Satıcı ünvanı (proformanın satıcı kutusunda)")</label><input asp-for="SellerLegalName" />
+    <label asp-for="SellerAddress">@(isContract ? "Tebligat adresi" : "Satıcı adresi")</label><input asp-for="SellerAddress" />
+    @if (!isContract)
     {
-      <label asp-for="SellerLegalName">Taraflar maddesindeki satıcı ifadesi (ör. firma, sahibi ve vekili)</label><input asp-for="SellerLegalName" />
-      <label asp-for="SellerAddress">Tebligat adresi</label><input asp-for="SellerAddress" />
+      <label asp-for="BankInfo">Banka bilgileri (proformada basılır)</label><textarea asp-for="BankInfo" rows="3" placeholder="Banka adı - Şube&#10;IBAN: TR00 0000 0000 0000 0000 0000 00&#10;Hesap sahibi"></textarea>
+      <label asp-for="AcceptanceText">Müşteri onay metni</label><input asp-for="AcceptanceText" />
     }
   </div>
   <div class="admin-panel">
@@ -60,6 +65,23 @@
     }
     <label asp-for="DefaultNote">Varsayılan not</label><textarea asp-for="DefaultNote"></textarea>
     <label asp-for="SignOff">@(isContract ? "Kapanış metni" : "Kapanış ifadesi")</label><textarea asp-for="SignOff"></textarea>
+  </div>
+  <div class="admin-panel">
+    <h2>@(isContract ? "Varsayılan özel şartlar" : "Teklif şartları")</h2>
+    <p class="admin-muted">@(isContract ? "Tekliften gelmeyen sözleşmelere başlangıç olarak gelir. Tekliften oluşturulan sözleşme teklifin şartlarını alır." : "Yeni proformaya gelir; her teklifte değiştirilebilir. Ödeme, teslim, montaj, hariç tutulanlar ve garanti gibi.") Başlığı ve metni boş satırlar silinir.</p>
+    <div class="admin-grid" style="grid-template-columns:minmax(0,1fr) minmax(0,3fr)">
+      @for (var i = 0; i < terms.Count + 2; i++)
+      {
+        var term = i < terms.Count ? terms[i] : new BlockClause();
+        <div><input name="terms[@i].Title" value="@term.Title" aria-label="@(i + 1). şart başlığı" placeholder="Başlık" /></div>
+        <div><textarea name="terms[@i].Text" rows="2" aria-label="@(i + 1). şart metni">@term.Text</textarea></div>
+      }
+    </div>
+  </div>
+  <div class="admin-panel">
+    <h2>Varsayılan değerler</h2>
+    <p class="admin-muted">Metinlerdeki <code>{{alan}}</code> değişkenlerinin yeni belgedeki başlangıç değeri. Her satıra <code>alan = değer</code> yazın (ör. <code>teslim_suresi = 30</code>). Belgede değiştirilebilir.</p>
+    <textarea name="variablesText" rows="6" aria-label="Varsayılan değerler">@string.Join("\n", variables.Select(v => $"{v.Key} = {v.Value}"))</textarea>
   </div>
   @if (isContract)
   {

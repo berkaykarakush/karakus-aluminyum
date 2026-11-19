@@ -831,8 +831,9 @@ public sealed class DrawingPageTests(PostgresFixture postgres)
         var print = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/crm/teklifler/yazdir/{quote.Id}"));
         Assert.Contains("İskonto (%10)", print);
         Assert.Contains(names[0], print); // çizim eki
-        Assert.DoesNotContain("Montaj ve nakliye", print);
-        Assert.DoesNotContain("maliyet", print, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Montaj ve nakliye", print); // proforma: kalemler basılır
+        Assert.DoesNotContain("maliyet", print, StringComparison.OrdinalIgnoreCase); // maliyet ve marj basılmaz
+        Assert.DoesNotContain("Marj", print);
 
         var details = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/crm/teklifler/detay/{quote.Id}"));
         Assert.Contains("İç fiyatlandırma", details);

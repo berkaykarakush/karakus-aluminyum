@@ -54,6 +54,16 @@
             <p><strong>@Model.PriceLine</strong></p>
             @if (!string.IsNullOrWhiteSpace(c.PriceNote)) { <p><strong>Not: </strong>@TemplateText.ToHtml(c.PriceNote, c.Variables, system)</p> }
           }
+          else if (article.Kind == ContractArticleKinds.Items)
+          {
+            <partial name="~/Areas/Admin/Views/Documents/_PriceTable.cshtml" model="Model.Prices" />
+          }
+          else if (article.Kind == ContractArticleKinds.Terms)
+          {
+            <dl class="pf-terms">
+              @foreach (var term in c.Terms.Where(x => !string.IsNullOrWhiteSpace(x.Text))) { <dt>@term.Title</dt><dd>@TemplateText.ToHtml(term.Text, c.Variables, system)</dd> }
+            </dl>
+          }
           else if (article.Kind == ContractArticleKinds.Payment)
           {
             <ul>

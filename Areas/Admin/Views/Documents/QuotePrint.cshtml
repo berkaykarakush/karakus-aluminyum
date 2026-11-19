@@ -2,14 +2,19 @@
 @using KarakusAluminyum.Web.Models.Crm
 @using KarakusAluminyum.Web.Services.Documents
 @{
+    // Proforma fatura (ERP'lerdeki satış teklifi düzeni): satıcı ve alıcı bilgileri, belge bilgileri, kalem tablosu,
+    // iskonto ve KDV dökümü, yazıyla tutar, teknik özellikler, şartlar, banka bilgileri ve müşteri onay kutusu.
     Layout = null;
     var t = Model.Template;
     var c = Model.Content;
     var system = Model.System;
     var quote = Model.Quote;
+    var customer = quote.Customer;
     ViewData["DocDate"] = TurkishNumbers.Date(quote.DocumentDate);
-    var multiple = Model.Blocks.Count > 1;
-    var showSummary = multiple || quote.DiscountAmount > 0 || quote.VatMode == VatMode.Added;
+    var technical = Model.Blocks.Where(b => b.Block.Clauses.Any(x => !string.IsNullOrWhiteSpace(x.Text))).ToList();
+    var terms = c.Terms.Where(x => !string.IsNullOrWhiteSpace(x.Text)).ToList();
+    var buyerTax = string.Join(" / ", new[] { customer?.TaxOffice, customer?.TaxNumber }.Where(x => !string.IsNullOrWhiteSpace(x)));
+    var buyerPlace = string.Join(" / ", new[] { customer?.District, customer?.City }.Where(x => !string.IsNullOrWhiteSpace(x)));
 }
 <!doctype html>
 <html lang="tr">
@@ -27,7 +32,7 @@
     <style>@@page{size:A4;margin:0}@@media print{.doc-head{padding-top:12mm!important}.doc-sheet>tfoot .doc-foot{height:34mm}.doc-print-foot{bottom:10mm}}</style>
   }
 </head>
-<body class="doc doc--quote">
+<body class="doc doc--quote doc--proforma">
   <div class="doc-toolbar">
     @if (quote.Id != 0)
     {
@@ -41,48 +46,97 @@
     <partial name="~/Areas/Admin/Views/Documents/_Presentation.cshtml" model="Model.Presentation" />
     <partial name="~/Areas/Admin/Views/Documents/_PresentationFit.cshtml" />
   }
-  @for (var i = 0; i < Model.Blocks.Count; i++)
-  {
-    var view = Model.Blocks[i];
-    var block = view.Block;
-    <table class="doc-sheet">
-      <thead><tr><td><partial name="~/Areas/Admin/Views/Documents/_DocumentHead.cshtml" model="t" /></td></tr></thead>
-      <tfoot><tr><td><partial name="~/Areas/Admin/Views/Documents/_DocumentFoot.cshtml" model="t" /></td></tr></tfoot>
-      <tbody><tr><td class="doc-body">
-        <p>Sayın @Model.CustomerName,</p>
-        <p>@TemplateText.ToHtml(c.Intro, block.Variables, c.Variables, system)</p>
-        @foreach (var clause in block.Clauses)
-        {
-          <p>@TemplateText.ToHtml(clause.Text, block.Variables, c.Variables, system)</p>
-        }
-        <p>@TemplateText.ToHtml(c.Closing, block.Variables, c.Variables, system)</p>
+  <table class="doc-sheet">
+    <thead><tr><td><partial name="~/Areas/Admin/Views/Documents/_DocumentHead.cshtml" model="t" /></td></tr></thead>
+    <tfoot><tr><td><partial name="~/Areas/Admin/Views/Documents/_DocumentFoot.cshtml" model="t" /></td></tr></tfoot>
+    <tbody><tr><td class="doc-body">
+      <div class="pf-parties">
+        <section class="pf-party">
+          <h3>Satıcı</h3>
+          <strong>@(string.IsNullOrWhiteSpace(t.SellerLegalName) ? t.SellerName : t.SellerLegalName)</strong>
+          @if (!string.IsNullOrWhiteSpace(t.SellerAddress)) { <div>@t.SellerAddress</div> }
+          @if (!string.IsNullOrWhiteSpace(t.SellerTaxInfo)) { <div>VD / VKN: @t.SellerTaxInfo</div> }
+          @if (!string.IsNullOrWhiteSpace(t.Phone)) { <div>Tel: @t.Phone</div> }
+          @if (!string.IsNullOrWhiteSpace(t.SellerEmail)) { <div>E-posta: @t.SellerEmail</div> }
+        </section>
+        <section class="pf-party">
+          <h3>Alıcı</h3>
+          <strong>@Model.CustomerName</strong>
+          @if (!string.IsNullOrWhiteSpace(customer?.ContactPerson)) { <div>Yetkili: @customer.ContactPerson</div> }
+          @if (!string.IsNullOrWhiteSpace(customer?.Address)) { <div>@customer.Address</div> }
+          @if (buyerPlace.Length > 0) { <div>@buyerPlace</div> }
+          @if (buyerTax.Length > 0) { <div>VD / VKN: @buyerTax</div> }
+          @if (!string.IsNullOrWhiteSpace(customer?.Phone)) { <div>Tel: @customer.Phone</div> }
+          @if (!string.IsNullOrWhiteSpace(customer?.Email)) { <div>E-posta: @customer.Email</div> }
+        </section>
+        <dl class="pf-info">
+          <dt>Belge no</dt><dd>@(string.IsNullOrEmpty(quote.QuoteNumber) ? "-" : quote.QuoteNumber)</dd>
+          <dt>Tarih</dt><dd>@TurkishNumbers.Date(quote.DocumentDate)</dd>
+          <dt>Geçerlilik</dt><dd>@(quote.ValidUntilUtc is DateTime valid ? TurkishNumbers.Date(valid) : "-")</dd>
+          <dt>Para birimi</dt><dd>TL</dd>
+          @if (!string.IsNullOrWhiteSpace(quote.Title)) { <dt>Konu</dt><dd>@quote.Title</dd> }
+        </dl>
+      </div>
 
-        @* Kalemler, maliyet ve marj müşteriye basılmaz: yalnızca işin toplam tutarı, iskonto ve KDV. *@
-        <div class="doc-prices">
-          @if (!string.IsNullOrWhiteSpace(block.Name)) { <p class="doc-block-name">@block.Name</p> }
-          <table class="doc-lines doc-total"><tbody>
-            <tr>
-              <td>İşin Toplam Tutarı</td>
-              <td class="doc-amount">@TurkishNumbers.Money(view.Subtotal)@(quote.VatMode == VatMode.Included ? " (KDV Dahil)" : "")<br />(@TurkishNumbers.MoneyWords(view.Subtotal))</td>
-            </tr>
-          </tbody></table>
-        </div>
+      @if (!string.IsNullOrWhiteSpace(c.Intro)) { <p>@TemplateText.ToHtml(c.Intro, c.Variables, system)</p> }
+      @if (!string.IsNullOrWhiteSpace(c.Closing)) { <p>@TemplateText.ToHtml(c.Closing, c.Variables, system)</p> }
 
-        @if (i == Model.Blocks.Count - 1 && showSummary)
-        {
-          <table class="doc-lines doc-summary"><tbody>
-            @if (quote.DiscountAmount > 0 || quote.VatMode == VatMode.Added) { <tr><td>Ara Toplam</td><td class="doc-amount">@TurkishNumbers.Money(quote.Subtotal)</td></tr> }
-            @if (quote.DiscountAmount > 0) { <tr><td>İskonto (%@quote.DiscountRate.ToString("0.##"))</td><td class="doc-amount">-@TurkishNumbers.Money(quote.DiscountAmount)</td></tr> }
-            @if (quote.VatMode == VatMode.Added) { <tr><td>KDV (%@quote.TaxRate.ToString("0.##"))</td><td class="doc-amount">@TurkishNumbers.Money(quote.TaxAmount)</td></tr> }
-            <tr class="doc-grand"><td>Genel Toplam@(quote.VatMode == VatMode.Included ? " (KDV Dahil)" : "")</td><td class="doc-amount">@TurkishNumbers.Money(quote.GrandTotal)<br />(@TurkishNumbers.MoneyWords(quote.GrandTotal))</td></tr>
-          </tbody></table>
-        }
+      <partial name="~/Areas/Admin/Views/Documents/_PriceTable.cshtml" model="Model.Prices" />
 
-        @if (!string.IsNullOrWhiteSpace(c.Note)) { <p>Not: @TemplateText.ToHtml(c.Note, block.Variables, c.Variables, system)</p> }
-        <p class="doc-signoff">@TemplateText.ToHtml(t.SignOff, system)<br />@t.Signatory</p>
-      </td></tr></tbody>
-    </table>
-  }
+      @if (technical.Count > 0)
+      {
+        <section class="pf-section">
+          <h3>Teknik özellikler</h3>
+          @foreach (var view in technical)
+          {
+            @if (!string.IsNullOrWhiteSpace(view.Block.Name) && technical.Count > 1) { <p class="pf-section-name">@view.Block.Name</p> }
+            <ul>
+              @foreach (var clause in view.Block.Clauses.Where(x => !string.IsNullOrWhiteSpace(x.Text)))
+              {
+                <li>@if (!string.IsNullOrWhiteSpace(clause.Title)) { <strong>@clause.Title: </strong> }@TemplateText.ToHtml(clause.Text, view.Block.Variables, c.Variables, system)</li>
+              }
+            </ul>
+          }
+        </section>
+      }
+
+      @if (terms.Count > 0)
+      {
+        <section class="pf-section">
+          <h3>Teklif şartları</h3>
+          <dl class="pf-terms">
+            @foreach (var term in terms) { <dt>@term.Title</dt><dd>@TemplateText.ToHtml(term.Text, c.Variables, system)</dd> }
+          </dl>
+        </section>
+      }
+
+      @if (!string.IsNullOrWhiteSpace(c.Note)) { <section class="pf-section"><h3>Not</h3><p>@TemplateText.ToHtml(c.Note, c.Variables, system)</p></section> }
+
+      @if (!string.IsNullOrWhiteSpace(t.BankInfo))
+      {
+        <section class="pf-section"><h3>Banka bilgileri</h3><p class="pf-bank">@t.BankInfo</p></section>
+      }
+
+      <p class="pf-legal">Bu belge proforma faturadır; teklif niteliğindedir ve fatura yerine geçmez. Kesin fatura, teslim veya hizmetin ifasıyla birlikte düzenlenir.</p>
+
+      <table class="pf-sign"><tbody><tr>
+        <td>
+          <strong>Satıcı</strong>
+          <div>@TemplateText.ToHtml(t.SignOff, system)</div>
+          <div>@(string.IsNullOrWhiteSpace(t.SellerLegalName) ? t.SellerName : t.SellerLegalName)</div>
+          @if (!string.IsNullOrWhiteSpace(t.Signatory)) { <div>@t.Signatory</div> }
+          <div class="pf-sign__line">Kaşe / İmza</div>
+        </td>
+        <td>
+          <strong>Alıcı onayı</strong>
+          @if (!string.IsNullOrWhiteSpace(t.AcceptanceText)) { <div>@t.AcceptanceText</div> }
+          <div class="pf-sign__field">Ad Soyad:</div>
+          <div class="pf-sign__field">Tarih:</div>
+          <div class="pf-sign__line">Kaşe / İmza</div>
+        </td>
+      </tr></tbody></table>
+    </td></tr></tbody>
+  </table>
   @if (Model.Attachments.Items.Count > 0)
   {
     <partial name="~/Areas/Admin/Views/Documents/_Attachments.cshtml" model="Model.Attachments" view-data='new ViewDataDictionary(ViewData) { ["Template"] = t }' />

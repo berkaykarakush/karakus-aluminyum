@@ -146,6 +146,7 @@ await using (var scope = app.Services.CreateAsyncScope())
     catch (Exception error) when (error is not OperationCanceledException) { app.Logger.LogError(error, "Görsel geçişi tamamlanamadı."); }
     await SeedData.InitializeAsync(scope.ServiceProvider, app.Configuration);
     await SampleSystemValues.ApplyAsync(db);
+    await DocumentTemplateUpgrade.ApplyAsync(db);
     // Seed sistemleri oluşturup değerlerini yazdıktan sonra çalışmalı.
     await KarakusAluminyum.Web.Services.Drawing.LegacyDrawingSystems.RunAsync(db);
 }

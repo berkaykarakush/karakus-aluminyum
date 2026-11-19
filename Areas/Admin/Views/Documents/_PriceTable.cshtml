@@ -1,0 +1,55 @@
+@model KarakusAluminyum.Web.Services.Documents.PriceSheet
+@using KarakusAluminyum.Web.Models.Crm
+@using KarakusAluminyum.Web.Services.Documents
+@{
+    // Proforma fiyat tablosu: teklif ve sözleşmede aynıdır. Maliyet ve marj burada hiç yoktur.
+    var tr = TurkishNumbers.Culture;
+    var included = Model.VatMode == VatMode.Included;
+    var discountColumn = Model.HasLineDiscount;
+    var named = Model.Sections.Any(s => s.Name is not null);
+    var subtotals = Model.Sections.Count > 1;
+    var columns = discountColumn ? 7 : 6;
+    string Rate(decimal v) => "%" + v.ToString("0.##", tr);
+}
+<table class="pf-lines">
+  <thead><tr>
+    <th class="pf-no">Sıra</th><th>Açıklama</th><th class="pf-num">Miktar</th><th>Birim</th>
+    <th class="pf-num">Birim Fiyat@(included ? " (KDV dahil)" : "")</th>
+    @if (discountColumn) { <th class="pf-num">İsk.</th> }
+    <th class="pf-num">Tutar</th>
+  </tr></thead>
+  <tbody>
+  @foreach (var part in Model.Sections)
+  {
+    @if (named && part.Name is not null) { <tr class="pf-section"><td colspan="@columns">@part.Name</td></tr> }
+    @foreach (var line in part.Lines)
+    {
+      <tr>
+        <td class="pf-no">@line.No</td><td>@line.Description</td><td class="pf-num">@line.Quantity.ToString("0.###", tr)</td><td>@line.Unit</td>
+        <td class="pf-num">@line.UnitPrice.ToString("N2", tr)</td>
+        @if (discountColumn) { <td class="pf-num">@(line.DiscountRate > 0 ? Rate(line.DiscountRate) : "")</td> }
+        <td class="pf-num">@line.Total.ToString("N2", tr)</td>
+      </tr>
+    }
+    @if (subtotals) { <tr class="pf-subtotal"><td colspan="@(columns - 1)">@(part.Name ?? "Diğer") toplamı</td><td class="pf-num">@part.Total.ToString("N2", tr)</td></tr> }
+  }
+  </tbody>
+</table>
+<div class="pf-totals-wrap">
+  <table class="pf-totals"><tbody>
+    @if (Model.HasLineDiscount)
+    {
+      <tr><td>Brüt toplam</td><td>@TurkishNumbers.Money(Model.Gross)</td></tr>
+      <tr><td>Satır iskontoları</td><td>-@TurkishNumbers.Money(Model.LineDiscount)</td></tr>
+    }
+    <tr><td>Ara toplam</td><td>@TurkishNumbers.Money(Model.Subtotal)</td></tr>
+    @if (Model.DiscountAmount > 0) { <tr><td>İskonto (@Rate(Model.DiscountRate))</td><td>-@TurkishNumbers.Money(Model.DiscountAmount)</td></tr> }
+    @if (Model.VatMode != VatMode.None)
+    {
+      <tr><td>KDV matrahı</td><td>@TurkishNumbers.Money(Model.TaxBase)</td></tr>
+      <tr><td>@(included ? "Fiyata dahil KDV" : "KDV") (@Rate(Model.TaxRate))</td><td>@TurkishNumbers.Money(Model.TaxAmount)</td></tr>
+    }
+    <tr class="pf-grand"><td>Genel toplam@(Model.VatMode == VatMode.None ? "" : " (KDV dahil)")</td><td>@TurkishNumbers.Money(Model.GrandTotal)</td></tr>
+  </tbody></table>
+</div>
+<p class="pf-words">Yalnız: @TurkishNumbers.MoneyWords(Model.GrandTotal)</p>

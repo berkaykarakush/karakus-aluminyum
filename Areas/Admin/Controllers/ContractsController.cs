@@ -25,7 +25,7 @@ public sealed class ContractsController : Controller
     public async Task<IActionResult> Create()
     {
         var template = await DocumentViews.CurrentTemplateAsync(_db, DocumentKinds.Contract);
-        var content = new DocumentContent { Closing = template.Closing, Note = template.DefaultNote, Blocks = { new DocumentBlock() }, Payments = { new PaymentLine() } };
+        var content = new DocumentContent { Closing = template.Closing, Note = template.DefaultNote, Blocks = { new DocumentBlock() }, Payments = { new PaymentLine() }, Terms = DocumentJson.ParseTerms(template.TermsJson), Variables = DocumentJson.ParseVariables(template.VariablesJson) };
         await LoadOptions();
         return View("Editor", new ContractInputVm { DocumentJson = DocumentJson.Serialize(content) });
     }
@@ -45,11 +45,11 @@ public sealed class ContractsController : Controller
         return RedirectToAction(nameof(Details), new { id = contract.Id });
     }
 
-    // Kabul edilen tekliften sözleşme: müşteri, bloklar, değişkenler, ekler ve tutar aktarılır.
+    // Kabul edilen tekliften sözleşme: müşteri, bloklar, kalemler (birim fiyat ve iskontolarıyla), şartlar, değişkenler, ekler ve tutar aktarılır.
     [HttpPost("tekliften/{quoteId:int}"), ValidateAntiForgeryToken]
     public async Task<IActionResult> FromQuote(int quoteId)
     {
-        var quote = await _db.Quotes.Include(x => x.Customer).FirstOrDefaultAsync(x => x.Id == quoteId);
+        var quote = await _db.Quotes.Include(x => x.Customer).Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == quoteId);
         if (quote is null) return NotFound();
         if (!QuoteRules.CanTransition(quote.Status, QuoteStatus.Converted))
         {
@@ -60,23 +60,30 @@ public sealed class ContractsController : Controller
         var source = DocumentJson.ParseContent(quote.DocumentJson);
         var template = await DocumentViews.CurrentTemplateAsync(_db, DocumentKinds.Contract);
         var clauses = await _db.TemplateClauses.AsNoTracking().ToListAsync();
+        // Teklifte olmayan değişkenler (ör. gecikme cezası oranı) sözleşme şablonunun değerini alır.
+        var variables = DocumentJson.ParseVariables(template.VariablesJson);
+        foreach (var (key, value) in source.Variables) variables[key] = value;
         var content = new DocumentContent
         {
-            Closing = template.Closing, Note = source.Note, Variables = source.Variables, DesignIds = source.DesignIds,
-            Blocks = source.Blocks.Select(block => new DocumentBlock
+            Closing = template.Closing, Note = source.Note, Variables = variables, DesignIds = source.DesignIds, Terms = source.Terms, Subject = quote.Title,
+            Blocks = DocumentViews.BuildBlocks(quote, source).Select(view => new DocumentBlock
             {
-                Name = block.Name, Variables = block.Variables,
+                Name = view.Block.Name, Variables = view.Block.Variables,
                 // Aynı adlı hazır maddenin sözleşme metni kullanılır; yoksa teklifteki metin korunur.
-                Clauses = block.Clauses.Select(c => new BlockClause { Title = c.Title, Text = clauses.FirstOrDefault(x => x.Name == c.Title)?.ContractText ?? c.Text }).ToList()
+                Clauses = view.Block.Clauses.Select(c => new BlockClause { Title = c.Title, Text = clauses.FirstOrDefault(x => x.Name == c.Title)?.ContractText ?? c.Text }).ToList(),
+                // Maliyet ve marj sözleşmeye geçmez; yalnızca müşteriye verilen fiyat.
+                Items = view.Items.Select(i => new BlockItem { Description = i.Description, Quantity = i.Quantity, Unit = i.Unit, UnitPrice = i.UnitPrice, DiscountRate = i.DiscountRate }).ToList()
             }).ToList()
         };
+        // Ödeme planı teklifteki avans oranından başlar: avans sözleşme imzasında, kalanı montaj bitiminde. Sözleşmede değiştirilebilir.
+        content.Payments = DefaultPayments(quote.GrandTotal, variables.TryGetValue("avans_orani", out var advance) ? advance : null);
         var customer = quote.Customer!;
         var taxInfo = string.Join(" ", new[] { customer.TaxOffice, customer.TaxNumber }.Where(x => !string.IsNullOrWhiteSpace(x)));
         var contract = new Contract
         {
             ContractNumber = NewNumber(), QuoteId = quote.Id, CustomerId = quote.CustomerId, Title = quote.Title, DocumentDate = DateTime.UtcNow.Date,
             BuyerName = customer.Name, BuyerAddress = customer.Address, BuyerTaxInfo = taxInfo.Length == 0 ? null : taxInfo,
-            TotalAmount = quote.GrandTotal, VatMode = quote.VatMode == VatMode.Added ? VatMode.Included : quote.VatMode,
+            TotalAmount = quote.GrandTotal, VatMode = quote.VatMode, TaxRate = quote.TaxRate, DiscountRate = quote.DiscountRate,
             DocumentJson = DocumentJson.Serialize(content), SnapshotJson = DocumentJson.Serialize(template)
         };
         _db.Contracts.Add(contract);
@@ -98,7 +105,7 @@ public sealed class ContractsController : Controller
         return View("Editor", new ContractInputVm
         {
             CustomerId = contract.CustomerId, Title = contract.Title, DocumentDate = contract.DocumentDate, BuyerName = contract.BuyerName, BuyerAddress = contract.BuyerAddress,
-            BuyerTaxInfo = contract.BuyerTaxInfo, TotalAmount = contract.TotalAmount, VatMode = contract.VatMode, PageCount = contract.PageCount, DocumentJson = contract.DocumentJson
+            BuyerTaxInfo = contract.BuyerTaxInfo, TotalAmount = contract.TotalAmount, VatMode = contract.VatMode, TaxRate = contract.TaxRate, DiscountRate = contract.DiscountRate, PageCount = contract.PageCount, DocumentJson = contract.DocumentJson
         });
     }
 
@@ -208,7 +215,20 @@ public sealed class ContractsController : Controller
     {
         var content = DocumentJson.ParseContent(contract.DocumentJson);
         var template = await DocumentViews.TemplateForAsync(_db, DocumentKinds.Contract, contract.SnapshotJson);
-        return new ContractPrintVm(contract, template, content, DocumentJson.ParseArticles(template.ArticlesJson), await DocumentViews.LoadAttachmentsAsync(_db, content.DesignIds));
+        return new ContractPrintVm(contract, template, content, DocumentViews.VisibleArticles(DocumentJson.ParseArticles(template.ArticlesJson), content), await DocumentViews.LoadAttachmentsAsync(_db, content.DesignIds));
+    }
+
+    private static List<PaymentLine> DefaultPayments(decimal total, string? advanceText)
+    {
+        if (total <= 0) return new() { new PaymentLine() };
+        var rate = decimal.TryParse(advanceText, System.Globalization.NumberStyles.Number, TurkishNumbers.Culture, out var r) && r is > 0 and < 100 ? r : 0m;
+        if (rate == 0) return new() { new PaymentLine { Kind = PaymentKinds.Cash, Amount = total } };
+        var first = decimal.Round(total * rate / 100m, 2, MidpointRounding.AwayFromZero);
+        return new()
+        {
+            new PaymentLine { Kind = PaymentKinds.Cash, Amount = first, Text = "sözleşmenin imzalanmasıyla peşin olarak ödenecektir." },
+            new PaymentLine { Kind = PaymentKinds.Cash, Amount = total - first, Text = "montajın tamamlanmasıyla ödenecektir." }
+        };
     }
 
     private static string NewNumber() => $"SZ-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..6].ToUpperInvariant()}";
@@ -232,6 +252,15 @@ public sealed class ContractsController : Controller
         // Ödeme toplamı taslakta bilgi olarak gösterilir; imzalanırken zorunludur. Tip ve negatif tutar her zaman denetlenir.
         foreach (var problem in PaymentPlan.Validate(content.Payments, content.Payments.Sum(p => p.Amount)))
             ModelState.AddModelError(string.Empty, problem);
+        var items = content.Blocks.SelectMany(b => b.Items).Where(i => !string.IsNullOrWhiteSpace(i.Description)).ToList();
+        if (items.Any(i => i.Quantity <= 0 || i.UnitPrice < 0)) ModelState.AddModelError(string.Empty, "Kalem miktarı sıfırdan büyük, fiyatı sıfır veya daha büyük olmalıdır.");
+        if (items.Any(i => i.DiscountRate is < 0 or > 100)) ModelState.AddModelError(string.Empty, "Satır iskontosu %0 ile %100 arasında olmalıdır.");
+        if (items.Any(i => i.Description!.Trim().Length > 200)) ModelState.AddModelError(string.Empty, "Kalem açıklaması en fazla 200 karakter olabilir.");
+        if (items.Any(i => (i.Unit?.Trim().Length ?? 0) > 20)) ModelState.AddModelError(string.Empty, "Birim en fazla 20 karakter olabilir.");
+        // Sözleşmede maliyet tutulmaz; tarayıcıdan gelse de silinir.
+        foreach (var item in content.Blocks.SelectMany(b => b.Items)) { item.UnitCost = 0; item.DesignId = null; item.ManualBaseCost = null; item.ManualGlassCost = null; item.ManualPrice = false; }
+        foreach (var block in content.Blocks) block.Items = block.Items.Where(i => !string.IsNullOrWhiteSpace(i.Description)).ToList();
+        DocumentTerms.Validate(content, ModelState);
         return content;
     }
 
@@ -243,8 +272,12 @@ public sealed class ContractsController : Controller
         contract.BuyerName = input.BuyerName.Trim();
         contract.BuyerAddress = input.BuyerAddress?.Trim();
         contract.BuyerTaxInfo = input.BuyerTaxInfo?.Trim();
-        contract.TotalAmount = input.TotalAmount;
         contract.VatMode = input.VatMode;
+        contract.TaxRate = input.TaxRate;
+        contract.DiscountRate = input.DiscountRate;
+        // Kalemli sözleşmede bedel kalemlerden hesaplanır (genel toplam, KDV dahil); kalemsizde elle yazılır.
+        var prices = PriceSheet.FromContent(content, input.VatMode, input.TaxRate, input.DiscountRate);
+        contract.TotalAmount = prices.HasLines ? prices.GrandTotal : input.TotalAmount;
         contract.PageCount = input.PageCount;
         contract.DocumentJson = DocumentJson.Serialize(content);
     }
@@ -255,6 +288,9 @@ public sealed class ContractsController : Controller
         ViewBag.CustomerDetails = await _db.Customers.AsNoTracking().Where(x => x.Status != CustomerStatus.Passive)
             .Select(x => new { id = x.Id, name = x.Name, address = x.Address, taxInfo = ((x.TaxOffice ?? "") + " " + (x.TaxNumber ?? "")).Trim() }).ToListAsync();
         ViewBag.Clauses = await _db.TemplateClauses.AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.SortOrder).ToListAsync();
+        // Şablon maddelerindeki değişkenler (ör. {{teslim_suresi}}) editörde doldurulabilsin.
+        var template = await DocumentViews.CurrentTemplateAsync(_db, DocumentKinds.Contract);
+        ViewBag.TemplateTexts = DocumentJson.ParseArticles(template.ArticlesJson).Select(a => a.Body ?? "").Append(template.SignOff ?? "").ToList();
         ViewBag.Designs = await _db.WindowDesigns.AsNoTracking().OrderByDescending(x => x.DrawingList!.UpdatedUtc).ThenBy(x => x.DrawingListId).ThenBy(x => x.SortOrder).Take(200).Select(x => new { id = x.Id, listId = x.DrawingListId, listName = x.DrawingList!.Name, name = x.Name, widthMm = x.WidthMm, heightMm = x.HeightMm, quantity = x.Quantity }).ToListAsync();
     }
 }

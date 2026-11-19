@@ -39,6 +39,51 @@ body.doc--contract{font-family:Arial,Helvetica,sans-serif;font-size:11.5pt}
 .doc-signatures strong{display:block;margin-bottom:2mm}
 /* Ekler: poz listesi (poz-list.css). Sayfa kenar boşluğu 25 mm: liste 160 mm genişliğe göre ölçeklenir. */
 .doc-attachments{margin-top:3mm}
+/* Proforma fatura (teklif) ve sözleşmedeki fiyat tablosu */
+body.doc--proforma{font-family:Arial,Helvetica,sans-serif;font-size:10pt;line-height:1.35}
+.doc--proforma .doc-sheet>thead>tr>td,.doc--proforma .doc-sheet>tfoot>tr>td,.doc--proforma .doc-sheet>tbody>tr>td{padding:0 15mm}
+.doc--proforma .doc-title{margin:3mm 0 5mm;font-size:20pt;letter-spacing:.04em}
+.doc--proforma .doc-foot{font-family:Arial,Helvetica,sans-serif;font-size:9pt}
+.doc--proforma .doc-body p{margin:0 0 2.5mm}
+.pf-parties{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);gap:3mm;margin:0 0 5mm}
+.pf-party{padding:2.5mm 3mm;border:1px solid #999;font-size:9pt;line-height:1.4}
+.pf-party h3,.pf-section h3{margin:0 0 1.5mm;font-size:8.5pt;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#444}
+.pf-party strong{display:block;font-size:10pt}
+.pf-info{display:grid;grid-template-columns:auto auto;gap:.8mm 3mm;align-content:start;margin:0;padding:2.5mm 3mm;font-size:9pt;border:1px solid #999}
+.pf-info dt{color:#444}
+.pf-info dd{margin:0;font-weight:700;overflow-wrap:anywhere}
+.pf-lines{width:100%;margin:3mm 0 0;border-collapse:collapse;font-size:9pt}
+.pf-lines th{padding:1.6mm 1.5mm;font-size:8pt;text-align:left;color:#fff;background:#3a4046;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.pf-lines td{padding:1.4mm 1.5mm;vertical-align:top;border-bottom:1px solid #ccc}
+.pf-lines tr{break-inside:avoid}
+.pf-lines .pf-num{text-align:right;white-space:nowrap}
+.pf-lines .pf-no{width:9mm;text-align:center}
+.pf-section td{padding-top:2.5mm;font-weight:700;border-bottom:1px solid #3a4046}
+.pf-subtotal td{font-weight:700;text-align:right;background:#f1f2f3;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.pf-totals-wrap{display:flex;justify-content:flex-end;margin-top:2mm;break-inside:avoid}
+.pf-totals{min-width:85mm;border-collapse:collapse;font-size:9.5pt}
+.pf-totals td{padding:1mm 1.5mm}
+.pf-totals td:last-child{text-align:right;white-space:nowrap}
+.pf-totals .pf-grand td{font-size:11pt;font-weight:700;border-top:1.5px solid #111}
+.pf-words{margin:1.5mm 0 4mm!important;font-style:italic;text-align:right}
+.pf-section{margin:0 0 3.5mm;break-inside:avoid}
+.pf-section ul{margin:0;padding-left:5mm}
+.pf-section li{margin-bottom:1mm}
+.pf-section-name{margin:1.5mm 0 1mm!important;font-weight:700}
+.pf-terms{display:grid;grid-template-columns:auto 1fr;gap:1mm 4mm;margin:0}
+.pf-terms dt{font-weight:700}
+.pf-terms dd{margin:0}
+.pf-bank{white-space:pre-line}
+.pf-legal{margin:4mm 0 3mm!important;font-size:8.5pt;color:#444}
+.pf-sign{width:100%;margin-top:3mm;border-collapse:separate;border-spacing:4mm 0;break-inside:avoid}
+.pf-sign td{width:50%;padding:2.5mm 3mm;vertical-align:top;border:1px solid #999;font-size:9pt}
+.pf-sign strong{display:block;margin-bottom:1mm}
+.pf-sign__field{margin-top:3mm}
+.pf-sign__line{margin-top:12mm;padding-top:1mm;color:#555;text-align:center;border-top:1px dotted #777}
+/* Sözleşmede fiyat tablosu ve özel şartlar */
+.doc--contract .pf-lines,.doc--contract .pf-totals{font-family:Arial,Helvetica,sans-serif}
+.doc--contract .pf-terms{margin:0 0 3mm}
+@media screen and (max-width:800px){.pf-parties{grid-template-columns:1fr}.pf-terms{grid-template-columns:1fr}.pf-sign,.pf-sign tbody,.pf-sign tr,.pf-sign td{display:block;width:auto}.pf-lines{display:block;overflow-x:auto}}
 @media screen and (max-width:800px){.doc-sheet>thead>tr>td,.doc-sheet>tfoot>tr>td,.doc-sheet>tbody>tr>td{padding:0 16px}.doc-title{font-size:24pt}.doc-amount{white-space:normal}}
 @media print{
   body.doc{padding:0;background:#fff}

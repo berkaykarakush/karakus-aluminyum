@@ -23,15 +23,22 @@ public sealed class DocumentTemplatesController : Controller
     [HttpGet("{kind:regex(^(quote|contract)$)}")]
     public async Task<IActionResult> Edit(string kind)
     {
-        ViewBag.Articles = DocumentJson.ParseArticles((await DocumentViews.CurrentTemplateAsync(_db, kind)).ArticlesJson);
-        return View(await DocumentViews.CurrentTemplateAsync(_db, kind));
+        var template = await DocumentViews.CurrentTemplateAsync(_db, kind);
+        ViewBag.Articles = DocumentJson.ParseArticles(template.ArticlesJson);
+        ViewBag.Terms = DocumentJson.ParseTerms(template.TermsJson);
+        ViewBag.Variables = DocumentJson.ParseVariables(template.VariablesJson);
+        return View(template);
     }
 
     [HttpPost("{kind:regex(^(quote|contract)$)}"), ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(string kind, DocumentTemplate input, List<ContractArticle>? articles, IFormFile? logoFile, bool removeLogo = false)
+    public async Task<IActionResult> Edit(string kind, DocumentTemplate input, List<ContractArticle>? articles, List<BlockClause>? terms, string? variablesText, IFormFile? logoFile, bool removeLogo = false)
     {
         var row = await _db.DocumentTemplates.FirstAsync(x => x.Kind == kind);
         var cleanArticles = (articles ?? new()).Where(a => !string.IsNullOrWhiteSpace(a.Title)).ToList();
+        var cleanTerms = new DocumentContent { Terms = terms ?? new() };
+        DocumentTerms.Validate(cleanTerms, ModelState);
+        var variables = ParseVariables(variablesText);
+        if (variables is null) ModelState.AddModelError(string.Empty, "Varsayılan değerlerde her satır \"alan = değer\" biçiminde olmalı; alan adı harf, rakam ve _ içerebilir.");
         ModelState.Remove(nameof(input.Kind));
         if (cleanArticles.Any(a => !ContractArticleKinds.All.Contains(a.Kind))) ModelState.AddModelError(string.Empty, "Geçersiz madde tipi.");
         if (kind == DocumentKinds.Contract)
@@ -46,6 +53,8 @@ public sealed class DocumentTemplatesController : Controller
         if (!ModelState.IsValid)
         {
             ViewBag.Articles = articles ?? new();
+            ViewBag.Terms = terms ?? new();
+            ViewBag.Variables = variables ?? DocumentJson.ParseVariables(row.VariablesJson);
             input.Kind = kind;
             input.LogoPath = row.LogoPath;
             return View(input);
@@ -67,6 +76,11 @@ public sealed class DocumentTemplatesController : Controller
         row.DefaultNote = input.DefaultNote;
         row.BuyerLabel = input.BuyerLabel?.Trim();
         row.SellerLabel = input.SellerLabel?.Trim();
+        row.SellerEmail = input.SellerEmail?.Trim();
+        row.BankInfo = input.BankInfo?.Trim();
+        row.AcceptanceText = input.AcceptanceText?.Trim();
+        row.TermsJson = DocumentJson.Serialize(cleanTerms.Terms);
+        row.VariablesJson = DocumentJson.Serialize(variables!);
         if (kind == DocumentKinds.Contract) row.ArticlesJson = DocumentJson.Serialize(cleanArticles);
         row.UpdatedUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync();
@@ -81,20 +95,47 @@ public sealed class DocumentTemplatesController : Controller
     {
         var template = await DocumentViews.CurrentTemplateAsync(_db, kind);
         var none = new AttachmentList(Array.Empty<KarakusAluminyum.Web.Services.Drawing.PozView>());
+        // Örnek proforma ve sözleşme: kalemler, iskonto, KDV ve şartlarla nasıl basıldığı görünsün.
         var content = new DocumentContent
         {
             Intro = template.Intro, Closing = template.Closing, Note = template.DefaultNote, Subject = "örnek işin tanımı burada yer alır.",
-            Variables = new() { ["proje"] = "örnek proje", ["is_tanimi"] = "doğrama ve cam" },
+            Variables = DocumentJson.ParseVariables(template.VariablesJson), Terms = DocumentJson.ParseTerms(template.TermsJson),
             Blocks = { new DocumentBlock { Name = "Örnek Blok", Clauses = { new BlockClause { Title = "Örnek madde", Text = "Hazır madde metinleri burada listelenir." } } } },
             Payments = { new PaymentLine { Kind = PaymentKinds.Cash, Amount = 100000 } }
         };
+        content.Variables.TryAdd("proje", "örnek proje");
+        content.Variables.TryAdd("is_tanimi", "doğrama ve cam");
         if (kind == DocumentKinds.Quote)
         {
-            var quote = new Quote { DocumentDate = DateTime.UtcNow, VatMode = VatMode.Included, GrandTotal = 100000, Subtotal = 100000, Items = { new QuoteItem { BlockName = "Örnek Blok", Description = "Örnek kalem", Quantity = 1, UnitPrice = 100000, LineTotal = 100000 } } };
+            var quote = new Quote { QuoteNumber = "ÖRNEK", Title = "Örnek proje doğramaları", DocumentDate = DateTime.UtcNow, ValidUntilUtc = DateTime.UtcNow.AddDays(14), VatMode = VatMode.Added, TaxRate = 20, Items =
+            {
+                new QuoteItem { BlockName = "Örnek Blok", Description = "Poz 1 - Plastik Doğrama, Açılır, 1200 × 2200 mm", Quantity = 8, UnitPrice = 9500, SortOrder = 0 },
+                new QuoteItem { BlockName = "Örnek Blok", Description = "Montaj ve nakliye", Quantity = 1, Unit = "Götürü", UnitPrice = 12000, DiscountRate = 10, SortOrder = 1 }
+            } };
+            var totals = QuoteRules.Calculate(quote.Items, quote.DiscountRate, quote.TaxRate, quote.VatMode);
+            (quote.Subtotal, quote.DiscountAmount, quote.TaxAmount, quote.GrandTotal) = totals;
             return View("~/Areas/Admin/Views/Documents/QuotePrint.cshtml", new QuotePrintVm(quote, "Örnek Müşteri", template, content, DocumentViews.BuildBlocks(quote, content), none));
         }
-        var contract = new Contract { BuyerName = "Örnek Müşteri", BuyerAddress = "Örnek adres", TotalAmount = 100000, DocumentDate = DateTime.UtcNow, VatMode = VatMode.Included };
-        return View("~/Areas/Admin/Views/Documents/ContractPrint.cshtml", new ContractPrintVm(contract, template, content, DocumentJson.ParseArticles(template.ArticlesJson), none));
+        content.Blocks[0].Items.Add(new BlockItem { Description = "Poz 1 - Plastik Doğrama, Açılır, 1200 × 2200 mm", Quantity = 8, Unit = "Adet", UnitPrice = 9500 });
+        content.Terms.Add(new BlockClause { Title = "Örnek şart", Text = "Tekliften gelen özel şartlar burada listelenir." });
+        var sample = PriceSheet.FromContent(content, VatMode.Included, 20, 0);
+        var contract = new Contract { BuyerName = "Örnek Müşteri", BuyerAddress = "Örnek adres", TotalAmount = sample.GrandTotal, TaxRate = 20, DocumentDate = DateTime.UtcNow, VatMode = VatMode.Included };
+        return View("~/Areas/Admin/Views/Documents/ContractPrint.cshtml", new ContractPrintVm(contract, template, content, DocumentViews.VisibleArticles(DocumentJson.ParseArticles(template.ArticlesJson), content), none));
+    }
+
+    // "alan = değer" satırları. Boş satır atlanır; geçersiz satır varsa null döner.
+    private static Dictionary<string, string>? ParseVariables(string? text)
+    {
+        var result = new Dictionary<string, string>();
+        foreach (var line in (text ?? "").Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0))
+        {
+            var at = line.IndexOf('=');
+            if (at <= 0) return null;
+            var key = line[..at].Trim();
+            if (!System.Text.RegularExpressions.Regex.IsMatch(key, @"^[\p{L}\p{N}_]{1,60}$")) return null;
+            result[key] = line[(at + 1)..].Trim();
+        }
+        return result;
     }
 
     [HttpGet("maddeler/ekle")]

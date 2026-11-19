@@ -46,7 +46,8 @@ public sealed class InvoicesController : Controller
             input.CustomerId = quote.CustomerId;
             input.QuoteId = quote.Id;
             input.Notes = $"Teklif: {quote.QuoteNumber}";
-            input.LinesJson = JsonSerializer.Serialize(quote.Items.OrderBy(x => x.SortOrder).Select(x => FromDocument(x.Description, x.Quantity, x.Unit, x.UnitPrice, quote.DiscountRate, quote.TaxRate, quote.VatMode)), Json);
+            // Satır iskontosu birim fiyata yansıtılır; genel iskonto fatura satırının iskontosu olarak kalır.
+            input.LinesJson = JsonSerializer.Serialize(quote.Items.OrderBy(x => x.SortOrder).Select(x => FromDocument(x.Description, x.Quantity, x.Unit, x.UnitPrice * (1 - x.DiscountRate / 100m), quote.DiscountRate, quote.TaxRate, quote.VatMode)), Json);
         }
         else if (sozlesme is not null)
         {
@@ -57,7 +58,11 @@ public sealed class InvoicesController : Controller
             input.ContractId = contract.Id;
             input.QuoteId = contract.QuoteId;
             input.Notes = $"Sözleşme: {contract.ContractNumber}";
-            input.LinesJson = JsonSerializer.Serialize(new[] { FromDocument(contract.Title, 1, "Adet", contract.TotalAmount, 0, 20m, contract.VatMode) }, Json);
+            // Kalemli sözleşme kalemleriyle, kalemsiz sözleşme toplam bedelle faturalanır.
+            var lines = KarakusAluminyum.Web.Services.Documents.DocumentJson.ParseContent(contract.DocumentJson).Blocks.SelectMany(b => b.Items).Where(i => !string.IsNullOrWhiteSpace(i.Description)).ToList();
+            input.LinesJson = lines.Count > 0
+                ? JsonSerializer.Serialize(lines.Select(i => FromDocument(i.Description!.Trim(), i.Quantity, string.IsNullOrWhiteSpace(i.Unit) ? "Adet" : i.Unit.Trim(), i.UnitPrice * (1 - i.DiscountRate / 100m), contract.DiscountRate, contract.TaxRate, contract.VatMode)), Json)
+                : JsonSerializer.Serialize(new[] { FromDocument(contract.Title, 1, "Adet", contract.TotalAmount, 0, contract.TaxRate, contract.VatMode) }, Json);
         }
         // Teklif veya sözleşme bir projeye bağlıysa fatura da o projeye yazılır.
         input.ProjectId ??= input.ContractId is not null ? await _db.CostProjects.Where(x => x.ContractId == input.ContractId).Select(x => (int?)x.Id).FirstOrDefaultAsync() : null;
