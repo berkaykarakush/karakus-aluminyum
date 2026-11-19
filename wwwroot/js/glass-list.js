@@ -86,16 +86,16 @@
     totals();
   }
 
-  // Satırlar: "100 120 3" veya sekmeli Excel kopyası. Ölçüler seçili birimdedir, milimetreye çevrilir.
+  // Satırlar: "1000 1200 3" veya sekmeli Excel kopyası. Ölçüler mm'dir.
   // Adet yazılmazsa 1, başta metin varsa poz sayılır.
-  function parse(text, unit) {
+  function parse(text) {
     const parsed = [], errors = [];
     text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).forEach((line) => {
       const parts = line.replace(/[xX×*]/g, " ").split(/[\t;]+|\s+/).filter(Boolean);
       const position = parts.length && !/^\d+([.,]\d+)?$/.test(parts[0]) ? parts.shift() : "";
       const values = parts.map((p) => Number(p.replace(",", ".")));
       if (values.length < 2 || values.slice(0, 3).some((v) => !Number.isFinite(v) || v <= 0)) { errors.push(line); return; }
-      parsed.push(newRow({ position, widthMm: Math.round(Units.toMm(values[0], unit) * 10) / 10, heightMm: Math.round(Units.toMm(values[1], unit) * 10) / 10, quantity: Math.round(values[2]) || 1 }));
+      parsed.push(newRow({ position, widthMm: Math.round(values[0] * 10) / 10, heightMm: Math.round(values[1] * 10) / 10, quantity: Math.round(values[2]) || 1 }));
     });
     return { parsed, errors };
   }
@@ -103,7 +103,7 @@
   document.getElementById("gl-add").addEventListener("click", () => { rows.push(newRow()); render(); body.lastElementChild?.querySelector("input[type=number]")?.focus(); });
   document.getElementById("gl-paste-add").addEventListener("click", () => {
     const area = document.getElementById("gl-paste");
-    const { parsed, errors } = parse(area.value, document.getElementById("gl-paste-unit").value);
+    const { parsed, errors } = parse(area.value);
     // Ölçüsü girilmemiş boş satırlar toplu eklemede temizlenir.
     if (parsed.length) for (let i = rows.length - 1; i >= 0; i--) if (!rows[i].widthMm && !rows[i].heightMm) rows.splice(i, 1);
     rows.push(...parsed);
@@ -112,9 +112,6 @@
     render();
   });
   form.addEventListener("submit", () => { form.elements.ItemsJson.value = JSON.stringify(rows); });
-  const pasteUnit = document.getElementById("gl-paste-unit");
-  pasteUnit.value = Units.code;
-  document.addEventListener("units:change", () => { pasteUnit.value = Units.code; });
   if (!rows.length) rows.push(newRow());
   render();
 })();

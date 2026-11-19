@@ -1,58 +1,57 @@
 @model KarakusAluminyum.Web.Models.Drawing.DrawingList
-@using System.Text.Json
 @using KarakusAluminyum.Web.Models.Drawing
 @using KarakusAluminyum.Web.Services.Drawing
 @{
     var materials = (MaterialList)ViewBag.Materials;
     ViewData["Title"] = Model.Name;
     var quotes = (List<KarakusAluminyum.Web.Models.Crm.Quote>)ViewBag.Quotes;
-    var items = Model.Items.OrderBy(x => x.SortOrder).ThenBy(x => x.Id).ToList();
-    var json = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+    var pozlar = PozSheet.Build(Model.Items.OrderBy(x => x.SortOrder).ThenBy(x => x.Id));
+    var items = pozlar.Select(x => x.Design).ToList();
     var withSystem = items.Where(x => x.ProfileSystemId is not null).ToList();
+    var brands = items.Where(x => x.Brand is not null).Select(x => x.Brand!).DistinctBy(x => x.Id).ToList();
+    var itemNotes = items.Where(x => !string.IsNullOrWhiteSpace(x.Notes)).ToList();
+    var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
 }
 <link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/poz-list.css" asp-append-version="true" />
 <div class="admin-actions wd-noprint">
   <h1>@Model.Name</h1>
   <a class="admin-btn admin-btn--secondary" href="/yonetim/cizim">Çizim listeleri</a>
-  <a class="admin-btn admin-btn--secondary" href="/yonetim/cizim/duzenle/@Model.Id">Listeyi düzenle</a>
+  <a class="admin-btn" href="/yonetim/cizim/duzenle/@Model.Id">Pozları düzenle</a>
   @if (withSystem.Count > 0) { <a class="admin-btn admin-btn--secondary" href="/yonetim/cizim/optimizasyon?@string.Join("&", withSystem.Select(x => $"ids={x.Id}"))">Birlikte optimize et</a> }
   <a class="admin-btn admin-btn--secondary" href="/yonetim/cizim/olcu-listesi/@Model.Id">Ölçü listesi</a>
   <button class="admin-btn admin-btn--secondary" type="button" data-print="drawings" data-print-title="@Model.Name - Çizimler">Çizimi yazdır</button>
   <button class="admin-btn admin-btn--secondary" type="button" data-print="materials" data-print-title="@Model.Name - Malzemeler">Malzemeleri yazdır</button>
   <button class="admin-btn admin-btn--secondary" type="button" data-print="all" data-print-title="@Model.Name - Çizimler ve malzemeler">Hepsini yazdır</button>
 </div>
+<div class="admin-panel wd-noprint poz-options" aria-label="Çizim görünümü">
+  <label><input type="checkbox" data-poz-option="inner" /> Ara ölçüler</label>
+  <label><input type="checkbox" data-poz-option="outer" /> Dış ölçüler</label>
+  <label><input type="checkbox" data-poz-option="glass" /> Cam ölçüleri</label>
+  <label><input type="checkbox" data-poz-option="lines" /> Açıklama</label>
+  <label><input type="checkbox" data-poz-option="mono" /> Siyah-beyaz</label>
+  <label>Ölçek <input type="range" min="0.6" max="1.6" step="0.1" data-poz-option="zoom" /></label>
+</div>
 <style>@@page{size:A4;margin:10mm}</style>
 <div class="wd-sheet wd-pages">
-  @* Her sayfada en fazla 9 çizim: çizim sayısı ne olursa olsun hücre ölçüsü değişmez. *@
-  @{ var pages = items.Chunk(9).ToList(); var itemNotes = items.Where(x => !string.IsNullOrWhiteSpace(x.Notes)).ToList(); }
-  @for (var p = 0; p < pages.Count; p++)
-  {
-    <section class="wd-page">
-      <header class="wd-page__head">
-        <div><strong>@Model.Name</strong><div class="admin-muted">@(Model.Customer is null ? "" : Model.Customer.Name + " · ")@items.Count çizim · @items.Sum(x => x.Quantity) adet</div></div>
-        <span class="admin-muted">Sayfa @(p + 1) / @pages.Count</span>
+  <table class="poz-sheet wd-page">
+    <thead><tr><td>
+      <header class="poz-sheet__head">
+        <dl><dt>Liste No</dt><dd>@Model.Id</dd><dt>Liste</dt><dd>@Model.Name</dd></dl>
+        <dl><dt>Müşteri</dt><dd>@(Model.Customer?.Name ?? "-")</dd><dt>Tarih</dt><dd>@Model.UpdatedUtc.ToLocalTime().ToString("dd.MM.yyyy")</dd></dl>
+        <dl><dt>Poz / Adet</dt><dd>@items.Count / @items.Sum(x => x.Quantity)</dd><dt>Toplam alan</dt><dd>@pozlar.Sum(x => x.AreaM2 * x.Design.Quantity).ToString("0.00", culture) m²</dd></dl>
+        <div class="poz-sheet__brands">@foreach (var brand in brands) { @if (!string.IsNullOrEmpty(brand.LogoPath)) { <img src="@brand.LogoPath" alt="@brand.Name" /> } else { <span>@brand.Name</span> } }</div>
       </header>
-      <div class="wd-pos-grid">
-        @foreach (var item in pages[p])
-        {
-          <article class="wd-pos">
-            <header class="wd-pos__head">
-              <div class="wd-pos__title">
-                <strong>@item.Name</strong>
-                <div class="admin-muted">@ProductCategories.Label(item.Category) · @Units.Size(item.WidthMm, item.HeightMm) @Units.Code · @item.Quantity adet</div>
-                <div class="admin-actions wd-noprint wd-pos__links">
-                  <a href="/yonetim/cizim/poz/@item.Id">Çizimi aç</a>
-                  @if (item.ProfileSystemId is not null) { <a href="/yonetim/cizim/imalat/@item.Id">İmalat föyü</a> }
-                </div>
-              </div>
-              <partial name="_BrandMark" model="item.Brand" />
-            </header>
-            <svg data-drawing="@JsonSerializer.Serialize(WindowDrawings.Drawing(item), json)" role="img" aria-label="@item.Name çizimi"></svg>
-          </article>
-        }
+    </td></tr></thead>
+    <tbody><tr><td>
+      <partial name="_PozList" model="pozlar" />
+      <div class="poz-totals">
+        <span>Ünite adedi: @items.Sum(x => x.Quantity)</span>
+        <span>Toplam çevre: @pozlar.Sum(x => x.PerimeterM * x.Design.Quantity).ToString("0.0", culture) m</span>
+        <span>Toplam alan: @pozlar.Sum(x => x.AreaM2 * x.Design.Quantity).ToString("0.00", culture) m²</span>
       </div>
-    </section>
-  }
+    </td></tr></tbody>
+  </table>
   @if (!string.IsNullOrWhiteSpace(Model.Notes) || itemNotes.Count > 0)
   {
     <section class="wd-page-notes">
@@ -60,6 +59,13 @@
       @if (!string.IsNullOrWhiteSpace(Model.Notes)) { <p style="white-space:pre-wrap">@Model.Notes</p> }
       @foreach (var item in itemNotes) { <p style="white-space:pre-wrap"><strong>@item.Name:</strong> @item.Notes</p> }
     </section>
+  }
+  @if (withSystem.Count > 0)
+  {
+    <div class="admin-panel wd-noprint">
+      <h2>İmalat föyleri</h2>
+      <div class="admin-actions">@foreach (var poz in pozlar.Where(x => x.Design.ProfileSystemId is not null)) { <a class="admin-btn admin-btn--secondary" href="/yonetim/cizim/imalat/@poz.Design.Id">Poz @poz.Position</a> }</div>
+    </div>
   }
   <div class="admin-panel wd-noprint">
     <h2>Teklif</h2>
@@ -72,7 +78,7 @@
         <tbody>
         @foreach (var q in quotes)
         {
-          <tr><td><a href="/yonetim/crm/teklifler/detay/@q.Id">@q.QuoteNumber - @q.Title</a></td><td>@(q.Status switch { KarakusAluminyum.Web.Models.Crm.QuoteStatus.Draft => "Taslak", KarakusAluminyum.Web.Models.Crm.QuoteStatus.Sent => "Gönderildi", KarakusAluminyum.Web.Models.Crm.QuoteStatus.Accepted => "Kabul edildi", KarakusAluminyum.Web.Models.Crm.QuoteStatus.Rejected => "Reddedildi", KarakusAluminyum.Web.Models.Crm.QuoteStatus.Expired => "Süresi doldu", _ => "Sözleşmeye dönüştürüldü" })</td><td>@q.GrandTotal.ToString("N2", KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture) ₺</td></tr>
+          <tr><td><a href="/yonetim/crm/teklifler/detay/@q.Id">@q.QuoteNumber - @q.Title</a></td><td>@(q.Status switch { KarakusAluminyum.Web.Models.Crm.QuoteStatus.Draft => "Taslak", KarakusAluminyum.Web.Models.Crm.QuoteStatus.Sent => "Gönderildi", KarakusAluminyum.Web.Models.Crm.QuoteStatus.Accepted => "Kabul edildi", KarakusAluminyum.Web.Models.Crm.QuoteStatus.Rejected => "Reddedildi", KarakusAluminyum.Web.Models.Crm.QuoteStatus.Expired => "Süresi doldu", _ => "Sözleşmeye dönüştürüldü" })</td><td>@q.GrandTotal.ToString("N2", culture) ₺</td></tr>
         }
         </tbody>
       </table>
@@ -82,14 +88,14 @@
   <div class="wd-materials">
     <header class="wd-materials__head">
       <h2>Malzeme listesi</h2>
-      <div class="admin-muted">@Model.Name@(Model.Customer is null ? "" : " · " + Model.Customer.Name) · @items.Count çizim · @items.Sum(x => x.Quantity) adet</div>
+      <div class="admin-muted">@Model.Name@(Model.Customer is null ? "" : " · " + Model.Customer.Name) · @items.Count poz · @items.Sum(x => x.Quantity) adet</div>
     </header>
     <partial name="_Materials" model="materials" />
   </div>
 </div>
 <script src="~/js/window-drawing.js" asp-append-version="true"></script>
-<script>document.querySelectorAll("[data-drawing]").forEach((svg) => WindowDrawing.render(svg, JSON.parse(svg.dataset.drawing), { textScale: 2.4 }));
-document.querySelectorAll("[data-print]").forEach((button) => button.addEventListener("click", () => {
+<script src="~/js/poz-list.js" asp-append-version="true"></script>
+<script>document.querySelectorAll("[data-print]").forEach((button) => button.addEventListener("click", () => {
   const root = document.documentElement, title = document.title;
   root.dataset.printMode = button.dataset.print;
   document.title = button.dataset.printTitle; // kaydedilen PDF'in önerilen adı

@@ -1,17 +1,21 @@
 @model KarakusAluminyum.Web.Models.Drawing.DrawingListInputVm
 @using System.Text.Json
 @using KarakusAluminyum.Web.Models.Drawing
+@using KarakusAluminyum.Web.Services.Drawing
 @{
     var editing = Model.Id != 0;
-    ViewData["Title"] = editing ? "Çizim listesini düzenle" : "Yeni çizim listesi";
+    ViewData["Title"] = editing ? "Pozları düzenle" : "Yeni çizim listesi";
     var action = editing ? $"/yonetim/cizim/duzenle/{Model.Id}" : "/yonetim/cizim/ekle";
     var selected = ViewBag.Category as string ?? ProductCategories.Aluminum;
-    var brands = ((List<Brand>)ViewBag.Brands).Select(b => new { id = b.Id, name = b.Name, category = b.Category, active = b.IsActive });
+    var brands = ((List<Brand>)ViewBag.Brands).Select(b => new { id = b.Id, name = b.Name, category = b.Category, active = b.IsActive, logo = b.LogoPath });
+    var systems = ((List<ProfileSystem>)ViewBag.Systems).Select(s => new { id = s.Id, name = s.Name, category = s.Category, active = s.IsActive, profile = WindowDrawings.Profile(s) });
+    var templates = new[] { ("fixed", "Sabit"), ("single", "Tek kanat"), ("double", "Çift kanat"), ("triple", "Üçlü"), ("sliding", "Sürme"), ("transom", "Üst vasistas"), ("door", "Kapı") };
+    var openings = new[] { ("fixed", "Sabit"), ("left", "Sola menteşe"), ("right", "Sağa menteşe"), ("tilt", "Vasistas"), ("tiltLeft", "Açılır-devrilir sol"), ("tiltRight", "Açılır-devrilir sağ"), ("slideLeft", "Sürme sola"), ("slideRight", "Sürme sağa"), ("doorLeft", "Kapı sol"), ("doorRight", "Kapı sağ") };
 }
 <link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
 <link rel="stylesheet" href="~/css/document-editor.css" asp-append-version="true" />
-<div class="admin-actions"><h1>@ViewData["Title"]</h1>@if (editing) { <a class="admin-btn" href="/yonetim/cizim/detay/@Model.Id">Çizimleri görüntüle</a> }<a class="admin-btn" href="/yonetim/cizim">Çizim listeleri</a></div>
-<form id="dl-form" class="doc-editor" method="post" action="@action">
+<div class="admin-actions"><h1>@ViewData["Title"]</h1>@if (editing) { <a class="admin-btn" href="/yonetim/cizim/detay/@Model.Id">Çizim listesini görüntüle</a> }<a class="admin-btn" href="/yonetim/cizim">Çizim listeleri</a></div>
+<form id="dl-form" class="doc-editor" method="post" action="@action" data-selected-poz="@ViewBag.SelectedPoz" data-category="@selected">
   @Html.AntiForgeryToken()
   <input type="hidden" asp-for="ItemsJson" />
   <div asp-validation-summary="All" class="doc-errors"></div>
@@ -19,41 +23,131 @@
     <div class="doc-grid">
       <div><label asp-for="Name">Liste adı *</label><input asp-for="Name" required placeholder="Örn. A Blok doğramaları" /></div>
       <div><label asp-for="CustomerId">Müşteri</label><select asp-for="CustomerId" asp-items="(SelectList)ViewBag.Customers"><option value="">-</option></select></div>
+      <div><label asp-for="Notes">Liste notu</label><input asp-for="Notes" /></div>
+    </div>
+  </section>
+
+  @* Ercom'daki sipariş ekranı: pozlar tek listede, seçili poz aşağıda çizilir. Tek başına çizim yoktur. *@
+  <section class="doc-card">
+    <div class="dl-toolbar">
+      <h2>Pozlar</h2>
+      <select id="dl-category" aria-label="Yeni pozun türü">
+        @foreach (var category in ProductCategories.All) { <option value="@category" selected="@(category == selected)">@ProductCategories.Label(category)</option> }
+      </select>
+      <button type="button" class="doc-btn" id="dl-add">+ Yeni poz</button>
+      <button type="button" class="doc-btn" id="dl-copy">Çoğalt</button>
+      <button type="button" class="doc-btn" id="dl-up" aria-label="Pozu yukarı taşı">↑</button>
+      <button type="button" class="doc-btn" id="dl-down" aria-label="Pozu aşağı taşı">↓</button>
+      <button type="button" class="doc-btn dl-danger" id="dl-remove">Pozu sil</button>
+      <span class="dl-nav"><button type="button" class="doc-btn" id="dl-prev" aria-label="Önceki poz">◀</button><strong id="dl-current"></strong><button type="button" class="doc-btn" id="dl-next" aria-label="Sonraki poz">▶</button></span>
+    </div>
+    <div class="dl-grid-wrap">
+      <table class="dl-grid">
+        <thead><tr><th>Poz</th><th></th><th>Ad</th><th>Tür</th><th>Gen (mm)</th><th>Yük (mm)</th><th>Adet</th><th>Sistem</th><th>Cam</th><th>m²</th></tr></thead>
+        <tbody id="dl-rows"></tbody>
+        <tfoot><tr><td colspan="6" id="dl-totals"></td><td id="dl-total-qty"></td><td colspan="2"></td><td id="dl-total-area"></td></tr></tfoot>
+      </table>
+    </div>
+    <details class="dl-paste">
+      <summary>Toplu ekle (Excel'den yapıştır)</summary>
+      <p class="admin-muted">Her satıra bir poz: <code>ad genişlik yükseklik adet</code>. Ad ve adet yazılmayabilir. Pozlar yukarıda seçili türle eklenir.</p>
+      <textarea id="dl-paste" rows="3" aria-label="Poz ölçüleri" placeholder="Salon 1500 1400 2&#10;Mutfak 900x1200&#10;1800 2100"></textarea>
+      <div class="doc-row"><span class="admin-muted">Ölçüler mm yazılır.</span><button type="button" class="doc-btn" id="dl-paste-add">Listeye ekle</button><span id="dl-paste-note" class="admin-muted"></span></div>
+    </details>
+  </section>
+
+  <section class="dl-editor" id="dl-editor" aria-label="Seçili pozun çizimi">
+    <div class="wd-simple">
       <div>
-        <label asp-for="ColorHex">Yeni çizimlerin rengi</label>
-        <input asp-for="ColorHex" type="color" style="height:34px;padding:2px" />
-        <partial name="_ColorPicker" />
+        <div class="wd-panel">
+          <p class="wd-step"><b>1</b> <span id="dl-editor-title">Poz</span></p>
+          <label for="pz-name">Ad (boşsa "Poz N")</label><input id="pz-name" maxlength="160" />
+          <div class="wd-pair">
+            <div><label for="pz-width" id="pz-width-label">Genişlik</label><input id="pz-width" type="number" data-mm="pozWidth" /></div>
+            <div><label for="pz-height">Yükseklik</label><input id="pz-height" type="number" data-mm="pozHeight" /></div>
+          </div>
+          <label for="pz-qty">Adet</label><input id="pz-qty" type="number" min="1" />
+          <label for="pz-system">Profil sistemi</label><select id="pz-system"></select>
+          <label for="pz-brand">Marka</label><select id="pz-brand"></select>
+          <div data-for="window">
+            <label for="pz-glass">Cam</label>
+            <input id="pz-glass" list="pz-glass-options" maxlength="60" placeholder="Örn. 4+16+4" />
+            <datalist id="pz-glass-options"><option value="4+16+4"></option><option value="4+12+4"></option><option value="4+16+4 Low-E"></option><option value="4+16+4 Temperli"></option><option value="4 mm tek cam"></option><option value="6 mm temperli"></option></datalist>
+          </div>
+          <label for="pz-color">Renk</label>
+          <input id="pz-color" type="color" style="height:34px;padding:2px" />
+          <partial name="_ColorPicker" />
+        </div>
+        <div class="wd-panel" data-for="window">
+          <p class="wd-step"><b>2</b> Tip seçin</p>
+          <div class="wd-pick">@foreach (var (key, text) in templates) { <button type="button" data-template="@key">@text</button> }</div>
+        </div>
+        <div class="wd-panel" data-for="window">
+          <p class="wd-step"><b>3</b> Bölmeye tıklayıp açılımı seçin</p>
+          <div class="wd-pick">@foreach (var (key, text) in openings) { <button type="button" data-opening="@key">@text</button> }</div>
+          <div class="wd-actions-row">
+            <button type="button" class="wd-btn" data-split="v" data-count="2">Yan yana böl</button>
+            <button type="button" class="wd-btn" data-split="h" data-count="2">Üst üste böl</button>
+            <button type="button" class="wd-btn" id="wd-merge">Birleştir</button>
+          </div>
+          <div class="wd-actions-row">
+            <button type="button" class="wd-btn" data-split="v" data-count="3">Yan yana 3</button>
+            <button type="button" class="wd-btn" data-split="h" data-count="3">Üst üste 3</button>
+            <button type="button" class="wd-btn" data-split="v" data-count="2" data-sliding="true">Sürme 2</button>
+            <button type="button" class="wd-btn" data-split="v" data-count="3" data-sliding="true">Sürme 3</button>
+          </div>
+          <label style="margin-top:12px"><input type="checkbox" id="wd-fill-panel" style="width:auto" /> Seçili bölme panel olsun</label>
+          <div id="wd-sizes"></div>
+        </div>
+        <div class="wd-panel" data-for="shutter">
+          <p class="wd-step"><b>2</b> Seçenekler</p>
+          <label for="pd-drive">Tahrik</label>
+          <select id="pd-drive" data-param="drive"><option value="motor">Motorlu</option><option value="manual">Manuel</option></select>
+        </div>
+        <div class="wd-panel" data-for="railing">
+          <p class="wd-step"><b>2</b> Seçenekler</p>
+          <label for="pd-infill">Dolgu</label>
+          <select id="pd-infill" data-param="infill"><option value="glass">Camlı</option><option value="bars">Emniyet çubuklu</option></select>
+          <label for="pd-spacing">Dikme aralığı (boşsa sistem değeri)</label>
+          <input id="pd-spacing" type="number" min="0" data-param="postSpacingMm" data-mm="postSpacing" />
+        </div>
+        <div class="wd-panel" data-for="balcony">
+          <p class="wd-step"><b>2</b> Seçenekler</p>
+          <label for="pd-type">Tip</label>
+          <select id="pd-type" data-param="openType"><option value="sliding">Sürme</option><option value="folding">Katlanır</option></select>
+          <label for="pd-count">Panel sayısı</label>
+          <input id="pd-count" type="number" min="1" max="30" data-param="panelCount" />
+        </div>
+        <details class="wd-panel">
+          <summary>Şekil ve not</summary>
+          <div data-for="window">
+            <label for="pz-shape">Şekil</label>
+            <select id="pz-shape"><option value="rect">Dikdörtgen</option><option value="arch">Kemerli</option><option value="slopeL">Eğimli (sol alçak)</option><option value="slopeR">Eğimli (sağ alçak)</option></select>
+            <div id="pz-param-row" hidden><label for="pz-param" id="pz-param-label">Şekil ölçüsü</label><input id="pz-param" type="number" min="0" data-mm="shapeParam" /></div>
+          </div>
+          <label for="pz-notes">Poz notu (çizimin altında yazar)</label><textarea id="pz-notes" rows="3" maxlength="1000"></textarea>
+        </details>
+      </div>
+      <div>
+        <div class="wd-canvas-panel"><span id="wd-brand-mark" class="wd-brand wd-brand--canvas" hidden></span>
+          <svg id="wd-canvas" role="img" aria-label="Poz çizimi"></svg>
+          <div class="wd-summary-bar">
+            <span class="admin-muted">Bölme ölçülerinin toplamı dış ölçüye eşittir. Kayıtları sürükleyerek de ölçü verebilirsiniz.</span>
+            <div class="wd-canvas-actions" style="margin:0">
+              <button type="button" class="wd-btn" id="wd-undo">Geri al</button>
+              <button type="button" class="wd-btn" id="wd-redo">Yinele</button>
+            </div>
+          </div>
+          <div id="wd-alerts"></div>
+          <p id="wd-summary" class="admin-muted" style="margin:8px 2px 0"></p>
+          <div id="wd-result"></div>
+        </div>
       </div>
     </div>
   </section>
-  <section class="doc-card">
-    <h2>Yeni satırlar</h2>
-    <p class="admin-muted">Yeni eklenen satırlar burada seçili tür, tip ve markayı alır.</p>
-    <div class="doc-grid">
-      <div><label for="dl-category">Tür</label><select id="dl-category">
-        @foreach (var category in ProductCategories.All) { <option value="@category" selected="@(category == selected)">@ProductCategories.Label(category)</option> }
-      </select></div>
-      <div><label for="dl-type">Tip</label><select id="dl-type"></select></div>
-      <div><label for="dl-brand">Marka</label><select id="dl-brand"></select></div>
-    </div>
-    <p class="admin-muted" style="margin:12px 0 4px">Excel'den yapıştırın veya her satıra bir çizim yazın: <code>ad genişlik yükseklik adet</code>. Ad ve adet yazılmayabilir.</p>
-    <textarea id="dl-paste" rows="3" aria-label="Çizim ölçüleri" placeholder="Salon 150 140 2&#10;Mutfak 90x120&#10;180 210"></textarea>
-    <div class="doc-row"><label for="dl-paste-unit" style="margin:0">Bu ölçülerin birimi</label><select id="dl-paste-unit" style="flex:0 0 auto;width:auto!important"><option value="mm">mm</option><option value="cm">cm</option><option value="m">m</option></select><button type="button" class="doc-btn" id="dl-paste-add">Listeye ekle</button><span id="dl-paste-note" class="admin-muted"></span></div>
-  </section>
-  <section class="doc-card">
-    <h2>Çizimler</h2>
-    <p class="admin-muted">Ad boş kalırsa "Poz 1, Poz 2" verilir. Açılım, kemer, panel sayısı gibi ayrıntılar için kaydettikten sonra satırdaki "Çizimi aç" bağlantısını kullanın.</p>
-    <div style="overflow-x:auto">
-      <table class="gl-table dl-table">
-        <thead><tr><th></th><th>Tür</th><th>Tip</th><th>Marka</th><th>Ad</th><th>Genişlik</th><th>Yükseklik</th><th>Adet</th><th></th></tr></thead>
-        <tbody id="dl-rows"></tbody>
-      </table>
-    </div>
-    <div class="doc-row"><button type="button" class="doc-btn" id="dl-add">+ Çizim ekle</button><strong id="dl-totals"></strong></div>
-  </section>
-  <section class="doc-card"><label asp-for="Notes">Notlar</label><textarea asp-for="Notes" rows="2"></textarea></section>
-  <div class="doc-actions"><button class="admin-btn" type="submit">Listeyi kaydet</button><a class="admin-btn" href="/yonetim/cizim">İptal</a></div>
+  <div class="doc-actions"><button class="admin-btn" type="submit">Listeyi kaydet</button><a class="admin-btn" href="@(editing ? $"/yonetim/cizim/detay/{Model.Id}" : "/yonetim/cizim")">İptal</a><span class="admin-muted" id="dl-dirty"></span></div>
 </form>
 <script type="application/json" id="dl-brands">@Html.Raw(JsonSerializer.Serialize(brands))</script>
+<script type="application/json" id="dl-systems">@Html.Raw(JsonSerializer.Serialize(systems, new JsonSerializerOptions(JsonSerializerDefaults.Web)))</script>
 <script src="~/js/window-drawing.js" asp-append-version="true"></script>
 <script src="~/js/drawing-list.js" asp-append-version="true"></script>

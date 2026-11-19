@@ -420,19 +420,19 @@ public sealed class ContractTests(PostgresFixture postgres)
         await SaveAsync(client, token, "/yonetim/sozlesmeler/ekle", customer, title, ContentJson(500000, designId));
 
         var html = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/sozlesmeler/yazdir/{await IdAsync(app, title)}"));
-        Assert.Contains("Poz: 001", html);
-        Assert.Contains("Adt: 2", html);
-        Assert.Contains("Çevre: 8.9m", html.Replace(",", "."));
-        Assert.Contains("Alan: 5.0m²", html.Replace(",", "."));
-        Assert.Contains("Ünite Adedi: 2", html);
-        Assert.Contains("data-doc-drawing", html);
+        Assert.Contains("Poz : 1 / Ad : 2 - Sürme Poz", html);
+        Assert.Contains("Toplam çevre: 17.8 m", html.Replace(",", "."));
+        Assert.Contains("Toplam alan: 9.90 m²", html.Replace(",", "."));
+        Assert.Contains("Ünite adedi: 2", html);
+        Assert.Contains("data-poz=", html);
+        Assert.Contains("data-width-mm=\"160\"", html);
     }
 
+    // Ekler Ercom'daki gibi tek poz listesidir: pozlar sırayla akar, toplamlar bir kez en sonda yazar.
     [Theory]
-    [InlineData(1, 1)]
-    [InlineData(9, 1)]
-    [InlineData(10, 2)]
-    public async Task Attachments_PrintAtMostNineOnEachPage_WithTotalsOnLastPage(int count, int pageCount)
+    [InlineData(1)]
+    [InlineData(10)]
+    public async Task Attachments_PrintOneOrderedPozList_WithTotalsOnce(int count)
     {
         var (app, client, token, customer) = await SetupAsync();
         var ids = await app.WithDbAsync(async db =>
@@ -445,11 +445,10 @@ public sealed class ContractTests(PostgresFixture postgres)
         var title = Unique("Sayfa");
         await SaveAsync(client, token, "/yonetim/sozlesmeler/ekle", customer, title, ContentJson(500000, ids));
         var html = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/sozlesmeler/yazdir/{await IdAsync(app, title)}"));
-        var grids = html.Split("class=\"doc-attachments\"").Skip(1).ToList();
-        Assert.Equal(pageCount, grids.Count);
-        Assert.All(grids, grid => Assert.True(grid.Split("class=\"doc-pos\"").Length - 1 <= 9));
-        Assert.Single(html.Split("class=\"doc-pos-total\"").Skip(1));
-        Assert.Contains("doc-pos-total", grids[^1]);
+        var list = Assert.Single(html.Split("data-poz-list").Skip(1));
+        Assert.Equal(count, list.Split("<figure class=\"poz\">").Length - 1);
+        for (var i = 1; i <= count; i++) Assert.Contains($"Poz : {i} / Ad : 1 - Sabit", list);
+        Assert.Single(html.Split("class=\"poz-totals").Skip(1));
     }
 
     [Fact]

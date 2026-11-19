@@ -7,9 +7,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace KarakusAluminyum.Web.Services.Documents;
 
-public sealed record AttachmentItem(string Position, WindowDesign Design, decimal PerimeterM, decimal AreaM2, object Drawing);
-
-public sealed record AttachmentList(IReadOnlyList<AttachmentItem> Items)
+// Teklif ve sözleşme ekleri: çizim listesindeki gibi Ercom tarzı poz listesi.
+public sealed record AttachmentList(IReadOnlyList<PozView> Items)
 {
     public int UnitCount => Items.Sum(i => i.Design.Quantity);
     public decimal TotalPerimeterM => Items.Sum(i => i.PerimeterM * i.Design.Quantity);
@@ -94,16 +93,9 @@ public static class DocumentViews
 
     public static async Task<AttachmentList> LoadAttachmentsAsync(AppDbContext db, IReadOnlyCollection<int> ids)
     {
-        if (ids.Count == 0) return new AttachmentList(Array.Empty<AttachmentItem>());
+        if (ids.Count == 0) return new AttachmentList(Array.Empty<PozView>());
         var rows = await db.WindowDesigns.AsNoTracking().Include(x => x.ProfileSystem).Include(x => x.Brand).Where(x => ids.Contains(x.Id)).ToListAsync();
-        var ordered = ids.Select(id => rows.FirstOrDefault(r => r.Id == id)).OfType<WindowDesign>().ToList();
-        return new AttachmentList(ordered.Select((row, i) =>
-        {
-            return new AttachmentItem(
-                (i + 1).ToString("000"), row,
-                Math.Round(2m * (row.WidthMm + row.HeightMm) / 1000m, 1),
-                Math.Round(row.WidthMm * (decimal)row.HeightMm / 1_000_000m, 1),
-                WindowDrawings.Drawing(row));
-        }).ToList());
+        var ordered = ids.Select(id => rows.FirstOrDefault(r => r.Id == id)).OfType<WindowDesign>();
+        return new AttachmentList(PozSheet.Build(ordered));
     }
 }

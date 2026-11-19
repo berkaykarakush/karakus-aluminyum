@@ -1,38 +1,20 @@
 @model KarakusAluminyum.Web.Services.Documents.AttachmentList
-@using System.Text.Json
-@using KarakusAluminyum.Web.Models.Documents
 @{
-    // Her sayfada en fazla 9 çizim: çizim sayısı ne olursa olsun hücre ölçüsü değişmez.
-    var template = (DocumentTemplate)ViewData["Template"]!;
-    var pages = Model.Items.Chunk(9).ToList();
+    // Ekler Ercom'daki toplu resim listesi gibidir: pozlar aynı ölçekle akar, sayfa başlığı ve altlığı her sayfada tekrar eder.
+    var template = (KarakusAluminyum.Web.Models.Documents.DocumentTemplate)ViewData["Template"]!;
+    var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
 }
-@for (var p = 0; p < pages.Count; p++)
-{
-  <table class="doc-sheet">
-    <thead><tr><td><partial name="~/Areas/Admin/Views/Documents/_DocumentHead.cshtml" model="template" /></td></tr></thead>
-    <tfoot><tr><td><partial name="~/Areas/Admin/Views/Documents/_DocumentFoot.cshtml" model="template" /></td></tr></tfoot>
-    <tbody><tr><td class="doc-body">
-      <div class="doc-attachments">
-        @foreach (var item in pages[p])
-        {
-          <div class="doc-pos">
-            <partial name="_BrandMark" model="item.Design.Brand" />
-            <div>Poz: @item.Position · Adt: @item.Design.Quantity</div>
-            <div class="doc-pos__name">@item.Design.Name</div>
-            <div>@KarakusAluminyum.Web.Models.Drawing.ProductCategories.Label(item.Design.Category)</div>
-            <div>Çevre: @item.PerimeterM.ToString("0.0")m · Alan: @item.AreaM2.ToString("0.0")m²</div>
-            <svg data-doc-drawing="@JsonSerializer.Serialize(item.Drawing, new JsonSerializerOptions(JsonSerializerDefaults.Web))" role="img" aria-label="@item.Design.Name çizimi"></svg>
-          </div>
-        }
-      </div>
-      @if (p == pages.Count - 1)
-      {
-        <div class="doc-pos-total">
-          <span>Ünite Adedi: @Model.UnitCount</span>
-          <span>Toplam Çevre: @Model.TotalPerimeterM.ToString("0.0")m</span>
-          <span>Toplam Alan: @Model.TotalAreaM2.ToString("0.0")m²</span>
-        </div>
-      }
-    </td></tr></tbody>
-  </table>
-}
+<table class="doc-sheet doc-sheet--attachments">
+  <thead><tr><td><partial name="~/Areas/Admin/Views/Documents/_DocumentHead.cshtml" model="template" /></td></tr></thead>
+  <tfoot><tr><td><partial name="~/Areas/Admin/Views/Documents/_DocumentFoot.cshtml" model="template" /></td></tr></tfoot>
+  <tbody><tr><td class="doc-body">
+    <div class="doc-attachments">
+      <partial name="~/Areas/Admin/Views/Shared/_PozList.cshtml" model="Model.Items" view-data='new ViewDataDictionary(ViewData) { ["PozListWidthMm"] = 160 }' />
+    </div>
+    <div class="poz-totals doc-pos-total">
+      <span>Ünite adedi: @Model.UnitCount</span>
+      <span>Toplam çevre: @Model.TotalPerimeterM.ToString("0.0", culture) m</span>
+      <span>Toplam alan: @Model.TotalAreaM2.ToString("0.00", culture) m²</span>
+    </div>
+  </td></tr></tbody>
+</table>
