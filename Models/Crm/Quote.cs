@@ -22,6 +22,7 @@ public sealed class Quote
     public VatMode VatMode { get; set; } = VatMode.Added;
     public string DocumentJson { get; set; } = "{}";
     public string SnapshotJson { get; set; } = "{}";
+    [StringLength(40)] public string? PublicToken { get; set; } // QR koddaki doğrulama bağlantısı: /belge/teklif/{token}
     [StringLength(2000)] public string? Notes { get; set; }
     [Column(TypeName = "numeric(5,2)")] public decimal TaxRate { get; set; } = 20m;
     [Column(TypeName = "numeric(5,2)")] public decimal DiscountRate { get; set; }

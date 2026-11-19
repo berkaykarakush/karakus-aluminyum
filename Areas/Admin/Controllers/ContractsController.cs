@@ -134,6 +134,7 @@ public sealed class ContractsController : Controller
         if (contract is null) return NotFound();
         var content = DocumentJson.ParseContent(contract.DocumentJson);
         ViewBag.PlanErrors = PaymentPlan.Validate(content.Payments, contract.TotalAmount).ToList();
+        ViewBag.PublicUrl = DocumentLinks.Url(Request, DocumentLinks.Contract, await DocumentLinks.EnsureContractAsync(_db, contract.Id, contract.PublicToken));
         return View(contract);
     }
 
@@ -141,7 +142,9 @@ public sealed class ContractsController : Controller
     public async Task<IActionResult> Print(int id)
     {
         var contract = await _db.Contracts.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
-        return contract is null ? NotFound() : View("~/Areas/Admin/Views/Documents/ContractPrint.cshtml", await BuildPrintVm(contract));
+        if (contract is null) return NotFound();
+        ViewData["Qr"] = DocumentLinks.Qr(Request, DocumentLinks.Contract, await DocumentLinks.EnsureContractAsync(_db, contract.Id, contract.PublicToken));
+        return View("~/Areas/Admin/Views/Documents/ContractPrint.cshtml", await BuildPrintVm(contract));
     }
 
     // Taslak sözleşme, şablon ayarlarındaki güncel madde metinlerini ve firma bilgilerini alır.
@@ -211,12 +214,17 @@ public sealed class ContractsController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    private async Task<ContractPrintVm> BuildPrintVm(Contract contract)
+    // QR bağlantısını yeniler: eski QR kodlu çıktılar artık açılmaz.
+    [HttpPost("baglantiyi-yenile/{id:int}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> RenewLink(int id)
     {
-        var content = DocumentJson.ParseContent(contract.DocumentJson);
-        var template = await DocumentViews.TemplateForAsync(_db, DocumentKinds.Contract, contract.SnapshotJson);
-        return new ContractPrintVm(contract, template, content, DocumentViews.VisibleArticles(DocumentJson.ParseArticles(template.ArticlesJson), content), await DocumentViews.LoadAttachmentsAsync(_db, content.DesignIds));
+        if (await _db.Contracts.Where(x => x.Id == id).ExecuteUpdateAsync(s => s.SetProperty(x => x.PublicToken, DocumentLinks.NewToken())) == 0) return NotFound();
+        await _audit.RecordAsync("renew-link", "Contract", id.ToString(), "QR bağlantısı yenilendi");
+        TempData["Notice"] = "QR bağlantısı yenilendi. Önceki çıktılardaki QR kodu artık açılmaz; belgeyi yeniden yazdırın.";
+        return RedirectToAction(nameof(Details), new { id });
     }
+
+    private Task<ContractPrintVm> BuildPrintVm(Contract contract) => DocumentViews.ContractPrintAsync(_db, contract);
 
     private static List<PaymentLine> DefaultPayments(decimal total, string? advanceText)
     {

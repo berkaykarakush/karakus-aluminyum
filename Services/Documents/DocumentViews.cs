@@ -81,6 +81,20 @@ public static class DocumentViews
         _ => true
     }).ToList();
 
+    public static async Task<ContractPrintVm> ContractPrintAsync(AppDbContext db, Contract contract)
+    {
+        var content = DocumentJson.ParseContent(contract.DocumentJson);
+        var template = await TemplateForAsync(db, DocumentKinds.Contract, contract.SnapshotJson);
+        return new ContractPrintVm(contract, template, content, VisibleArticles(DocumentJson.ParseArticles(template.ArticlesJson), content), await LoadAttachmentsAsync(db, content.DesignIds));
+    }
+
+    public static async Task<QuotePrintVm> QuotePrintAsync(AppDbContext db, Quote quote, PresentationVm? presentation = null)
+    {
+        var content = DocumentJson.ParseContent(quote.DocumentJson);
+        var template = await TemplateForAsync(db, DocumentKinds.Quote, quote.SnapshotJson);
+        return new QuotePrintVm(quote, quote.Customer?.Name ?? "", template, content, BuildBlocks(quote, content), await LoadAttachmentsAsync(db, content.DesignIds), presentation);
+    }
+
     public static async Task<DocumentTemplate> CurrentTemplateAsync(AppDbContext db, string kind)
         => await db.DocumentTemplates.AsNoTracking().FirstAsync(x => x.Kind == kind);
 

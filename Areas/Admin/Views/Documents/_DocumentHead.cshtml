@@ -1,7 +1,13 @@
 @model KarakusAluminyum.Web.Models.Documents.DocumentTemplate
-@* Baskıda her sayfanın üstünde tekrar eden antet *@
+@* Baskıda her sayfanın üstünde tekrar eden antet. QR kodu okutulunca belgenin sistemdeki asıl hali açılır. *@
 <div class="doc-head">
   @if (!string.IsNullOrWhiteSpace(Model.LogoPath)) { <img class="doc-logo" src="@Model.LogoPath" alt="@Model.SellerName" /> }
-  <div class="doc-date">@ViewData["DocDate"]</div>
+  <div class="doc-head__side">
+    <div class="doc-date">@ViewData["DocDate"]</div>
+    @if (ViewData["Qr"] is KarakusAluminyum.Web.Services.Documents.DocumentQr qr)
+    {
+      <a class="doc-qr" href="@qr.Url" title="Belgenin asıl halini aç">@Html.Raw(qr.Svg)<span>Asıl belge</span></a>
+    }
+  </div>
 </div>
 <div class="doc-title">@Model.Title</div>

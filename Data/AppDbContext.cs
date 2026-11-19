@@ -77,6 +77,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<Customer>().HasIndex(x => x.Phone);
         builder.Entity<Customer>().Property(x => x.Name).HasMaxLength(160).IsRequired();
         builder.Entity<Quote>().HasIndex(x => x.QuoteNumber).IsUnique();
+        builder.Entity<Quote>().HasIndex(x => x.PublicToken).IsUnique();
         builder.Entity<Quote>().HasOne(x => x.Customer).WithMany(x => x.Quotes)
             .HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<Quote>().HasOne(x => x.DrawingList).WithMany().HasForeignKey(x => x.DrawingListId).OnDelete(DeleteBehavior.SetNull);
@@ -102,6 +103,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
 
         builder.Entity<DocumentTemplate>().HasIndex(x => x.Kind).IsUnique();
         builder.Entity<Contract>().HasIndex(x => x.ContractNumber).IsUnique();
+        builder.Entity<Contract>().HasIndex(x => x.PublicToken).IsUnique();
         builder.Entity<PresentationSection>().HasIndex(x => x.SortOrder);
         builder.Entity<Prospect>().HasIndex(x => x.GooglePlaceId).IsUnique().HasFilter("\"GooglePlaceId\" IS NOT NULL");
         builder.Entity<Prospect>().HasIndex(x => new { x.Stage, x.NextFollowUp });
@@ -159,6 +161,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<WindowDesign>().HasOne(x => x.Brand).WithMany().HasForeignKey(x => x.BrandId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<DrawingList>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.SetNull);
         builder.Entity<DrawingList>().HasIndex(x => x.UpdatedUtc);
+        builder.Entity<DrawingList>().HasIndex(x => x.PublicToken).IsUnique();
         builder.Entity<WindowDesign>().HasIndex(x => x.UpdatedUtc);
         builder.Entity<WindowDesign>().HasOne(x => x.Customer).WithMany()
             .HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.SetNull);

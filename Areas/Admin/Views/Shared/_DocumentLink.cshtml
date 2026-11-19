@@ -1,0 +1,10 @@
+@model (string Url, string RenewAction)
+@* Belgenin QR kodunun açtığı bağlantı. Yenilenirse eski çıktılardaki QR kodu açılmaz. *@
+<div class="admin-panel">
+  <h3>QR bağlantısı</h3>
+  <p class="admin-muted">Çıktıdaki QR kodu okutulunca belgenin sistemdeki asıl hali giriş gerekmeden açılır. Bağlantıyı yalnızca belgeyi verdiğiniz kişiler bilir; belge yanlış kişiye gittiyse bağlantıyı yenileyin.</p>
+  <div class="admin-actions">
+    <a class="admin-btn admin-btn--secondary" href="@Model.Url" target="_blank" rel="noopener">Asıl belgeyi aç</a>
+    <form method="post" action="@Model.RenewAction" onsubmit="return confirm('Bağlantı yenilensin mi? Daha önce verilen çıktılardaki QR kodu artık açılmaz.')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--secondary">Bağlantıyı yenile</button></form>
+  </div>
+</div>

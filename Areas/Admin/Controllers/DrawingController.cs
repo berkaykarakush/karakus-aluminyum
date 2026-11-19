@@ -4,6 +4,7 @@ using KarakusAluminyum.Web.Data;
 using KarakusAluminyum.Web.Models.Crm;
 using KarakusAluminyum.Web.Models.Drawing;
 using KarakusAluminyum.Web.Services;
+using KarakusAluminyum.Web.Services.Documents;
 using KarakusAluminyum.Web.Services.Drawing;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -104,7 +105,18 @@ public sealed class DrawingController : Controller
         var materials = DrawingMaterials.Build(list.Items.OrderBy(x => x.SortOrder).ThenBy(x => x.Id));
         ViewBag.Materials = materials;
         ViewBag.Quotes = await _db.Quotes.AsNoTracking().Where(x => x.DrawingListId == id).OrderByDescending(x => x.CreatedUtc).ToListAsync();
+        ViewData["Qr"] = DocumentLinks.Qr(Request, DocumentLinks.Drawing, await DocumentLinks.EnsureDrawingAsync(_db, list.Id, list.PublicToken));
         return View(list);
+    }
+
+    // QR bağlantısını yeniler: eski QR kodlu çıktılar artık açılmaz.
+    [HttpPost("baglantiyi-yenile/{id:int}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> RenewLink(int id)
+    {
+        if (await _db.DrawingLists.Where(x => x.Id == id).ExecuteUpdateAsync(s => s.SetProperty(x => x.PublicToken, DocumentLinks.NewToken())) == 0) return NotFound();
+        await _audit.RecordAsync("renew-link", "DrawingList", id.ToString(), "QR bağlantısı yenilendi");
+        TempData["Notice"] = "QR bağlantısı yenilendi. Önceki çıktılardaki QR kodu artık açılmaz; listeyi yeniden yazdırın.";
+        return RedirectToAction(nameof(Details), new { id });
     }
 
     [HttpGet("olcu-listesi/{id:int}")]

@@ -812,3 +812,100 @@ public sealed class ProformaTests(PostgresFixture postgres)
         Assert.Equal("Kendi maddem", Assert.Single(DocumentJson.ParseArticles(templates[DocumentKinds.Contract].ArticlesJson)).Title);
     }
 }
+
+// Belgedeki QR kodu: okutulunca giriş gerekmeden belgenin asıl hali açılır; bağlantı yenilenince eskisi kapanır.
+[Collection("postgres")]
+public sealed class DocumentQrTests(PostgresFixture postgres)
+{
+    private static string Unique(string prefix) => prefix + " " + Guid.NewGuid().ToString("N")[..8];
+
+    private static string Token(string html, string kind)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(html, $"/belge/{kind}/([A-Za-z0-9_-]{{22}})");
+        Assert.True(match.Success, "QR bağlantısı bulunamadı");
+        return match.Groups[1].Value;
+    }
+
+    [Fact]
+    public async Task QuoteQr_OpensOriginalWithoutLogin_AndRenewalClosesOldLink()
+    {
+        var app = postgres.Shared;
+        var (client, token) = await QuoteDocumentTests.AdminAsync(app);
+        var customer = await QuoteDocumentTests.NewCustomerAsync(app);
+        var title = Unique("QR");
+        await QuoteDocumentTests.SaveQuoteAsync(client, token, "/yonetim/crm/teklifler/ekle", customer, title, QuoteDocumentTests.BlocksJson(("", new[] { ("Kalem", 1000m) })));
+        var quote = await app.WithDbAsync(db => db.Quotes.AsNoTracking().SingleAsync(q => q.Title == title));
+
+        var print = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/crm/teklifler/yazdir/{quote.Id}"));
+        Assert.Contains("class=\"doc-qr\"", print);
+        Assert.Contains("<svg", print);
+        var link = Token(print, "teklif");
+        Assert.Equal(link, await app.WithDbAsync(db => db.Quotes.Where(q => q.Id == quote.Id).Select(q => q.PublicToken).SingleAsync()));
+        Assert.Equal(link, Token(WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/crm/teklifler/yazdir/{quote.Id}")), "teklif")); // ikinci basımda aynı QR
+
+        var anonymous = app.NewClient();
+        var response = await anonymous.GetAsync($"/belge/teklif/{link}");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("noindex", response.Headers.GetValues("X-Robots-Tag").Single());
+        Assert.Equal("no-store", response.Headers.CacheControl!.ToString());
+        var html = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync());
+        Assert.Contains(quote.QuoteNumber, html);
+        Assert.Contains("Asıl belge", html);
+        Assert.Contains("Durum: Taslak", html);
+        Assert.DoesNotContain("maliyet", html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("/yonetim/crm/teklifler/yazdir", html); // panel bağlantısı yok
+
+        Assert.Equal(HttpStatusCode.NotFound, (await anonymous.GetAsync("/belge/teklif/AAAAAAAAAAAAAAAAAAAAAA")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await anonymous.GetAsync("/belge/teklif/kisa")).StatusCode);
+
+        Assert.Equal(HttpStatusCode.Redirect, (await client.PostFormAsync($"/yonetim/crm/teklifler/baglantiyi-yenile/{quote.Id}", token)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await anonymous.GetAsync($"/belge/teklif/{link}")).StatusCode);
+        var renewed = await app.WithDbAsync(db => db.Quotes.Where(q => q.Id == quote.Id).Select(q => q.PublicToken).SingleAsync());
+        Assert.NotEqual(link, renewed);
+        Assert.Equal(HttpStatusCode.OK, (await anonymous.GetAsync($"/belge/teklif/{renewed}")).StatusCode);
+    }
+
+    [Fact]
+    public async Task ContractQr_OpensOriginalWithoutLogin()
+    {
+        var app = postgres.Shared;
+        var (client, token) = await QuoteDocumentTests.AdminAsync(app);
+        var customer = await QuoteDocumentTests.NewCustomerAsync(app);
+        var title = Unique("QR sözleşme");
+        var json = JsonSerializer.Serialize(new { subject = "deneme işi", blocks = new[] { new { name = "", clauses = Array.Empty<object>(), items = Array.Empty<object>() } }, payments = Array.Empty<object>() });
+        await client.PostFormAsync("/yonetim/sozlesmeler/ekle", token, ("CustomerId", customer.ToString()), ("Title", title), ("DocumentDate", "2026-11-19"), ("BuyerName", "QR Alıcı"),
+            ("TotalAmount", "1000"), ("VatMode", "Included"), ("TaxRate", "20"), ("DiscountRate", "0"), ("PageCount", "1"), ("DocumentJson", json));
+        var id = await app.WithDbAsync(db => db.Contracts.Where(c => c.Title == title).Select(c => c.Id).SingleAsync());
+
+        Assert.Contains("/belge/sozlesme/", await client.GetStringAsync($"/yonetim/sozlesmeler/detay/{id}"));
+        var link = Token(WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/sozlesmeler/yazdir/{id}")), "sozlesme");
+        var html = WebUtility.HtmlDecode(await app.NewClient().GetStringAsync($"/belge/sozlesme/{link}"));
+        Assert.Contains("SÖZLEŞMEDİR", html);
+        Assert.Contains("QR Alıcı", html);
+        Assert.Contains("Durum: Taslak", html);
+    }
+
+    [Fact]
+    public async Task DrawingQr_ShowsPozListOnly_WithoutMaterialsOrPrices()
+    {
+        var app = postgres.Shared;
+        var (client, token) = await QuoteDocumentTests.AdminAsync(app);
+        var list = Unique("QR liste");
+        await DrawingLists.PostAsync(client, token, list, DrawingLists.Rows(DrawingLists.Row("Salon", width: 1200, height: 1400, quantity: 3)));
+        var listId = await DrawingLists.ListIdAsync(app, list);
+
+        var details = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/cizim/detay/{listId}"));
+        Assert.Contains("class=\"poz-sheet__qr\"", details);
+        var link = Token(details, "cizim");
+        var html = WebUtility.HtmlDecode(await app.NewClient().GetStringAsync($"/belge/cizim/{link}"));
+        Assert.Contains("Poz : 1 / Ad : 3 - Salon", html);
+        Assert.Contains("data-poz=", html);
+        Assert.DoesNotContain("Malzeme listesi", html);
+        Assert.DoesNotContain("Maliyet", html);
+        Assert.Contains("noindex", html);
+    }
+
+    [Fact]
+    public async Task Robots_ClosesDocumentLinks()
+        => Assert.Contains("Disallow: /belge/", await postgres.Shared.NewClient().GetStringAsync("/robots.txt"));
+}

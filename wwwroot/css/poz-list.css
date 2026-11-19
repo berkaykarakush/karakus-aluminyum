@@ -15,6 +15,9 @@
 .poz-sheet__head dt{color:#444}
 .poz-sheet__head dt::after{content:" :"}
 .poz-sheet__head dd{margin:0;font-weight:700;overflow-wrap:anywhere}
+.poz-sheet__side{display:flex;align-items:flex-start;gap:4mm;justify-content:flex-end}
+.poz-sheet__qr{display:flex;flex-direction:column;align-items:center;gap:.5mm;color:#555;font:7pt Arial,Helvetica,sans-serif;text-decoration:none}
+.poz-sheet__qr svg{display:block;width:17mm;height:17mm}
 .poz-sheet__brands{display:flex;flex-wrap:wrap;gap:3mm;justify-content:flex-end;align-items:center;max-width:60mm}
 .poz-sheet__brands img{display:block;max-height:10mm;max-width:45mm;object-fit:contain}
 .poz-sheet__brands span{font-weight:700;font-size:12pt}
@@ -22,4 +25,6 @@
 .poz-options{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;font-size:13px}
 .poz-options label{display:inline-flex;align-items:center;gap:6px;margin:0;font-weight:600}
 .poz-options input[type=range]{width:140px}
-@media(max-width:700px){.poz-sheet__head{grid-template-columns:minmax(0,1fr)}.poz-sheet__brands{justify-content:flex-start}}
+@media(max-width:700px){.poz-sheet__head{grid-template-columns:minmax(0,1fr)}.poz-sheet__brands,.poz-sheet__side{justify-content:flex-start}}
+/* Telefonda (QR ile açılan belge) çizimler ekrana sığar; baskıda gerçek ölçek korunur. */
+@media screen and (max-width:700px){.poz-list .poz{max-width:100%}.poz-list .poz svg{max-width:100%;height:auto}.poz__title{white-space:normal}}

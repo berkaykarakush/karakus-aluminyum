@@ -59,6 +59,7 @@ public sealed class DrawingList
     public int? CustomerId { get; set; }
     public Customer? Customer { get; set; }
     [StringLength(1000)] public string? Notes { get; set; }
+    [StringLength(40)] public string? PublicToken { get; set; } // QR koddaki doğrulama bağlantısı: /belge/cizim/{token}
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
     public List<WindowDesign> Items { get; set; } = new();

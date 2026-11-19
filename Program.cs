@@ -59,6 +59,8 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy(ContactController.RateLimitPolicy, context => PerIp(context, 10, TimeSpan.FromHours(1)));
     // Hesap kilidi tek hesabı korur; bu sınır farklı hesaplar üzerinde şifre denemeyi yavaşlatır.
     options.AddPolicy(AccountController.RateLimitPolicy, context => PerIp(context, 10, TimeSpan.FromMinutes(5)));
+    // QR ile açılan belgeler: anahtar denemesini yavaşlatır, gerçek kullanımı etkilemez.
+    options.AddPolicy(KarakusAluminyum.Web.Controllers.DocumentLinksController.RateLimitPolicy, context => PerIp(context, 60, TimeSpan.FromMinutes(1)));
 
     static RateLimitPartition<string> PerIp(HttpContext context, int limit, TimeSpan window)
     {
@@ -166,7 +168,7 @@ app.UseHttpsRedirection();
 app.Use((context, next) =>
 {
     var path = context.Request.Path;
-    if (path.StartsWithSegments("/yonetim") || path.StartsWithSegments("/yonetim-giris") || path.StartsWithSegments("/t") || path.StartsWithSegments("/hata") || path.StartsWithSegments("/health"))
+    if (path.StartsWithSegments("/yonetim") || path.StartsWithSegments("/yonetim-giris") || path.StartsWithSegments("/t") || path.StartsWithSegments("/belge") || path.StartsWithSegments("/hata") || path.StartsWithSegments("/health"))
         context.Response.Headers["X-Robots-Tag"] = "noindex, nofollow";
     return next();
 });

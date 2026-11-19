@@ -148,6 +148,9 @@ public sealed record PozView(int Position, WindowDesign Design, string Title, IR
     public decimal PerimeterM => Math.Round(2m * (Design.WidthMm + Design.HeightMm) / 1000m, 2);
 }
 
+// Poz listesi sayfasının başlığı (liste no, müşteri, tarih, adet, alan, markalar ve QR kodu).
+public sealed record PozSheetHeadVm(DrawingList List, IReadOnlyList<PozView> Pozlar);
+
 public static class PozSheet
 {
     private static readonly System.Text.RegularExpressions.Regex AutoName = new(@"^Poz \d+$");
