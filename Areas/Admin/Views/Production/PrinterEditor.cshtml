@@ -1,0 +1,33 @@
+@model KarakusAluminyum.Web.Models.Production.LabelPrinter
+@using KarakusAluminyum.Web.Models.Production
+@{
+    var editing = Model.Id != 0;
+    ViewData["Title"] = editing ? "Yazıcıyı düzenle" : "Yeni barkod yazıcısı";
+    var action = editing ? $"/yonetim/uretim/yazicilar/duzenle/{Model.Id}" : "/yonetim/uretim/yazicilar/ekle";
+}
+<h1>@ViewData["Title"]</h1>
+<div class="admin-panel">
+  <form class="admin-form" method="post" action="@action">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="All"></div>
+    <label asp-for="Name">Yazıcı adı</label><input asp-for="Name" required placeholder="Ör. Atölye Zebra ZD421" />
+    <div class="admin-grid">
+      <div><label asp-for="Language">Yazıcı dili</label><select asp-for="Language">@foreach (var l in LabelLanguages.All) { <option value="@l">@LabelLanguages.Label(l)</option> }</select></div>
+      <div><label asp-for="Dpi">Çözünürlük</label><select asp-for="Dpi"><option value="203">203 dpi (8 nokta/mm)</option><option value="300">300 dpi (12 nokta/mm)</option><option value="600">600 dpi (24 nokta/mm)</option></select></div>
+      <div><label asp-for="WidthMm">Etiket genişliği (mm)</label><input asp-for="WidthMm" type="number" min="20" max="200" /></div>
+      <div><label asp-for="HeightMm">Etiket yüksekliği (mm)</label><input asp-for="HeightMm" type="number" min="15" max="300" /></div>
+      <div><label asp-for="GapMm">Etiket arası boşluk (mm, TSPL)</label><input asp-for="GapMm" type="number" step="0.5" min="0" max="20" /></div>
+      <div><label asp-for="Darkness">Koyuluk (0 = yazıcı ayarı)</label><input asp-for="Darkness" type="number" min="0" max="30" /></div>
+    </div>
+    <p><label><input asp-for="AsciiOnly" type="checkbox" style="width:auto" /> Türkçe karakterleri sadeleştir (ş → s). Yazıcıda Türkçe destekli font yüklü değilse açık bırakın; TSPL'de her zaman sadeleştirilir.</label></p>
+    <h2>Ağ (isteğe bağlı)</h2>
+    <div class="admin-grid">
+      <div><label asp-for="Host">Yazıcı IP adresi</label><input asp-for="Host" placeholder="192.168.1.50" /></div>
+      <div><label asp-for="Port">Port</label><input asp-for="Port" type="number" min="1" max="65535" /></div>
+    </div>
+    <p class="admin-muted">Boş bırakılırsa etiketler dosya olarak indirilir. Yalnızca yerel ağ adresleri kabul edilir.</p>
+    <p><label><input asp-for="IsDefault" type="checkbox" style="width:auto" /> Varsayılan yazıcı</label></p>
+    <p><label><input asp-for="IsActive" type="checkbox" style="width:auto" /> Aktif</label></p>
+    <div class="admin-actions"><button class="admin-btn">Kaydet</button><a href="/yonetim/uretim/yazicilar">İptal</a></div>
+  </form>
+</div>

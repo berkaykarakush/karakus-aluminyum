@@ -6,6 +6,7 @@ using KarakusAluminyum.Web.Services.Production;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Net.Sockets;
 
 namespace KarakusAluminyum.Web.Areas.Admin.Controllers;
 
@@ -31,7 +32,130 @@ public sealed class ProductionController : Controller
         ViewBag.Size = boyut == "termal" ? "termal" : "a4";
         ViewBag.Pozlar = ProductionLabels.Pozlar(order, designs);
         ViewBag.Parts = tur == "parca" ? ProductionLabels.Parts(order, designs) : new List<PartLabel>();
+        ViewBag.Printers = await _db.LabelPrinters.AsNoTracking().Where(x => x.IsActive).OrderByDescending(x => x.IsDefault).ThenBy(x => x.Name).ToListAsync();
         return View(order);
+    }
+
+    // Yazıcı dilinde (ZPL / TSPL) etiket dosyası: Zebra Setup Utilities, yazıcı paylaşımı veya "lp -o raw" ile gönderilebilir.
+    [HttpGet("etiketler/{id:int}/dosya")]
+    public async Task<IActionResult> LabelFile(int id, int yazici, string tur = "poz")
+    {
+        var (printer, order, data) = await PrinterDataAsync(id, yazici, tur);
+        if (printer is null || order is null) return NotFound();
+        return File(data, "application/octet-stream", $"{order.OrderNumber}-{(tur == "parca" ? "parca" : "poz")}-etiketleri.{PrinterLabels.Extension(printer)}");
+    }
+
+    [HttpPost("etiketler/{id:int}/yazdir"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> PrintLabels(int id, int yazici, string tur = "poz")
+    {
+        var (printer, order, data) = await PrinterDataAsync(id, yazici, tur);
+        if (printer is null || order is null) return NotFound();
+        if (string.IsNullOrWhiteSpace(printer.Host)) TempData["Notice"] = "Bu yazıcının ağ adresi yok; dosyayı indirip yazdırın.";
+        else
+        {
+            try
+            {
+                await PrinterLabels.SendAsync(printer, data, HttpContext.RequestAborted);
+                await _audit.RecordAsync("print", "ProductionOrder", id.ToString(), $"{order.OrderNumber}: {tur} etiketleri → {printer.Name}");
+                TempData["Notice"] = $"Etiketler {printer.Name} yazıcısına gönderildi.";
+            }
+            catch (Exception error) when (error is SocketException or IOException or OperationCanceledException or InvalidOperationException)
+            {
+                TempData["Notice"] = $"{printer.Name} yazıcısına ulaşılamadı ({printer.Host}:{printer.Port}). Sunucu yazıcıyla aynı ağda değilse dosyayı indirip yazdırın.";
+            }
+        }
+        return Redirect($"/yonetim/uretim/etiketler/{id}?tur={(tur == "parca" ? "parca" : "poz")}");
+    }
+
+    private async Task<(LabelPrinter?, ProductionOrder?, byte[])> PrinterDataAsync(int id, int printerId, string kind)
+    {
+        var printer = await _db.LabelPrinters.AsNoTracking().FirstOrDefaultAsync(x => x.Id == printerId);
+        var order = await _db.ProductionOrders.AsNoTracking().Include(x => x.Customer).FirstOrDefaultAsync(x => x.Id == id);
+        if (printer is null || order is null) return (null, null, Array.Empty<byte>());
+        var designs = await DesignsAsync(order);
+        var labels = kind == "parca" ? PrinterLabels.FromParts(order, ProductionLabels.Parts(order, designs)) : PrinterLabels.FromPozlar(order, ProductionLabels.Pozlar(order, designs));
+        return (printer, order, PrinterLabels.Render(printer, labels));
+    }
+
+    // ---- Barkod yazıcıları ----
+
+    [HttpGet("yazicilar")]
+    public async Task<IActionResult> Printers() => View(await _db.LabelPrinters.AsNoTracking().OrderByDescending(x => x.IsDefault).ThenBy(x => x.Name).ToListAsync());
+
+    [HttpGet("yazicilar/ekle")]
+    public IActionResult CreatePrinter() => View("PrinterEditor", new LabelPrinter());
+
+    [HttpPost("yazicilar/ekle"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreatePrinter(LabelPrinter input)
+    {
+        input.Id = 0;
+        if (!await PreparePrinter(input)) return View("PrinterEditor", input);
+        _db.LabelPrinters.Add(input);
+        await _db.SaveChangesAsync();
+        await _audit.RecordAsync("create", "LabelPrinter", input.Id.ToString(), input.Name);
+        return RedirectToAction(nameof(Printers));
+    }
+
+    [HttpGet("yazicilar/duzenle/{id:int}")]
+    public async Task<IActionResult> EditPrinter(int id)
+    {
+        var row = await _db.LabelPrinters.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+        return row is null ? NotFound() : View("PrinterEditor", row);
+    }
+
+    [HttpPost("yazicilar/duzenle/{id:int}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditPrinter(int id, LabelPrinter input)
+    {
+        if (!await _db.LabelPrinters.AnyAsync(x => x.Id == id)) return NotFound();
+        input.Id = id;
+        if (!await PreparePrinter(input)) return View("PrinterEditor", input);
+        _db.LabelPrinters.Update(input);
+        await _db.SaveChangesAsync();
+        await _audit.RecordAsync("update", "LabelPrinter", id.ToString(), input.Name);
+        return RedirectToAction(nameof(Printers));
+    }
+
+    [HttpPost("yazicilar/sil/{id:int}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeletePrinter(int id)
+    {
+        var row = await _db.LabelPrinters.FindAsync(id);
+        if (row is null) return NotFound();
+        _db.LabelPrinters.Remove(row);
+        await _db.SaveChangesAsync();
+        await _audit.RecordAsync("delete", "LabelPrinter", id.ToString(), row.Name);
+        return RedirectToAction(nameof(Printers));
+    }
+
+    // Deneme etiketi: ayarları (ölçü, koyuluk, ağ) gerçek sipariş olmadan dener.
+    [HttpPost("yazicilar/dene/{id:int}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> TestPrinter(int id)
+    {
+        var printer = await _db.LabelPrinters.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+        if (printer is null) return NotFound();
+        var data = PrinterLabels.Render(printer, new[] { new LabelContent($"DENEME  {printer.WidthMm} x {printer.HeightMm} mm", "1200 x 1400 mm", printer.Name, $"{printer.Dpi} dpi", "S0-0-1") });
+        if (string.IsNullOrWhiteSpace(printer.Host)) return File(data, "application/octet-stream", $"deneme.{PrinterLabels.Extension(printer)}");
+        try
+        {
+            await PrinterLabels.SendAsync(printer, data, HttpContext.RequestAborted);
+            TempData["Notice"] = $"Deneme etiketi {printer.Name} yazıcısına gönderildi.";
+        }
+        catch (Exception error) when (error is SocketException or IOException or OperationCanceledException or InvalidOperationException)
+        {
+            TempData["Notice"] = $"{printer.Host}:{printer.Port} adresine ulaşılamadı.";
+        }
+        return RedirectToAction(nameof(Printers));
+    }
+
+    private async Task<bool> PreparePrinter(LabelPrinter input)
+    {
+        input.Name = input.Name?.Trim() ?? "";
+        input.Host = string.IsNullOrWhiteSpace(input.Host) ? null : input.Host.Trim();
+        if (!LabelLanguages.All.Contains(input.Language)) ModelState.AddModelError(nameof(input.Language), "Yazıcı dili ZPL veya TSPL olmalıdır.");
+        if (input.Dpi is not (203 or 300 or 600)) ModelState.AddModelError(nameof(input.Dpi), "Çözünürlük 203, 300 veya 600 dpi olmalıdır.");
+        if (input.Host is not null && !PrinterLabels.IsLocalAddress(input.Host)) ModelState.AddModelError(nameof(input.Host), "Ağ adresi yerel ağ IP'si olmalıdır (ör. 192.168.1.50).");
+        if (!ModelState.IsValid) return false;
+        if (input.IsDefault) await _db.LabelPrinters.Where(x => x.Id != input.Id && x.IsDefault).ExecuteUpdateAsync(x => x.SetProperty(p => p.IsDefault, false));
+        return true;
     }
 
     [HttpGet("okut")]

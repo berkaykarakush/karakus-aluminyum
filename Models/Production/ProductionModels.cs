@@ -126,6 +126,33 @@ public static class MachineExportFields
     public static string Label(string key) => All.FirstOrDefault(x => x.Key == key).Label ?? key;
 }
 
+// Barkod (etiket) yazıcısı: Zebra ve ZPL öykünmeli yazıcılar ZPL, TSC / Xprinter gibi yazıcılar TSPL konuşur.
+// Ağ adresi girilirse etiketler sunucudan doğrudan yazıcının 9100 portuna gönderilir (sunucu yazıcıya erişebilmelidir).
+public sealed class LabelPrinter
+{
+    public int Id { get; set; }
+    [Required(ErrorMessage = "Yazıcı adı yazın."), StringLength(120)] public string Name { get; set; } = "";
+    [StringLength(10)] public string Language { get; set; } = LabelLanguages.Zpl;
+    [Range(150, 600)] public int Dpi { get; set; } = 203;
+    [Range(20, 200, ErrorMessage = "Etiket genişliği 20-200 mm olmalıdır.")] public int WidthMm { get; set; } = 100;
+    [Range(15, 300, ErrorMessage = "Etiket yüksekliği 15-300 mm olmalıdır.")] public int HeightMm { get; set; } = 50;
+    [Range(0, 20)] public decimal GapMm { get; set; } = 2; // TSPL: etiketler arası boşluk
+    [Range(0, 30)] public int Darkness { get; set; } // 0: yazıcı ayarı kalır
+    public bool AsciiOnly { get; set; } = true; // yazıcı fontunda Türkçe karakter yoksa ş → s
+    [StringLength(64)] public string? Host { get; set; }
+    [Range(1, 65535)] public int Port { get; set; } = 9100;
+    public bool IsDefault { get; set; }
+    public bool IsActive { get; set; } = true;
+}
+
+public static class LabelLanguages
+{
+    public const string Zpl = "zpl";
+    public const string Tspl = "tspl";
+    public static readonly string[] All = { Zpl, Tspl };
+    public static string Label(string language) => language == Tspl ? "TSPL (TSC, Xprinter, Argox)" : "ZPL (Zebra ve ZPL uyumlu)";
+}
+
 public static class ProductionStations
 {
     public const string Cutting = "cut";

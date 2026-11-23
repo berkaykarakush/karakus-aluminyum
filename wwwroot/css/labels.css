@@ -23,3 +23,5 @@ body.lb--termal .lb-big{font-size:19px}
   body.lb--a4 .lb-sheet{break-after:page}
 }
 @page{margin:0}
+.lb-printer{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.lb-printer select{padding:8px;font:inherit}

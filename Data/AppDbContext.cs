@@ -54,6 +54,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ProductionOrder> ProductionOrders => Set<ProductionOrder>();
     public DbSet<ProductionScan> ProductionScans => Set<ProductionScan>();
     public DbSet<MachineExportProfile> MachineExportProfiles => Set<MachineExportProfile>();
+    public DbSet<LabelPrinter> LabelPrinters => Set<LabelPrinter>();
     public DbSet<OrderEvent> OrderEvents => Set<OrderEvent>();
     public DbSet<Installer> Installers => Set<Installer>();
     public DbSet<DeliveryNote> DeliveryNotes => Set<DeliveryNote>();
@@ -154,6 +155,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<Invoice>().HasIndex(x => new { x.Status, x.DueDate });
         builder.Entity<InvoiceLine>().HasOne(x => x.Invoice).WithMany(x => x.Lines).HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.Cascade);
         builder.Entity<InvoiceLine>().HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<LabelPrinter>().Property(x => x.GapMm).HasColumnType("numeric(5,2)");
         builder.Entity<ExchangeRate>().HasIndex(x => new { x.Currency, x.Date }).IsUnique();
         builder.Entity<StockMovement>().HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<StockMovement>().HasOne(x => x.Invoice).WithMany().HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.Restrict);

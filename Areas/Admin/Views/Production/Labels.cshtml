@@ -9,6 +9,7 @@
     var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
     var perSheet = size == "a4" ? 24 : 1;
     var count = kind == "parca" ? parts.Count : pozlar.Count;
+    var printers = (List<KarakusAluminyum.Web.Models.Production.LabelPrinter>)ViewBag.Printers;
     string Url(string t, string b) => $"/yonetim/uretim/etiketler/{Model.Id}?tur={t}&boyut={b}";
 }
 <!doctype html>
@@ -26,8 +27,33 @@
     <a href="@Url("parca", size)">Parça etiketleri</a>
     <a href="@Url(kind, size == "a4" ? "termal" : "a4")">@(size == "a4" ? "Termal (100 × 50 mm)" : "A4 (3 × 8)")</a>
     <span>@count etiket</span>
-    <button type="button" onclick="window.print()">Yazdır</button>
+    <button type="button" onclick="window.print()">Tarayıcıdan yazdır</button>
   </div>
+  @if (TempData["Notice"] is string notice) { <div class="lb-toolbar"><strong>@notice</strong></div> }
+  @if (printers.Count > 0 && count > 0)
+  {
+    <div class="lb-toolbar">
+      <form method="post" action="/yonetim/uretim/etiketler/@Model.Id/yazdir" class="lb-printer">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="tur" value="@kind" />
+        <label for="lb-printer">Barkod yazıcısı</label>
+        <select id="lb-printer" name="yazici">@foreach (var p in printers) { <option value="@p.Id" data-network="@(p.Host is null ? "0" : "1")">@p.Name (@p.Language.ToUpperInvariant(), @p.WidthMm × @p.HeightMm mm)</option> }</select>
+        <button type="submit" id="lb-send">Yazıcıya gönder</button>
+        <a id="lb-file" href="/yonetim/uretim/etiketler/@Model.Id/dosya?tur=@kind&yazici=@printers[0].Id">Dosyayı indir</a>
+      </form>
+    </div>
+    <script>
+      (() => {
+        const select = document.getElementById('lb-printer'), send = document.getElementById('lb-send'), file = document.getElementById('lb-file');
+        const sync = () => { const o = select.selectedOptions[0]; send.hidden = o.dataset.network !== '1'; file.href = file.href.replace(/yazici=\d+/, 'yazici=' + o.value); };
+        select.addEventListener('change', sync); sync();
+      })();
+    </script>
+  }
+  else if (printers.Count == 0)
+  {
+    <div class="lb-toolbar"><span>Zebra / TSC gibi barkod yazıcısı için <a href="/yonetim/uretim/yazicilar/ekle">yazıcı tanımlayın</a>.</span></div>
+  }
   @if (count == 0)
   {
     <div class="lb-toolbar"><span>@(kind == "parca" ? "Parça etiketi için pozlara profil sistemi seçin." : "Siparişe bağlı çizim listesinde poz yok.")</span></div>
