@@ -1,0 +1,52 @@
+@model List<KarakusAluminyum.Web.Services.Production.ReorderRow>
+@using KarakusAluminyum.Web.Services.Production
+@{
+    ViewData["Title"] = "Malzeme ihtiyacı";
+    var suppliers = (SelectList)ViewBag.Suppliers;
+    var rates = (Dictionary<string, RateInfo>)ViewBag.Rates;
+    var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
+    string N(decimal v) => v.ToString("#,0.###", culture);
+    string I(decimal v) => v.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+}
+<div class="admin-actions">
+  <h1>Malzeme ihtiyacı</h1>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/fiyat-listeleri">Fiyat listeleri</a>
+</div>
+<p class="admin-muted">Beklenen stok = mevcut stok − onaylı ve üretimdeki siparişlerin henüz stoktan düşülmemiş metrajı. Kritik seviyenin altına düşen kartlar hedef stoka tamamlanacak kadar önerilir (hedef yoksa kritik seviyenin iki katı). Kritik seviye ve hedef, stok kartından girilir.</p>
+@if (Model.Count == 0)
+{
+  <div class="admin-panel"><p>Sipariş verilmesi gereken malzeme yok.</p></div>
+}
+else
+{
+  <form method="post" action="/yonetim/uretim/malzeme-ihtiyaci">
+    @Html.AntiForgeryToken()
+    <div class="admin-panel" style="overflow-x:auto">
+      <table class="admin-table">
+        <thead><tr><th><input type="checkbox" checked aria-label="Tümünü seç" onchange="document.querySelectorAll('[name=productIds]').forEach(c => c.checked = this.checked)" /></th><th>Kod</th><th>Malzeme</th><th class="num">Mevcut</th><th class="num">Açık siparişler</th><th class="num">Beklenen</th><th class="num">Kritik / hedef</th><th>Sipariş miktarı</th><th class="num">Tahmini tutar</th></tr></thead>
+        <tbody>
+        @foreach (var r in Model)
+        {
+          var price = PriceLists.ToTry(r.Product.PurchasePrice * r.Suggested, r.Product.PriceCurrency, rates);
+          <tr>
+            <td><input type="checkbox" name="productIds" value="@r.Product.Id" checked aria-label="@r.Product.Name" /></td>
+            <td>@r.Product.Code</td>
+            <td>@r.Product.Name@if (r.Orders.Count > 0) { <div class="admin-muted" style="font-size:12px">@string.Join(", ", r.Orders.Distinct())</div> }</td>
+            <td class="num">@N(r.Stock)</td>
+            <td class="num">@N(r.OpenNeed)</td>
+            <td class="num">@if (r.Projected < 0) { <strong style="color:#b42318">@N(r.Projected)</strong> } else { @N(r.Projected) }</td>
+            <td class="num">@N(r.Product.CriticalStock) / @N(r.Target)</td>
+            <td><input name="miktar_@r.Product.Id" type="number" step="any" min="0" value="@I(r.Suggested)" style="max-width:120px" aria-label="@r.Product.Name sipariş miktarı" /> @r.Product.Unit</td>
+            <td class="num">@(price is decimal p ? p.ToString("#,0.00", culture) + " ₺" : "kur yok")</td>
+          </tr>
+        }
+        </tbody>
+      </table>
+    </div>
+    <div class="admin-panel admin-actions">
+      <label for="mn-supplier" style="margin:0">Tedarikçi</label>
+      <select id="mn-supplier" name="supplierId" asp-items="suppliers" required style="max-width:320px"><option value="">Seçin</option></select>
+      <button class="admin-btn">Seçilenler için taslak alış faturası aç</button>
+    </div>
+  </form>
+}

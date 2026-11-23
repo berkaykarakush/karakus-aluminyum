@@ -16,7 +16,8 @@ public sealed class PriceListsController : Controller
     private readonly IAuditService _audit;
     private readonly IHttpClientFactory _http;
     private readonly ILogger<PriceListsController> _logger;
-    public PriceListsController(AppDbContext db, IAuditService audit, IHttpClientFactory http, ILogger<PriceListsController> logger) { _db = db; _audit = audit; _http = http; _logger = logger; }
+    private readonly ExchangeRateCache _rates;
+    public PriceListsController(AppDbContext db, IAuditService audit, IHttpClientFactory http, ILogger<PriceListsController> logger, ExchangeRateCache rates) { _db = db; _audit = audit; _http = http; _logger = logger; _rates = rates; }
 
     private static DateOnly Today => DateOnly.FromDateTime(DateTime.UtcNow.AddHours(3));
 
@@ -39,6 +40,7 @@ public sealed class PriceListsController : Controller
         {
             await UpsertAsync(currency, rate, date ?? Today, "Elle");
             await _db.SaveChangesAsync();
+            await _rates.ReloadAsync(_db); // döviz fiyatlı profil sistemleri yeni kurla hesaplansın
             await _audit.RecordAsync("update", "ExchangeRate", currency, rate.ToString(System.Globalization.CultureInfo.InvariantCulture));
             TempData["Notice"] = $"{currency} kuru kaydedildi.";
         }
@@ -55,6 +57,7 @@ public sealed class PriceListsController : Controller
             var (date, rates) = PriceLists.ParseTcmb(xml);
             foreach (var (currency, rate) in rates) await UpsertAsync(currency, rate, date, "TCMB");
             await _db.SaveChangesAsync();
+            await _rates.ReloadAsync(_db);
             await _audit.RecordAsync("update", "ExchangeRate", "TCMB", date.ToString("yyyy-MM-dd"));
             TempData["Notice"] = rates.Count > 0 ? $"TCMB {date:dd.MM.yyyy} döviz satış kurları alındı: {string.Join(", ", rates.Select(r => $"{r.Currency} {r.Rate:0.0000}"))}." : "TCMB yanıtında EUR/USD kuru bulunamadı.";
         }

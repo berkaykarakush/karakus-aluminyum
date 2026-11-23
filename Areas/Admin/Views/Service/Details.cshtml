@@ -76,7 +76,10 @@
           <td>@(v.WorkDone.Length > 100 ? v.WorkDone[..100] + "…" : v.WorkDone)</td>
           <td>@ServiceLabels.Label(v.Result)</td>
           <td style="text-align:right">@total.ToString("#,0.00", culture) ₺</td>
-          <td class="admin-actions"><a class="admin-btn admin-btn--secondary" href="/yonetim/servis/form/@v.Id" target="_blank" rel="noopener">Yazdır</a><form method="post" action="/yonetim/servis/ziyaret/sil/@v.Id" onsubmit="return confirm('Servis formu silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form></td>
+          <td class="admin-actions">
+            @if (v.InvoiceId is int invoiceId) { <a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/faturalar/detay/@invoiceId">Fatura</a> }
+            else if (total > 0) { <form method="post" action="/yonetim/servis/fatura/@v.Id" onsubmit="return confirm('Bu servis formundan taslak satış faturası açılsın mı?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--secondary">Faturaya dönüştür</button></form> }
+            <a class="admin-btn admin-btn--secondary" href="/yonetim/servis/form/@v.Id" target="_blank" rel="noopener">Yazdır</a><form method="post" action="/yonetim/servis/ziyaret/sil/@v.Id" onsubmit="return confirm('Servis formu silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form></td>
         </tr>
       }
       </tbody>

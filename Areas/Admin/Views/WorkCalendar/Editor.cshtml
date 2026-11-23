@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = "Çalışma ekle";
     var employees = (List<KarakusAluminyum.Web.Models.Accounting.Employee>)ViewBag.Employees;
+    var teams = (List<Installer>)ViewBag.Teams;
     var orders = (List<KarakusAluminyum.Web.Services.Production.OrderOption>)ViewBag.Orders;
     var services = (List<KarakusAluminyum.Web.Services.Production.OrderOption>)ViewBag.Services;
 }
@@ -16,6 +17,14 @@
     <div class="admin-grid">
       @foreach (var e in employees) { <label style="font-weight:400"><input type="checkbox" name="EmployeeIds" value="@e.Id" checked="@Model.EmployeeIds.Contains(e.Id)" style="width:auto" /> @e.Name@(string.IsNullOrWhiteSpace(e.Position) ? "" : $" ({e.Position})")</label> }
     </div>
+    @if (teams.Count > 0)
+    {
+      <label>Montaj ekipleri</label>
+      <div class="admin-grid">
+        @foreach (var t in teams) { <label style="font-weight:400"><input type="checkbox" name="InstallerIds" value="@t.Id" checked="@Model.InstallerIds.Contains(t.Id)" /> @t.Name (@t.TeamSize kişi@(t.IsSubcontractor ? ", taşeron" : ""))</label> }
+      </div>
+      <p class="admin-hint">Ekip kaydı ekipteki kişi sayısı kadar adam-gün sayılır.</p>
+    }
     <div class="admin-grid">
       <div><label asp-for="From">Tarih (başlangıç)</label><input asp-for="From" type="date" required /></div>
       <div><label asp-for="To">Bitiş (birden çok gün için)</label><input asp-for="To" type="date" /></div>

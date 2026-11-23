@@ -8,6 +8,8 @@
   <label asp-for="Phone">Telefon</label><input asp-for="Phone" />
   <label asp-for="Iban">IBAN</label><input asp-for="Iban" />
   <label asp-for="NetSalary">Net maaş (TL)</label><input asp-for="NetSalary" type="number" step="0.01" min="0" />
+  <label asp-for="DailyCost">Günlük işçilik maliyeti (TL)</label><input asp-for="DailyCost" type="number" step="0.01" min="0" />
+  <p class="admin-hint">Personel takvimindeki adam-gün maliyeti ve proje analizindeki işçilik bu değerle hesaplanır. SGK ve yan haklar dahil gerçek günlük maliyeti yazın; boş bırakılırsa net maaş ÷ 26 iş günü ile tahmin edilir.</p>
   <label for="StartDate">İşe başlama</label><input id="StartDate" type="date" name="StartDate" value="@Model.StartDate?.ToString("yyyy-MM-dd")" />
   <p><label><input asp-for="IsActive" /> Aktif</label></p>
   <div class="admin-actions"><button class="admin-btn">Kaydet</button></div>

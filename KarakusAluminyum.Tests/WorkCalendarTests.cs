@@ -32,7 +32,7 @@ public sealed class WorkCalendarTests(PostgresFixture postgres)
         Assert.Equal(("Ali", 1.5m), job.Crew[0]);
         Assert.Equal(0.75m, rows.Single(r => r.Key == "general").ManDays);
         Assert.Equal(2.25m, WorkStats.ByEmployee(logs, day.AddDays(5)).Single(e => e.Name == "Ali").ManDays);
-        Assert.Equal((1, day.AddDays(1)), WorkStats.Overbooked(logs).Single()); // Ali o gün 1,25 gün
+        Assert.Equal(("e1", day.AddDays(1)), WorkStats.Overbooked(logs).Single()); // Ali o gün 1,25 gün
         Assert.Equal(new DateOnly(2026, 11, 23), WorkStats.WeekStart(new DateOnly(2026, 11, 29))); // Pazar → o haftanın Pazartesisi
     }
 
@@ -58,7 +58,7 @@ public sealed class WorkCalendarTests(PostgresFixture postgres)
         (string, string)[] Form(params (string, string)[] extra) => new[] { ("EmployeeIds", ali.ToString()), ("EmployeeIds", veli.ToString()), ("From", monday.ToString("yyyy-MM-dd")), ("To", monday.AddDays(6).ToString("yyyy-MM-dd")),
             ("SkipSundays", "true"), ("ProductionOrderId", orderId.ToString()), ("Activity", WorkActivities.Installation), ("Days", "1") }.Concat(extra).ToArray();
 
-        Assert.Contains("En az bir personel seçin", WebUtility.HtmlDecode(await (await client.PostFormAsync("/yonetim/takvim/ekle", token, ("From", "2026-01-02"), ("Activity", "installation"), ("Days", "1"))).Content.ReadAsStringAsync()));
+        Assert.Contains("En az bir personel veya montaj ekibi seçin", WebUtility.HtmlDecode(await (await client.PostFormAsync("/yonetim/takvim/ekle", token, ("From", "2026-01-02"), ("Activity", "installation"), ("Days", "1"))).Content.ReadAsStringAsync()));
         Assert.Contains("Bitiş tarihi başlangıçtan önce olamaz", WebUtility.HtmlDecode(await (await client.PostFormAsync("/yonetim/takvim/ekle", token, ("EmployeeIds", ali.ToString()), ("From", "2026-01-05"), ("To", "2026-01-02"), ("Activity", "installation"), ("Days", "1"))).Content.ReadAsStringAsync()));
         Assert.Contains("Süre tam gün", WebUtility.HtmlDecode(await (await client.PostFormAsync("/yonetim/takvim/ekle", token, ("EmployeeIds", ali.ToString()), ("From", "2026-01-05"), ("Activity", "installation"), ("Days", "3"))).Content.ReadAsStringAsync()));
 

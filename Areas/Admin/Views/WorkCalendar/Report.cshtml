@@ -8,8 +8,10 @@
     var order = ViewBag.Order as int?;
     var employees = (List<WorkEmployeeRow>)ViewBag.Employees;
     var overbooked = (int)ViewBag.Overbooked;
+    var showCost = (bool)ViewBag.ShowCost;
     var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
     string N(decimal v) => v.ToString("0.##", culture);
+    string Money(decimal v, bool estimated) => v.ToString("#,0.00", culture) + " ₺" + (estimated ? " *" : "");
     string D(DateOnly? d) => d?.ToString("dd.MM.yyyy") ?? "-";
     var query = $"bas={from:yyyy-MM-dd}&bit={to:yyyy-MM-dd}" + (order is null ? "" : $"&siparis={order}");
     string Activities(IReadOnlyDictionary<string, decimal> map) => string.Join(", ", WorkActivities.All.Where(map.ContainsKey).Select(a => $"{WorkActivities.Label(a)} {N(map[a])}"));
@@ -29,9 +31,11 @@
 <div class="report-kpis">
   <div class="report-kpi"><span class="report-kpi__label">Gerçekleşen adam-gün</span><strong class="report-kpi__value">@N(Model.Sum(x => x.ManDays))</strong></div>
   <div class="report-kpi"><span class="report-kpi__label">Planlanan adam-gün</span><strong class="report-kpi__value">@N(Model.Sum(x => x.PlannedManDays))</strong></div>
-  <div class="report-kpi"><span class="report-kpi__label">Çalışan personel</span><strong class="report-kpi__value">@employees.Count(e => e.ManDays > 0)</strong></div>
+  <div class="report-kpi"><span class="report-kpi__label">Çalışan personel / ekip</span><strong class="report-kpi__value">@employees.Count(e => e.ManDays > 0)</strong></div>
   <div class="report-kpi"><span class="report-kpi__label">İş sayısı</span><strong class="report-kpi__value">@Model.Count(p => p.ManDays > 0)</strong></div>
+  @if (showCost) { <div class="report-kpi"><span class="report-kpi__label">İşçilik maliyeti</span><strong class="report-kpi__value">@Money(Model.Sum(p => p.LaborCost), Model.Any(p => p.CostEstimated))</strong></div> }
 </div>
+@if (showCost && (Model.Any(p => p.CostEstimated) || employees.Any(e => e.CostEstimated))) { <p class="admin-muted">* Günlük maliyeti girilmemiş personel için net maaş ÷ 26 iş günü kullanıldı (SGK ve yan haklar hariç); günlük ücreti girilmemiş ekipler 0 sayıldı. Değerleri personel kartına ve Montajcılar ekranındaki ekip kartına girin.</p> }
 @if (overbooked > 0) { <p class="admin-muted">Uyarı: @overbooked kişi-günde 1 günden fazla iş yazılmış.</p> }
 <div class="admin-panel" style="overflow-x:auto">
   <h3 style="margin-top:0">İş bazında</h3>
@@ -39,7 +43,7 @@
   else
   {
     <table class="admin-table">
-      <thead><tr><th>İş</th><th style="text-align:right">Adam-gün</th><th style="text-align:right">Planlanan</th><th>Kişi</th><th>Çalışılan gün</th><th>İlk – son gün</th><th>Faaliyet</th><th>Çalışanlar</th></tr></thead>
+      <thead><tr><th>İş</th><th style="text-align:right">Adam-gün</th><th style="text-align:right">Planlanan</th><th>Kişi</th><th>Çalışılan gün</th><th>İlk – son gün</th><th>Faaliyet</th><th>Çalışanlar</th>@if (showCost) { <th style="text-align:right">İşçilik</th> }</tr></thead>
       <tbody>
       @foreach (var p in Model)
       {
@@ -52,6 +56,7 @@
           <td>@D(p.First) – @D(p.Last)</td>
           <td>@Activities(p.ByActivity)</td>
           <td>@string.Join(", ", p.Crew.Select(c => $"{c.Name} {N(c.Days)}"))</td>
+          @if (showCost) { <td style="text-align:right">@Money(p.LaborCost, p.CostEstimated)</td> }
         </tr>
       }
       </tbody>
@@ -59,13 +64,13 @@
   }
 </div>
 <div class="admin-panel" style="overflow-x:auto">
-  <h3 style="margin-top:0">Personel bazında</h3>
+  <h3 style="margin-top:0">Personel ve ekip bazında</h3>
   @if (employees.Count == 0) { <p class="admin-muted">Bu aralıkta kayıt yok.</p> }
   else
   {
     <table class="admin-table">
-      <thead><tr><th>Personel</th><th style="text-align:right">Adam-gün</th><th style="text-align:right">Planlanan</th><th>İş sayısı</th><th>Çalışılan gün</th><th>Faaliyet</th></tr></thead>
-      <tbody>@foreach (var e in employees) { <tr><td>@e.Name</td><td style="text-align:right"><strong>@N(e.ManDays)</strong></td><td style="text-align:right">@N(e.PlannedManDays)</td><td>@e.Projects</td><td>@e.WorkDays</td><td>@Activities(e.ByActivity)</td></tr> }</tbody>
+      <thead><tr><th>Personel / ekip</th><th style="text-align:right">Adam-gün</th><th style="text-align:right">Planlanan</th><th>İş sayısı</th><th>Çalışılan gün</th><th>Faaliyet</th>@if (showCost) { <th style="text-align:right">İşçilik</th> }</tr></thead>
+      <tbody>@foreach (var e in employees) { <tr><td>@e.Name@if (e.IsTeam) { <span class="admin-muted"> (ekip)</span> }</td><td style="text-align:right"><strong>@N(e.ManDays)</strong></td><td style="text-align:right">@N(e.PlannedManDays)</td><td>@e.Projects</td><td>@e.WorkDays</td><td>@Activities(e.ByActivity)</td>@if (showCost) { <td style="text-align:right">@Money(e.LaborCost, e.CostEstimated)</td> }</tr> }</tbody>
     </table>
   }
 </div>

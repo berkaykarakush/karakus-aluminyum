@@ -84,6 +84,7 @@ public sealed class ServiceVisit
     public ServiceResult Result { get; set; }
     [Column(TypeName = "numeric(18,2)"), Range(0, 10_000_000)] public decimal LaborCharge { get; set; } // KDV hariç işçilik ücreti; garantide 0
     [StringLength(1000)] public string? CustomerNote { get; set; }
+    public int? InvoiceId { get; set; } // ücretli servisten açılan satış faturası
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public List<ServicePart> Parts { get; set; } = new();
 }
@@ -94,6 +95,7 @@ public sealed class ServicePart
     public int ServiceVisitId { get; set; }
     public ServiceVisit? ServiceVisit { get; set; }
     public int SortOrder { get; set; }
+    public int? ProductId { get; set; } // stok kartından seçilen parça ziyarette stoktan düşer
     [Required, StringLength(200)] public string Description { get; set; } = "";
     [Column(TypeName = "numeric(18,3)")] public decimal Quantity { get; set; } = 1;
     [StringLength(20)] public string Unit { get; set; } = "Adet";
@@ -136,6 +138,7 @@ public sealed class ServiceVisitInputVm
 
 public sealed class ServicePartInput
 {
+    public int? ProductId { get; set; }
     [StringLength(200)] public string? Description { get; set; }
     public decimal Quantity { get; set; } = 1;
     [StringLength(20)] public string? Unit { get; set; }

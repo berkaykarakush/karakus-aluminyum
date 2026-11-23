@@ -15,6 +15,8 @@
   <label asp-for="SalePrice">Satış fiyatı (KDV hariç)</label><input asp-for="SalePrice" type="number" step="0.01" min="0" />
   <label asp-for="VatRate">KDV %</label><select asp-for="VatRate">@foreach (var v in AccountingLabels.VatRates) { <option value="@v">%@v.ToString("0")</option> }</select>
   <label asp-for="CriticalStock">Kritik stok seviyesi</label><input asp-for="CriticalStock" type="number" step="any" min="0" />
+  <label asp-for="TargetStock">Hedef stok (sipariş önerisi bu seviyeye tamamlar)</label><input asp-for="TargetStock" type="number" step="any" min="0" />
+  <p class="admin-hint">Boş bırakılırsa kritik seviyenin iki katı alınır. Öneriler Üretim › Malzeme ihtiyacı ekranındadır.</p>
   <p><label><input asp-for="IsActive" /> Aktif</label></p>
   <div class="admin-actions"><button class="admin-btn">Kaydet</button></div>
 </form></div>

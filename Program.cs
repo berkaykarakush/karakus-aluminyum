@@ -33,6 +33,7 @@ builder.Services.AddScoped<LengthUnits>();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<KarakusAluminyum.Web.Services.Production.OrderService>();
 builder.Services.AddScoped<KarakusAluminyum.Web.Services.Production.ServiceDesk>();
+builder.Services.AddScoped<KarakusAluminyum.Web.Services.Production.MaterialPlanning>();
 builder.Services.AddHttpClient(KarakusAluminyum.Web.Services.Production.PriceLists.TcmbClient, client => client.Timeout = TimeSpan.FromSeconds(15));
 builder.Services.AddScoped<KarakusAluminyum.Web.Services.Documents.DocumentBrandingProvider>();
 builder.Services.AddScoped<DashboardService>();
@@ -94,8 +95,10 @@ builder.Services.AddScoped<KarakusAluminyum.Web.Services.Notifications.IWhatsApp
 builder.Services.AddScoped<KarakusAluminyum.Web.Services.Notifications.NotificationQueue>();
 builder.Services.AddScoped<KarakusAluminyum.Web.Services.Notifications.NotificationDispatcher>();
 if (builder.Configuration.GetValue("Notifications:WorkerEnabled", true)) builder.Services.AddHostedService<KarakusAluminyum.Web.Services.Notifications.NotificationWorker>();
+builder.Services.AddSingleton<KarakusAluminyum.Web.Services.Production.ExchangeRateCache>();
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"), npgsql => npgsql.EnableRetryOnFailure(3)));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"), npgsql => npgsql.EnableRetryOnFailure(3))
+        .AddInterceptors(KarakusAluminyum.Web.Services.Production.ProfileSystemRateInterceptor.Instance));
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
     options.Password.RequiredLength = 8;
@@ -147,6 +150,7 @@ await using (var scope = app.Services.CreateAsyncScope())
 
     // Idempotent CRM/audit DDL, mevcut kurulumlarda geçiş sırasında korunması gereken şemayı ekler.
     await CrmSchemaInitializer.EnsureCreatedAsync(db);
+    await scope.ServiceProvider.GetRequiredService<KarakusAluminyum.Web.Services.Production.ExchangeRateCache>().ReloadAsync(db);
     // Seed, galeriyi adrese göre karşılaştırır; eski adresler önce taşınmalıdır. Görsel hatası sitenin açılmasını engellemez.
     try { await KarakusAluminyum.Web.Services.ImageMigration.RunAsync(db, app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot"), app.Logger); }
     catch (Exception error) when (error is not OperationCanceledException) { app.Logger.LogError(error, "Görsel geçişi tamamlanamadı."); }

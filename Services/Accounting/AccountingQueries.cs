@@ -201,12 +201,46 @@ public sealed class AccountingQueries
         var invoices = await _db.Invoices.AsNoTracking().Where(x => x.ProjectId != null && x.Status == InvoiceStatus.Approved).Select(x => new { ProjectId = x.ProjectId!.Value, x.Kind, x.Net, x.ExchangeRate }).ToListAsync();
         var expenses = (await _db.Expenses.AsNoTracking().Where(x => x.ProjectId != null && !x.IsCancelled).Select(x => new { ProjectId = x.ProjectId!.Value, x.Net }).ToListAsync()).GroupBy(x => x.ProjectId).ToDictionary(g => g.Key, g => g.Sum(x => x.Net));
         var items = (await _db.ProjectCostItems.AsNoTracking().Select(x => new { x.ProjectId, x.Total }).ToListAsync()).GroupBy(x => x.ProjectId).ToDictionary(g => g.Key, g => g.Sum(x => x.Total));
+        var labor = await LaborAsync(projects);
         return projects.Select(p =>
         {
             var own = invoices.Where(x => x.ProjectId == p.Id).Select(x => (x.Kind, Amount: Try(x.Net, x.ExchangeRate))).ToList();
             decimal Side(InvoiceKind main, InvoiceKind back) => own.Where(x => x.Kind == main).Sum(x => x.Amount) - own.Where(x => x.Kind == back).Sum(x => x.Amount);
-            return new ProjectSummary(p, Side(InvoiceKind.Sale, InvoiceKind.SaleReturn), Side(InvoiceKind.Purchase, InvoiceKind.PurchaseReturn) + expenses.GetValueOrDefault(p.Id) + items.GetValueOrDefault(p.Id));
+            return new ProjectSummary(p, Side(InvoiceKind.Sale, InvoiceKind.SaleReturn), Side(InvoiceKind.Purchase, InvoiceKind.PurchaseReturn) + expenses.GetValueOrDefault(p.Id) + items.GetValueOrDefault(p.Id)
+                + labor.GetValueOrDefault(p.Id, new List<ProjectEntry>()).Sum(x => x.Amount));
         }).ToList();
+    }
+
+    // Takvim işçiliği: projenin teklifinden veya sözleşmesinden açılan siparişlere yazılan, gerçekleşmiş adam-gün × günlük maliyet.
+    // Maaşlar şirket kâr-zararında ayrıca gider olduğundan bu yalnızca projeye dağıtımdır.
+    private async Task<Dictionary<int, List<ProjectEntry>>> LaborAsync(IReadOnlyCollection<CostProject> projects)
+    {
+        var quoteIds = projects.Where(x => x.QuoteId != null).Select(x => x.QuoteId!.Value).ToList();
+        var contractIds = projects.Where(x => x.ContractId != null).Select(x => x.ContractId!.Value).ToList();
+        if (quoteIds.Count == 0 && contractIds.Count == 0) return new();
+        var today = KarakusAluminyum.Web.Services.Documents.PrintDates.Today;
+        var logs = await _db.WorkLogs.AsNoTracking().Include(x => x.Employee).Include(x => x.Installer).Include(x => x.ProductionOrder)
+            .Where(x => x.Date <= today && x.ProductionOrder != null && ((x.ProductionOrder.QuoteId != null && quoteIds.Contains(x.ProductionOrder.QuoteId.Value)) || (x.ProductionOrder.ContractId != null && contractIds.Contains(x.ProductionOrder.ContractId.Value))))
+            .ToListAsync();
+        var result = new Dictionary<int, List<ProjectEntry>>();
+        foreach (var project in projects)
+        {
+            var own = logs.Where(x => (project.QuoteId != null && x.ProductionOrder!.QuoteId == project.QuoteId) || (project.ContractId != null && x.ProductionOrder!.ContractId == project.ContractId)).ToList();
+            if (own.Count == 0) continue;
+            result[project.Id] = own.GroupBy(x => KarakusAluminyum.Web.Services.Production.WorkStats.Worker(x).Key).Select(g =>
+            {
+                var first = g.First();
+                var (rate, estimated) = KarakusAluminyum.Web.Services.Production.WorkStats.DailyCost(first);
+                var days = g.Sum(x => x.Days);
+                var orders = string.Join(", ", g.Select(x => x.ProductionOrder!.OrderNumber).Distinct());
+                var name = first.InstallerId is null ? first.Employee?.Name ?? "" : first.Installer?.Name ?? "";
+                var unit = first.InstallerId is null ? "adam-gün" : $"ekip günü ({first.People} kişi)";
+                var note = estimated ? first.InstallerId is null ? " (net maaştan tahmini)" : " (ekip ücreti girilmemiş)" : "";
+                return new ProjectEntry(g.Max(x => x.Date), "Personel takvimi", "İşçilik (takvim)", orders, name,
+                    $"{days.ToString("0.##", TurkishNumbers.Culture)} {unit} × {rate.ToString("N2", TurkishNumbers.Culture)} TL{note}", InvoiceRules.Money(days * rate), "/yonetim/takvim/rapor");
+            }).ToList();
+        }
+        return result;
     }
 
     public async Task<ProjectAnalysis?> ProjectAnalysisAsync(int id)
@@ -228,6 +262,7 @@ public sealed class AccountingQueries
             costs.Add(new ProjectEntry(x.Date, "Gider", x.Category, x.DocumentNumber ?? "", x.Party, x.Description, x.Net, "/yonetim/muhasebe/giderler"));
         foreach (var x in project.Items)
             costs.Add(new ProjectEntry(x.Date, "Elle girilen kalem", AccountingLabels.Label(x.Kind), "", null, $"{x.Description} ({x.Quantity.ToString("0.###", TurkishNumbers.Culture)} {x.Unit} x {x.UnitCost.ToString("N2", TurkishNumbers.Culture)})", x.Total, null, x.Id));
+        costs.AddRange((await LaborAsync(new[] { project })).GetValueOrDefault(project.Id, new List<ProjectEntry>()));
         var drafts = await _db.Invoices.CountAsync(x => x.ProjectId == id && x.Status == InvoiceStatus.Draft);
         var (agreed, source) = project.Contract is { Status: not ContractStatus.Cancelled } contract ? (ProjectRules.ContractNet(contract), $"Sözleşme {contract.ContractNumber}")
             : project.Quote is { Status: not (QuoteStatus.Rejected or QuoteStatus.Expired) } quote ? (quote.GrandTotal - quote.TaxAmount, $"Teklif {quote.QuoteNumber}") : ((decimal?)null, (string?)null);

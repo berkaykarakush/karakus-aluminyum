@@ -5,7 +5,10 @@
     var start = (DateOnly)ViewBag.Start;
     var employees = (List<KarakusAluminyum.Web.Models.Accounting.Employee>)ViewBag.Employees;
     var logs = (List<WorkLog>)ViewBag.Logs;
-    var overbooked = (HashSet<(int, DateOnly)>)ViewBag.Overbooked;
+    var overbooked = (HashSet<(string, DateOnly)>)ViewBag.Overbooked;
+    var teams = (List<Installer>)ViewBag.Teams;
+    var rows = employees.Select(e => (Key: $"e{e.Id}", Query: $"personel={e.Id}", Name: e.Name, Sub: e.Position, Match: (Func<WorkLog, bool>)(l => l.InstallerId == null && l.EmployeeId == e.Id)))
+        .Concat(teams.Select(t => (Key: $"t{t.Id}", Query: $"ekip={t.Id}", Name: t.Name, Sub: (string?)$"{(t.IsSubcontractor ? "Taşeron" : "Montaj ekibi")} · {t.TeamSize} kişi", Match: (Func<WorkLog, bool>)(l => l.InstallerId == t.Id)))).ToList();
     var week = (List<WorkProjectRow>)ViewBag.Week;
     var days = Enumerable.Range(0, 7).Select(start.AddDays).ToList();
     var today = KarakusAluminyum.Web.Services.Documents.PrintDates.Today;
@@ -27,24 +30,24 @@
   @if (start != WorkStats.WeekStart(today)) { <a class="admin-btn admin-btn--secondary" href="/yonetim/takvim">Bu hafta</a> }
   <form method="get" class="admin-actions" style="margin-left:auto"><input type="date" name="hafta" value="@hafta" aria-label="Hafta" onchange="this.form.submit()" /></form>
 </div>
-@if (employees.Count == 0)
+@if (rows.Count == 0)
 {
-  <div class="admin-panel"><p>Takvim için personel kartı gerekir. Personel Muhasebe › Personel bölümünden eklenir.</p></div>
+  <div class="admin-panel"><p>Takvim için personel kartı veya montaj ekibi gerekir. Personel Muhasebe › Personel, ekipler Saha ve servis › Montajcılar bölümünden eklenir.</p></div>
 }
 else
 {
   <div class="admin-panel" style="overflow-x:auto">
     <table class="wc-grid">
-      <thead><tr><th class="wc-name">Personel</th>@foreach (var d in days) { <th class="@(d == today ? "is-today" : "") @(d.DayOfWeek == DayOfWeek.Sunday ? "is-sunday" : "")">@d.ToString("ddd dd.MM", culture)</th> }</tr></thead>
+      <thead><tr><th class="wc-name">Personel / ekip</th>@foreach (var d in days) { <th class="@(d == today ? "is-today" : "") @(d.DayOfWeek == DayOfWeek.Sunday ? "is-sunday" : "")">@d.ToString("ddd dd.MM", culture)</th> }</tr></thead>
       <tbody>
-      @foreach (var e in employees)
+      @foreach (var e in rows)
       {
         <tr>
-          <th class="wc-name" scope="row">@e.Name@if (!string.IsNullOrWhiteSpace(e.Position)) { <div class="admin-muted" style="font-weight:400">@e.Position</div> }</th>
+          <th class="wc-name" scope="row">@e.Name@if (!string.IsNullOrWhiteSpace(e.Sub)) { <div class="admin-muted" style="font-weight:400">@e.Sub</div> }</th>
           @foreach (var d in days)
           {
-            var cell = logs.Where(x => x.EmployeeId == e.Id && x.Date == d).ToList();
-            <td class="@(d == today ? "is-today" : "") @(d.DayOfWeek == DayOfWeek.Sunday ? "is-sunday" : "") @(overbooked.Contains((e.Id, d)) ? "is-over" : "")" title="@(overbooked.Contains((e.Id, d)) ? "Bu güne 1 günden fazla iş yazılmış" : "")">
+            var cell = logs.Where(x => e.Match(x) && x.Date == d).ToList();
+            <td class="@(d == today ? "is-today" : "") @(d.DayOfWeek == DayOfWeek.Sunday ? "is-sunday" : "") @(overbooked.Contains((e.Key, d)) ? "is-over" : "")" title="@(overbooked.Contains((e.Key, d)) ? "Bu güne 1 günden fazla iş yazılmış" : "")">
               @foreach (var l in cell)
               {
                 var target = WorkStats.Target(l);
@@ -53,7 +56,7 @@ else
                   <form method="post" action="/yonetim/takvim/sil/@l.Id" onsubmit="return confirm('Kayıt silinsin mi?')">@Html.AntiForgeryToken()<button aria-label="Kaydı sil" title="Sil">×</button></form>
                 </div>
               }
-              <a class="wc-add" href="/yonetim/takvim/ekle?personel=@e.Id&tarih=@Iso(d)&hafta=@hafta" aria-label="@e.Name, @d.ToString("dd.MM") için ekle">+ ekle</a>
+              <a class="wc-add" href="/yonetim/takvim/ekle?@e.Query&tarih=@Iso(d)&hafta=@hafta" aria-label="@e.Name, @d.ToString("dd.MM") için ekle">+ ekle</a>
             </td>
           }
         </tr>
