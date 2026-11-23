@@ -150,6 +150,7 @@ public sealed class ServiceController : Controller
         var request = await LoadAsync(requestId);
         if (request is null) return NotFound();
         ViewBag.Request = request;
+        await LoadParts();
         return View("VisitEditor", new ServiceVisitInputVm { Date = request.PlannedOn ?? KarakusAluminyum.Web.Services.Documents.PrintDates.Today, Technicians = request.Installer?.Name });
     }
 
@@ -159,24 +160,37 @@ public sealed class ServiceController : Controller
         var request = await _db.ServiceRequests.FirstOrDefaultAsync(x => x.Id == requestId);
         if (request is null) return NotFound();
         if (request.Status == ServiceStatus.Cancelled) ModelState.AddModelError(string.Empty, "İptal edilen talebe servis formu eklenemez.");
-        var parts = input.Parts.Where(x => !string.IsNullOrWhiteSpace(x.Description)).ToList();
+        var parts = input.Parts.Where(x => !string.IsNullOrWhiteSpace(x.Description) || x.ProductId is > 0).ToList();
+        var productIds = parts.Where(x => x.ProductId is > 0).Select(x => x.ProductId!.Value).Distinct().ToList();
+        var products = await _db.Products.Where(x => productIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id);
+        if (products.Count != productIds.Count) ModelState.AddModelError(string.Empty, "Parçalardaki stok kartlarından biri bulunamadı.");
         foreach (var (part, i) in parts.Select((p, i) => (p, i + 1)))
             if (part.Quantity <= 0 || part.UnitPrice < 0) ModelState.AddModelError(string.Empty, $"Parça satırı {i}: miktar 0'dan büyük, fiyat negatif olmamalı.");
         if (input.ArrivedAt is TimeOnly a && input.LeftAt is TimeOnly l && l < a) ModelState.AddModelError(nameof(input.LeftAt), "Çıkış saati varış saatinden önce olamaz.");
         if (!Enum.IsDefined(input.Result)) ModelState.AddModelError(nameof(input.Result), "Geçersiz sonuç.");
-        if (!ModelState.IsValid) { ViewBag.Request = await LoadAsync(requestId); return View("VisitEditor", input); }
+        if (!ModelState.IsValid) { ViewBag.Request = await LoadAsync(requestId); await LoadParts(); return View("VisitEditor", input); }
+        Product? Card(ServicePartInput p) => p.ProductId is int id ? products.GetValueOrDefault(id) : null;
 
         var visit = new ServiceVisit
         {
             Number = await _desk.NextVisitNumberAsync(input.Date), ServiceRequestId = requestId, Date = input.Date, ArrivedAt = input.ArrivedAt, LeftAt = input.LeftAt,
             Technicians = input.Technicians?.Trim(), Findings = input.Findings?.Trim(), WorkDone = input.WorkDone.Trim(), Result = input.Result,
             LaborCharge = input.LaborCharge, CustomerNote = input.CustomerNote?.Trim(),
-            Parts = parts.Select((p, i) => new ServicePart { SortOrder = i, Description = p.Description!.Trim(), Quantity = p.Quantity, Unit = string.IsNullOrWhiteSpace(p.Unit) ? "Adet" : p.Unit.Trim(), UnitPrice = p.UnitPrice }).ToList()
+            Parts = parts.Select((p, i) => new ServicePart
+            {
+                SortOrder = i, ProductId = Card(p)?.Id, Description = string.IsNullOrWhiteSpace(p.Description) ? Card(p)!.Name : p.Description.Trim(), Quantity = p.Quantity,
+                Unit = string.IsNullOrWhiteSpace(p.Unit) ? Card(p)?.Unit ?? "Adet" : p.Unit.Trim(), UnitPrice = p.UnitPrice
+            }).ToList()
         };
         _db.ServiceVisits.Add(visit);
         ServiceDesk.ApplyVisit(request, visit);
         await _desk.RecordOnOrderAsync(request.ProductionOrderId, $"Servis formu {visit.Number} ({request.Number}): {ServiceLabels.Label(visit.Result)}.", UserName);
         await _db.SaveChangesAsync();
+        // Stok kartlı parçalar ziyaret tarihiyle stoktan düşer (faturaya stok kartı bağlanmaz, yoksa onayda ikinci kez düşerdi).
+        var used = visit.Parts.Where(p => p.ProductId is int id && products[id].Kind == ProductKind.Stock).ToList();
+        foreach (var part in used)
+            _db.StockMovements.Add(new StockMovement { ProductId = part.ProductId!.Value, Date = visit.Date, Kind = StockMovementKind.ServiceUse, Quantity = -part.Quantity, ServiceVisitId = visit.Id, Note = $"Servis: {visit.Number}" });
+        if (used.Count > 0) await _db.SaveChangesAsync();
         await _audit.RecordAsync("create", "ServiceVisit", visit.Id.ToString(), visit.Number);
         TempData["Notice"] = $"Servis formu {visit.Number} kaydedildi. Talep: {ServiceLabels.Label(request.Status)}.";
         return RedirectToAction(nameof(Details), new { id = requestId });
@@ -188,6 +202,16 @@ public sealed class ServiceController : Controller
         var visit = await _db.ServiceVisits.Include(x => x.ServiceRequest).ThenInclude(x => x!.Visits).FirstOrDefaultAsync(x => x.Id == id);
         if (visit is null) return NotFound();
         var request = visit.ServiceRequest!;
+        if (visit.InvoiceId is int invoiceId && await _db.Invoices.AnyAsync(x => x.Id == invoiceId && x.Status != InvoiceStatus.Cancelled))
+        {
+            TempData["Notice"] = "Faturası açılmış servis formu silinemez; önce faturayı silin veya iptal edin.";
+            return RedirectToAction(nameof(Details), new { id = request.Id });
+        }
+        // Düşülen parçalar stoğa geri yazılır; geçmiş silinmez.
+        var net = (await _db.StockMovements.AsNoTracking().Where(x => x.ServiceVisitId == id).Select(x => new { x.ProductId, x.Quantity }).ToListAsync())
+            .GroupBy(x => x.ProductId).Select(g => (ProductId: g.Key, Quantity: g.Sum(x => x.Quantity))).Where(x => x.Quantity != 0);
+        foreach (var (productId, quantity) in net)
+            _db.StockMovements.Add(new StockMovement { ProductId = productId, Date = KarakusAluminyum.Web.Services.Documents.PrintDates.Today, Kind = StockMovementKind.ServiceReturn, Quantity = -quantity, Note = $"Servis formu silindi: {visit.Number}" });
         _db.ServiceVisits.Remove(visit);
         // Talebin durumu kalan son ziyarete göre yeniden belirlenir.
         var last = request.Visits.Where(x => x.Id != id).OrderByDescending(x => x.Date).ThenByDescending(x => x.Id).FirstOrDefault();
@@ -198,6 +222,49 @@ public sealed class ServiceController : Controller
         TempData["Notice"] = "Servis formu silindi.";
         return RedirectToAction(nameof(Details), new { id = request.Id });
     }
+
+    // Ücretli servis: parçalar ve işçilik taslak satış faturası olur. Satırlar stok kartına bağlanmaz (parça ziyarette düşüldü).
+    [HttpPost("fatura/{visitId:int}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateInvoice(int visitId)
+    {
+        var visit = await _db.ServiceVisits.Include(x => x.Parts).Include(x => x.ServiceRequest).FirstOrDefaultAsync(x => x.Id == visitId);
+        if (visit is null) return NotFound();
+        var request = visit.ServiceRequest!;
+        if (visit.InvoiceId is int existing && await _db.Invoices.AnyAsync(x => x.Id == existing && x.Status != InvoiceStatus.Cancelled))
+        {
+            TempData["Notice"] = "Bu servis formunun faturası zaten açılmış.";
+            return RedirectToAction(nameof(Details), new { id = request.Id });
+        }
+        var productIds = visit.Parts.Where(x => x.ProductId != null).Select(x => x.ProductId!.Value).ToList();
+        var vat = await _db.Products.Where(x => productIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id, x => x.VatRate);
+        var lines = visit.Parts.Where(p => p.UnitPrice > 0).OrderBy(p => p.SortOrder)
+            .Select(p => (Description: p.Description, p.Quantity, p.Unit, p.UnitPrice, Vat: p.ProductId is int id ? vat.GetValueOrDefault(id, 20m) : 20m)).ToList();
+        if (visit.LaborCharge > 0) lines.Add(("Servis işçiliği", 1, "Hizmet", visit.LaborCharge, 20m));
+        if (lines.Count == 0)
+        {
+            TempData["Notice"] = "Bu servis formunda ücretli kalem yok.";
+            return RedirectToAction(nameof(Details), new { id = request.Id });
+        }
+        var today = KarakusAluminyum.Web.Services.Documents.PrintDates.Today;
+        var invoice = new Invoice
+        {
+            Kind = InvoiceKind.Sale, Status = InvoiceStatus.Draft, CustomerId = request.CustomerId, Date = today, DueDate = today.AddDays(15), Currency = "TRY", ExchangeRate = 1,
+            Notes = $"Servis: {request.Number} / {visit.Number} ({visit.Date:dd.MM.yyyy})."
+        };
+        invoice.Lines.AddRange(lines.Select((l, i) => new InvoiceLine { SortOrder = i, Description = l.Description, Quantity = l.Quantity, Unit = l.Unit, UnitPrice = l.UnitPrice, VatRate = l.Vat }));
+        KarakusAluminyum.Web.Services.Accounting.InvoiceRules.Calculate(invoice);
+        _db.Invoices.Add(invoice);
+        await _db.SaveChangesAsync();
+        visit.InvoiceId = invoice.Id;
+        await _desk.RecordOnOrderAsync(request.ProductionOrderId, $"Servis formu {visit.Number} için satış faturası taslağı açıldı.", UserName);
+        await _db.SaveChangesAsync();
+        await _audit.RecordAsync("create", "Invoice", invoice.Id.ToString(), $"Servis {visit.Number}");
+        TempData["Notice"] = $"Taslak satış faturası açıldı ({lines.Count} kalem, {invoice.GrandTotal:#,0.00} TL). Muhasebede onaylanınca kesinleşir."
+            + (request.Warranty == ServiceWarranty.InWarranty ? " Not: talep garanti kapsamında işaretli." : "");
+        return RedirectToAction(nameof(Details), new { id = request.Id });
+    }
+
+    private async Task LoadParts() => ViewBag.Products = await _db.Products.AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.Code).ThenBy(x => x.Name).ToListAsync();
 
     // ---- Çıktılar ----
 

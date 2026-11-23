@@ -960,8 +960,10 @@ public sealed class AccountingFlowTests(PostgresFixture postgres)
                 db.Customers.Add(new Customer { Name = "Eski müşteri" });
                 await db.SaveChangesAsync();
                 await db.Database.ExecuteSqlRawAsync("""
-                    DROP TABLE "PaymentAllocations"; DROP TABLE "CashTransactions"; DROP TABLE "Cheques"; DROP TABLE "Expenses"; DROP TABLE "ExpenseCategories"; DROP TABLE "StockMovements"; DROP TABLE "InvoiceLines"; DROP TABLE "Invoices";
-                    DROP TABLE IF EXISTS "WorkLogs", "ServiceParts", "ServiceVisits", "ServiceRequests", "ProductionScans", "DeliveryNoteLines", "DeliveryNotes", "OrderEvents", "ProductionOrders", "Installers";
+                    DROP TABLE "PaymentAllocations"; DROP TABLE "CashTransactions"; DROP TABLE "Cheques"; DROP TABLE "Expenses"; DROP TABLE "ExpenseCategories"; DROP TABLE "StockMovements";
+                    DROP TABLE IF EXISTS "WorkLogs", "ServiceParts", "ServiceVisits", "ServiceRequests"; -- servis tabloları fatura ve stok kartına bağlı
+                    DROP TABLE "InvoiceLines"; DROP TABLE "Invoices";
+                    DROP TABLE IF EXISTS "ProductionScans", "DeliveryNoteLines", "DeliveryNotes", "OrderEvents", "ProductionOrders", "Installers";
                     DROP TABLE "ProjectCostItems"; DROP TABLE "CostProjects";
                     DROP TABLE "Products"; DROP TABLE "FinanceAccounts"; DROP TABLE "Employees"; DROP TABLE "CariAdjustments"; DROP TABLE "AccountingSequences";
                     ALTER TABLE "Customers" DROP COLUMN "PartyType";

@@ -5,6 +5,7 @@
     ViewData["Title"] = "Servis formu: " + request.Number;
     var rows = Math.Max(4, Model.Parts.Count + 2);
     string F(decimal v) => v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+    var products = (List<KarakusAluminyum.Web.Models.Accounting.Product>)ViewBag.Products;
 }
 <h1>Servis formu · @request.Number</h1>
 <p class="admin-muted">@request.Customer?.Name · @request.Category · @ServiceLabels.Label(request.Warranty)</p>
@@ -23,12 +24,13 @@
     <label asp-for="WorkDone">Yapılan işlem</label><textarea asp-for="WorkDone" rows="3" required></textarea>
     <h2>Kullanılan parçalar</h2>
     <table class="admin-table">
-      <thead><tr><th>Açıklama</th><th style="width:110px">Miktar</th><th style="width:110px">Birim</th><th style="width:150px">Birim fiyat (₺, KDV hariç)</th></tr></thead>
+      <thead><tr><th style="width:240px">Stok kartı</th><th>Açıklama</th><th style="width:110px">Miktar</th><th style="width:110px">Birim</th><th style="width:150px">Birim fiyat (₺, KDV hariç)</th></tr></thead>
       <tbody>
       @for (var i = 0; i < rows; i++)
       {
         var p = i < Model.Parts.Count ? Model.Parts[i] : new ServicePartInput();
         <tr>
+          <td><select name="Parts[@i].ProductId" aria-label="Stok kartı" data-part-product><option value="">Serbest satır</option>@foreach (var pr in products) { <option value="@pr.Id" data-name="@pr.Name" data-unit="@pr.Unit" data-price="@F(pr.SalePrice)" selected="@(p.ProductId == pr.Id)">@(string.IsNullOrWhiteSpace(pr.Code) ? "" : pr.Code + " · ")@pr.Name</option> }</select></td>
           <td><input name="Parts[@i].Description" value="@p.Description" aria-label="Parça açıklaması" maxlength="200" /></td>
           <td><input name="Parts[@i].Quantity" type="number" step="any" min="0" value="@F(p.Quantity)" aria-label="Miktar" /></td>
           <td><input name="Parts[@i].Unit" value="@(p.Unit ?? "Adet")" aria-label="Birim" maxlength="20" /></td>
@@ -43,7 +45,20 @@
     </div>
     @if (request.Warranty == ServiceWarranty.InWarranty) { <p class="admin-muted">Talep garanti kapsamında; ücret girmeyin.</p> }
     <label asp-for="CustomerNote">Müşteri görüşü</label><textarea asp-for="CustomerNote" rows="2"></textarea>
+    <p class="admin-muted">Stok kartından seçilen parçalar kaydedince stoktan düşer; servis formu silinirse stoğa geri yazılır.</p>
     <p class="admin-muted">"Sorun giderildi" seçilirse talep tamamlanır; diğer sonuçlarda talep yeni ziyaret için açık kalır.</p>
     <div class="admin-actions"><button class="admin-btn">Kaydet</button><a href="/yonetim/servis/detay/@request.Id">İptal</a></div>
   </form>
 </div>
+<script>
+  // Stok kartı seçilince boş açıklama, birim ve fiyat karttan dolar (garantide fiyat elle 0 yapılabilir).
+  document.querySelectorAll('[data-part-product]').forEach(select => select.addEventListener('change', () => {
+    const option = select.selectedOptions[0], row = select.closest('tr');
+    if (!option.value) return;
+    const description = row.querySelector('[name$=".Description"]');
+    if (!description.value) description.value = option.dataset.name;
+    row.querySelector('[name$=".Unit"]').value = option.dataset.unit;
+    const price = row.querySelector('[name$=".UnitPrice"]');
+    if (!price.value || price.value === '0') price.value = option.dataset.price;
+  }));
+</script>

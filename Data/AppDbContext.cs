@@ -171,6 +171,9 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<ServiceRequest>().HasOne(x => x.Installer).WithMany().HasForeignKey(x => x.InstallerId).OnDelete(DeleteBehavior.SetNull);
         builder.Entity<ServiceVisit>().HasIndex(x => x.Number).IsUnique();
         builder.Entity<ServiceVisit>().HasOne(x => x.ServiceRequest).WithMany(x => x.Visits).HasForeignKey(x => x.ServiceRequestId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<StockMovement>().HasOne<ServiceVisit>().WithMany().HasForeignKey(x => x.ServiceVisitId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<ServiceVisit>().HasOne<KarakusAluminyum.Web.Models.Accounting.Invoice>().WithMany().HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<ServicePart>().HasOne<KarakusAluminyum.Web.Models.Accounting.Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.SetNull);
         builder.Entity<ServicePart>().HasOne(x => x.ServiceVisit).WithMany(x => x.Parts).HasForeignKey(x => x.ServiceVisitId).OnDelete(DeleteBehavior.Cascade);
         builder.Entity<LabelPrinter>().Property(x => x.GapMm).HasColumnType("numeric(5,2)");
         builder.Entity<ExchangeRate>().HasIndex(x => new { x.Currency, x.Date }).IsUnique();
