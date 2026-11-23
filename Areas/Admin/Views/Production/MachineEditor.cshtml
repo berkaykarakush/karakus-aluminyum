@@ -1,0 +1,41 @@
+@model KarakusAluminyum.Web.Models.Production.MachineExportProfile
+@using KarakusAluminyum.Web.Models.Production
+@{
+    var editing = Model.Id != 0;
+    ViewData["Title"] = editing ? "Makineyi düzenle" : "Yeni kesim makinesi";
+    var action = editing ? $"/yonetim/uretim/makineler/duzenle/{Model.Id}" : "/yonetim/uretim/makineler/ekle";
+    var columns = KarakusAluminyum.Web.Services.Production.MachineExport.Columns(Model.Columns);
+}
+<h1>@ViewData["Title"]</h1>
+<div class="admin-panel">
+  <form class="admin-form" method="post" action="@action">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="All"></div>
+    <label asp-for="Name">Makine adı</label><input asp-for="Name" required placeholder="Ör. Özgenç çift kafa testere" />
+    <div class="admin-grid">
+      <div><label asp-for="Delimiter">Ayraç</label><select asp-for="Delimiter"><option value=";">Noktalı virgül (;)</option><option value=",">Virgül (,)</option><option value="tab">Sekme</option><option value="|">Dikey çizgi (|)</option></select></div>
+      <div><label asp-for="DecimalSeparator">Ondalık işareti</label><select asp-for="DecimalSeparator"><option value=",">Virgül (1250,5)</option><option value=".">Nokta (1250.5)</option></select></div>
+      <div><label asp-for="LengthDecimals">Ölçü ondalık basamağı</label><input asp-for="LengthDecimals" type="number" min="0" max="3" /></div>
+      <div><label asp-for="Encoding">Karakter kodlaması</label><select asp-for="Encoding"><option value="utf-8">UTF-8</option><option value="utf-8-bom">UTF-8 (BOM'lu, Excel)</option><option value="windows-1254">Windows-1254 (Türkçe, eski yazılımlar)</option></select></div>
+      <div><label asp-for="Extension">Dosya uzantısı</label><input asp-for="Extension" placeholder="csv" /></div>
+    </div>
+    <p><label><input asp-for="HeaderRow" type="checkbox" style="width:auto" /> İlk satırda sütun başlıkları</label></p>
+    <p><label><input asp-for="OneRowPerPiece" type="checkbox" style="width:auto" /> Her parça ayrı satır (kapalıysa aynı boydaki aynı parçalar adetle tek satır)</label></p>
+    <p><label><input asp-for="AsciiOnly" type="checkbox" style="width:auto" /> Türkçe karakterleri sadeleştir (ç → c, ş → s)</label></p>
+    <h2>Sütunlar</h2>
+    <p class="admin-muted">Dosyada yer alacak sütunlara sıra numarası verin; boş bırakılan sütun yazılmaz.</p>
+    <table class="admin-table">
+      <thead><tr><th>Alan</th><th style="width:120px">Sıra</th></tr></thead>
+      <tbody>
+      @foreach (var (key, label) in MachineExportFields.All)
+      {
+        var index = columns.IndexOf(key);
+        <tr><td>@label</td><td><input name="col_@key" type="number" min="1" max="50" value="@(index >= 0 ? (index + 1).ToString() : "")" aria-label="@label sırası" /></td></tr>
+      }
+      </tbody>
+    </table>
+    <label asp-for="Notes">Not</label><textarea asp-for="Notes" rows="2"></textarea>
+    <p><label><input asp-for="IsActive" type="checkbox" style="width:auto" /> Aktif</label></p>
+    <div class="admin-actions"><button class="admin-btn">Kaydet</button><a href="/yonetim/uretim/makineler">İptal</a></div>
+  </form>
+</div>

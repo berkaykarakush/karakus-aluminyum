@@ -108,6 +108,109 @@ public sealed class ProductionController : Controller
         return $"{label}: {ProductionStations.Label(station)} kaydedildi.{extra}";
     }
 
+    // ---- Kesim makinesi aktarımı ----
+
+    [HttpGet("kesim-aktarimi/{id:int}")]
+    public async Task<IActionResult> MachineExportPage(int id, int? makine)
+    {
+        var order = await _db.ProductionOrders.AsNoTracking().Include(x => x.Customer).FirstOrDefaultAsync(x => x.Id == id);
+        if (order is null) return NotFound();
+        var profiles = await _db.MachineExportProfiles.AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.Name).ToListAsync();
+        var (pieces, warnings) = await PiecesAsync(order);
+        ViewBag.Profiles = profiles;
+        ViewBag.Profile = profiles.FirstOrDefault(x => x.Id == makine) ?? profiles.FirstOrDefault();
+        ViewBag.Pieces = pieces;
+        ViewBag.Warnings = warnings;
+        return View("MachineExport", order);
+    }
+
+    [HttpGet("kesim-dosyasi/{id:int}")]
+    public async Task<IActionResult> MachineFile(int id, int makine)
+    {
+        var order = await _db.ProductionOrders.AsNoTracking().Include(x => x.Customer).FirstOrDefaultAsync(x => x.Id == id);
+        var profile = await _db.MachineExportProfiles.AsNoTracking().FirstOrDefaultAsync(x => x.Id == makine);
+        if (order is null || profile is null) return NotFound();
+        var (pieces, warnings) = await PiecesAsync(order);
+        if (pieces.Count == 0) { TempData["Notice"] = "Aktarılacak kesim parçası yok."; return RedirectToAction(nameof(MachineExportPage), new { id, makine }); }
+        var file = MachineExport.Build(profile, order, pieces, warnings);
+        await _audit.RecordAsync("export", "ProductionOrder", id.ToString(), $"{order.OrderNumber}: {profile.Name} ({file.Rows} satır)");
+        return File(file.Content, "text/plain", file.FileName);
+    }
+
+    private async Task<(List<MachinePiece>, List<string>)> PiecesAsync(ProductionOrder order)
+    {
+        var designs = await DesignsAsync(order);
+        var productIds = designs.Where(x => x.ProfileSystem is not null).SelectMany(x => MaterialTakeoff.ParseRules(x.ProfileSystem!.MaterialsJson).Select(r => r.ProductId)).Distinct().ToList();
+        var products = await _db.Products.AsNoTracking().Where(x => productIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id);
+        return MachineExport.Pieces(order, designs, products);
+    }
+
+    [HttpGet("makineler")]
+    public async Task<IActionResult> Machines() => View(await _db.MachineExportProfiles.AsNoTracking().OrderByDescending(x => x.IsActive).ThenBy(x => x.Name).ToListAsync());
+
+    [HttpGet("makineler/ekle")]
+    public IActionResult CreateMachine() => View("MachineEditor", new MachineExportProfile());
+
+    [HttpPost("makineler/ekle"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateMachine(MachineExportProfile input)
+    {
+        input.Id = 0;
+        if (!PrepareMachine(input)) return View("MachineEditor", input);
+        _db.MachineExportProfiles.Add(input);
+        await _db.SaveChangesAsync();
+        await _audit.RecordAsync("create", "MachineExportProfile", input.Id.ToString(), input.Name);
+        return RedirectToAction(nameof(Machines));
+    }
+
+    [HttpGet("makineler/duzenle/{id:int}")]
+    public async Task<IActionResult> EditMachine(int id)
+    {
+        var row = await _db.MachineExportProfiles.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+        return row is null ? NotFound() : View("MachineEditor", row);
+    }
+
+    [HttpPost("makineler/duzenle/{id:int}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditMachine(int id, MachineExportProfile input)
+    {
+        if (!await _db.MachineExportProfiles.AnyAsync(x => x.Id == id)) return NotFound();
+        input.Id = id;
+        if (!PrepareMachine(input)) return View("MachineEditor", input);
+        _db.MachineExportProfiles.Update(input);
+        await _db.SaveChangesAsync();
+        await _audit.RecordAsync("update", "MachineExportProfile", id.ToString(), input.Name);
+        return RedirectToAction(nameof(Machines));
+    }
+
+    [HttpPost("makineler/sil/{id:int}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteMachine(int id)
+    {
+        var row = await _db.MachineExportProfiles.FindAsync(id);
+        if (row is null) return NotFound();
+        _db.MachineExportProfiles.Remove(row);
+        await _db.SaveChangesAsync();
+        await _audit.RecordAsync("delete", "MachineExportProfile", id.ToString(), row.Name);
+        return RedirectToAction(nameof(Machines));
+    }
+
+    // Sütunlar formda alan başına sıra numarasıyla gelir (col_length=3); boş olanlar dosyaya yazılmaz.
+    private bool PrepareMachine(MachineExportProfile input)
+    {
+        var ordered = MachineExportFields.All
+            .Select(f => (f.Key, Order: int.TryParse(Request.Form[$"col_{f.Key}"], out var n) ? n : 0))
+            .Where(x => x.Order > 0).OrderBy(x => x.Order).Select(x => x.Key).ToList();
+        if (Request.HasFormContentType && Request.Form.Keys.Any(k => k.StartsWith("col_"))) input.Columns = string.Join(",", ordered);
+        ModelState.Remove(nameof(input.Columns));
+        if (MachineExport.Columns(input.Columns).Count == 0) ModelState.AddModelError(nameof(input.Columns), "En az bir sütun seçin.");
+        if (input.Delimiter is not (";" or "," or "tab" or "|")) ModelState.AddModelError(nameof(input.Delimiter), "Ayraç ; , | veya sekme olabilir.");
+        if (input.DecimalSeparator is not ("," or ".")) ModelState.AddModelError(nameof(input.DecimalSeparator), "Ondalık işareti virgül veya nokta olabilir.");
+        if (input.Delimiter == input.DecimalSeparator) ModelState.AddModelError(nameof(input.Delimiter), "Ayraç ile ondalık işareti aynı olamaz.");
+        if (!MachineExportFields.Encodings.Contains(input.Encoding)) ModelState.AddModelError(nameof(input.Encoding), "Geçersiz karakter kodlaması.");
+        input.Extension = string.IsNullOrWhiteSpace(input.Extension) ? "csv" : new string(input.Extension.Trim().TrimStart('.').Where(char.IsLetterOrDigit).ToArray());
+        if (input.Extension.Length == 0) input.Extension = "csv";
+        input.Name = input.Name?.Trim() ?? "";
+        return ModelState.IsValid;
+    }
+
     private async Task<List<WindowDesign>> DesignsAsync(ProductionOrder order) => order.DrawingListId is int listId
         ? await _db.WindowDesigns.AsNoTracking().Include(x => x.ProfileSystem).Where(x => x.DrawingListId == listId).OrderBy(x => x.SortOrder).ThenBy(x => x.Id).ToListAsync()
         : new List<WindowDesign>();

@@ -24,7 +24,7 @@
   <a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler">Siparişler</a>
   <a class="admin-btn" href="/yonetim/siparisler/duzenle/@Model.Id">Düzenle</a>
   <a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler/is-emri/@Model.Id" target="_blank" rel="noopener">İş emri</a>
-  @if (Model.DrawingListId is not null) { <a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler/metraj/@Model.Id">Metraj ve stok</a> <a class="admin-btn admin-btn--secondary" href="/yonetim/uretim/etiketler/@Model.Id" target="_blank" rel="noopener">Etiketler</a> }
+  @if (Model.DrawingListId is not null) { <a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler/metraj/@Model.Id">Metraj ve stok</a> <a class="admin-btn admin-btn--secondary" href="/yonetim/uretim/etiketler/@Model.Id" target="_blank" rel="noopener">Etiketler</a> <a class="admin-btn admin-btn--secondary" href="/yonetim/uretim/kesim-aktarimi/@Model.Id">Kesim aktarımı</a> }
   @if (systemIds.Count > 0) { <form method="post" action="/yonetim/siparisler/kesime-gonder/@Model.Id">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--secondary" title="Kesim planını açar ve siparişi kesime gönderildi olarak işaretler">Kesime gönder</button></form> }
   @if (!closed && progress.Any(p => p.Remaining > 0)) { <a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler/irsaliye/ekle/@Model.Id">İrsaliye kes</a> }
   <a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler/teslim-tutanagi/@Model.Id" target="_blank" rel="noopener">Teslim tutanağı</a>

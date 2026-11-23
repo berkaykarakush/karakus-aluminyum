@@ -90,6 +90,42 @@ public sealed class ProductionScan
     [StringLength(160)] public string? User { get; set; }
 }
 
+// Kesim makinesine (CNC / çift kafa testere) aktarılan kesim listesinin biçimi. Her makinenin beklediği sütunlar burada ayarlanır.
+public sealed class MachineExportProfile
+{
+    public int Id { get; set; }
+    [Required(ErrorMessage = "Makine adı yazın."), StringLength(120)] public string Name { get; set; } = "";
+    [StringLength(4)] public string Delimiter { get; set; } = ";"; // ";", ",", "tab"
+    [StringLength(1)] public string DecimalSeparator { get; set; } = ",";
+    [StringLength(20)] public string Encoding { get; set; } = MachineExportFields.Utf8;
+    [StringLength(10)] public string Extension { get; set; } = "csv";
+    public bool HeaderRow { get; set; } = true;
+    public bool AsciiOnly { get; set; } // eski makineler için Türkçe karakterleri sadeleştirir (ç → c)
+    public bool OneRowPerPiece { get; set; } = true; // kapalıysa aynı boydaki aynı parçalar tek satırda adetle yazılır
+    [Range(0, 3)] public int LengthDecimals { get; set; } = 1;
+    [Required, StringLength(400)] public string Columns { get; set; } = "bar,profileCode,profile,length,angleLeft,angleRight,quantity,pos,part,barcode";
+    [StringLength(500)] public string? Notes { get; set; }
+    public bool IsActive { get; set; } = true;
+}
+
+public static class MachineExportFields
+{
+    public const string Utf8 = "utf-8";
+    public const string Utf8Bom = "utf-8-bom";
+    public const string Windows1254 = "windows-1254";
+    public static readonly string[] Encodings = { Utf8, Utf8Bom, Windows1254 };
+
+    public static readonly (string Key, string Label)[] All =
+    {
+        ("row", "Sıra no"), ("order", "Sipariş no"), ("customer", "Müşteri"), ("bar", "Boy no"), ("barLength", "Boy uzunluğu"),
+        ("profileCode", "Profil kodu (stok kartı)"), ("profile", "Profil"), ("part", "Parça adı"), ("length", "Kesim ölçüsü (mm)"),
+        ("angleLeft", "Sol açı"), ("angleRight", "Sağ açı"), ("quantity", "Adet"), ("pos", "Poz no"), ("posName", "Poz adı"),
+        ("unit", "Poz adedi (n/toplam)"), ("color", "Renk"), ("barcode", "Barkod (parça etiketi)"), ("system", "Seri")
+    };
+
+    public static string Label(string key) => All.FirstOrDefault(x => x.Key == key).Label ?? key;
+}
+
 public static class ProductionStations
 {
     public const string Cutting = "cut";

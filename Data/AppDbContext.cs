@@ -52,6 +52,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<GlassListItem> GlassListItems => Set<GlassListItem>();
     public DbSet<ProductionOrder> ProductionOrders => Set<ProductionOrder>();
     public DbSet<ProductionScan> ProductionScans => Set<ProductionScan>();
+    public DbSet<MachineExportProfile> MachineExportProfiles => Set<MachineExportProfile>();
     public DbSet<OrderEvent> OrderEvents => Set<OrderEvent>();
     public DbSet<Installer> Installers => Set<Installer>();
     public DbSet<DeliveryNote> DeliveryNotes => Set<DeliveryNote>();
