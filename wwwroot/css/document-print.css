@@ -95,3 +95,12 @@ body.doc--proforma{font-family:Arial,Helvetica,sans-serif;font-size:10pt;line-he
   .doc--proforma .doc-print-foot{right:15mm;left:15mm}
   .doc-print-foot .doc-foot{visibility:visible;height:auto}
 }
+/* Servis formları: sahada elle doldurulan kutular */
+.sv-section{margin:4mm 0;break-inside:avoid}
+.sv-section h3{margin:0 0 1.5mm;font-size:11pt}
+.sv-box{min-height:22mm;padding:2mm;border:1px solid #444;white-space:pre-wrap}
+.sv-box--tall{min-height:34mm}
+.sv-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(40mm,1fr));gap:3mm}
+.sv-field{padding:1.5mm 0;border-bottom:1px solid #444}
+.sv-field span{font-size:9pt;color:#444;display:block}
+.sv-check{margin-right:5mm;white-space:nowrap}

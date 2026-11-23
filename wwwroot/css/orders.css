@@ -1,9 +1,9 @@
 /* Üretim siparişleri (Ercom sipariş formu) */
 .or-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
 .or-tabs a{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;font-size:13px;font-weight:600;color:var(--ink);text-decoration:none;background:#fff;border:1px solid var(--line);border-radius:8px}
-.or-tabs a.is-active{color:#fff;background:#2463eb;border-color:#2463eb}
+.or-tabs a.is-active{color:#fff;background:var(--blue,#245a7a);border-color:var(--blue,#245a7a)}
 .or-tabs b{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 5px;font-size:11px;color:#34435c;background:#eef2f8;border-radius:10px}
-.or-tabs a.is-active b{color:#2463eb;background:#fff}
+.or-tabs a.is-active b{color:var(--blue,#245a7a);background:#fff}
 .or-status{display:inline-block;padding:2px 8px;font-size:12px;font-weight:700;border-radius:999px;white-space:nowrap;background:#eef2f8;color:#34435c}
 .or-status--0,.or-status--1{background:#fff4dc;color:#7a5200}
 .or-status--2{background:#e4edff;color:#1d4fb8}
@@ -19,7 +19,7 @@
 .or-steps li{flex:1 1 120px}
 .or-steps button{width:100%;padding:10px 6px;font-size:12px;font-weight:700;color:#34435c;background:#f4f7fb;border:1px solid var(--line);border-radius:8px;cursor:pointer}
 .or-steps .is-done button{color:#1f6b35;background:#e8f6ee;border-color:#9fd5b4}
-.or-steps .is-current button{color:#fff;background:#2463eb;border-color:#2463eb;cursor:default}
+.or-steps .is-current button{color:#fff;background:var(--blue,#245a7a);border-color:var(--blue,#245a7a);cursor:default}
 .or-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;align-items:start}
 .or-grid .admin-panel{margin:0}
 .or-dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0;font-size:14px}
@@ -35,7 +35,7 @@
 .or-timeline time{display:block;font-size:11px;color:var(--muted)}
 .or-week{display:grid;grid-template-columns:150px minmax(0,1fr) 140px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid #edf1f6;font-size:13px}
 .or-bar{position:relative;height:14px;overflow:hidden;background:#eef2f8;border-radius:7px}
-.or-bar span{position:absolute;inset:0 auto 0 0;background:#2463eb;border-radius:7px}
+.or-bar span{position:absolute;inset:0 auto 0 0;background:var(--blue,#245a7a);border-radius:7px}
 .or-bar.is-over span{background:#d92d20}
 @media(max-width:700px){.or-week{grid-template-columns:1fr}}
 /* Sipariş detayındaki küçük formlar: diğer panel alanlarıyla aynı görünüm */
@@ -43,3 +43,23 @@
 .or-page .admin-actions input{width:auto;flex:1 1 220px}
 .or-page label{display:block;margin:8px 0 4px;font-size:12px;font-weight:600;color:#34435c}
 .or-page .or-checks label{display:flex;margin:0;font-size:14px}
+.or-page .num{text-align:right;white-space:nowrap}
+/* Personel takvimi */
+.wc-grid{width:100%;border-collapse:collapse;min-width:900px;table-layout:fixed}
+.wc-grid th,.wc-grid td{border:1px solid var(--admin-border,#dde1e6);padding:6px;vertical-align:top;font-size:13px}
+.wc-grid thead th{background:var(--admin-subtle,#f5f7f9);text-align:left}
+.wc-grid th.is-today{outline:2px solid var(--blue,#245a7a);outline-offset:-2px}
+.wc-grid td.is-today{background:rgba(36,99,235,.05)}
+.wc-grid td.is-sunday,.wc-grid th.is-sunday{background:rgba(0,0,0,.03)}
+.wc-grid td.is-over{background:rgba(180,35,24,.08)}
+.wc-grid .wc-name{width:150px;font-weight:600}
+.wc-entry{display:flex;gap:4px;align-items:flex-start;justify-content:space-between;margin-bottom:4px;padding:3px 5px;border-radius:5px;background:rgba(36,99,235,.1);line-height:1.25}
+.wc-entry small{display:block;opacity:.75}
+.wc-entry form{margin:0}
+.wc-entry button{border:0;background:none;cursor:pointer;font-size:14px;line-height:1;padding:0 2px;color:inherit}
+.wc-add{font-size:12px;text-decoration:none;opacity:.6}
+.wc-add:hover{opacity:1}
+.wc-grid th{text-align:left}
+.wc-entry span{min-width:0}
+.wc-entry a{display:block;overflow:hidden;font-size:12px;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:700px){.or-tabs{flex-wrap:nowrap;overflow-x:auto;margin-inline:-16px;padding:0 16px 4px;scrollbar-width:none}.or-tabs a{flex:0 0 auto}}

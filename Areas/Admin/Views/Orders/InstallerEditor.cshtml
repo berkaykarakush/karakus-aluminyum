@@ -1,6 +1,6 @@
 @model KarakusAluminyum.Web.Models.Production.Installer
 @{ var editing = Model.Id != 0; ViewData["Title"] = editing ? "Montaj ekibini düzenle" : "Montaj ekibi ekle"; }
-<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/siparisler/montajcilar">Vazgeç</a></div>
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler/montajcilar">Vazgeç</a></div>
 <form class="admin-form admin-panel" method="post" action="@(editing ? $"/yonetim/siparisler/montajcilar/duzenle/{Model.Id}" : "/yonetim/siparisler/montajcilar/ekle")">
   @Html.AntiForgeryToken()
   <div asp-validation-summary="All"></div>

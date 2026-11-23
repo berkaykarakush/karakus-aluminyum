@@ -10,7 +10,7 @@
     var clauses = ((List<TemplateClause>)ViewBag.Clauses).Select(c => new { id = c.Id, name = c.Name, quoteText = c.QuoteText, contractText = c.ContractText });
 }
 <link rel="stylesheet" href="~/css/document-editor.css" asp-append-version="true" />
-<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/sozlesmeler">Sözleşme listesi</a></div>
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn admin-btn--secondary" href="/yonetim/sozlesmeler">Sözleşme listesi</a></div>
 <form id="doc-form" class="doc-editor" method="post" action="@action" data-mode="contract">
   @Html.AntiForgeryToken()
   <input type="hidden" asp-for="DocumentJson" />
@@ -78,7 +78,7 @@
     <div id="doc-designs-list"></div>
   </section>
 
-  <div class="doc-actions"><button class="admin-btn" type="submit">Kaydet</button><a class="admin-btn" href="/yonetim/sozlesmeler">İptal</a></div>
+  <div class="doc-actions"><button class="admin-btn" type="submit">Kaydet</button><a class="admin-btn admin-btn--secondary" href="/yonetim/sozlesmeler">İptal</a></div>
 </form>
 <script type="application/json" id="doc-template-texts">@Html.Raw(JsonSerializer.Serialize((List<string>)ViewBag.TemplateTexts))</script>
 <script type="application/json" id="doc-customers">@Html.Raw(JsonSerializer.Serialize(ViewBag.CustomerDetails))</script>

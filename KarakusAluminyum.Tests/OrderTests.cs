@@ -120,7 +120,7 @@ public sealed class OrderTests(PostgresFixture postgres)
             return (s.Id, c.Id);
         });
 
-        await client.PostFormAsync($"/yonetim/siparisler/isaretler/{id}", token, ("stockDeducted", "true"), ("reserved", "true"));
+        await client.PostFormAsync($"/yonetim/siparisler/isaretler/{id}", token, ("stockDeducted", "true"), ("reserved", "true")); // stok işareti elle konmaz, metrajdan düşülür
         await client.PostFormAsync($"/yonetim/siparisler/cam/{id}", token, ("glassSupplierId", customerOnly.ToString()), ("glassOrderedOn", "2026-11-20"));
         Assert.Null((await OrderAsync(app, quoteId)).GlassSupplierId); // camcı tedarikçi cari olmalı
         await client.PostFormAsync($"/yonetim/siparisler/cam/{id}", token, ("glassSupplierId", supplier.ToString()), ("glassOrderedOn", "2026-11-20"), ("glassExpectedOn", "2026-11-27"));
@@ -130,10 +130,10 @@ public sealed class OrderTests(PostgresFixture postgres)
         await client.PostFormAsync($"/yonetim/siparisler/montaj/{id}", token, ("installerId", installer.ToString()), ("installationDate", DateTime.Today.AddDays(3).ToString("yyyy-MM-dd")));
 
         var order = await OrderAsync(app, quoteId);
-        Assert.True(order.StockDeducted && order.Reserved && !order.SentToCutting);
+        Assert.True(!order.StockDeducted && order.Reserved && !order.SentToCutting);
         Assert.Equal((supplier, new DateOnly(2026, 11, 27)), (order.GlassSupplierId!.Value, order.GlassExpectedOn!.Value));
         Assert.Equal(installer, order.InstallerId);
-        Assert.Contains(order.Events, e => e.Text == "Stok düşüldü: evet, Rezerve: evet.");
+        Assert.Contains(order.Events, e => e.Text == "Rezerve: evet.");
         Assert.Contains(order.Events, e => e.Text.StartsWith("Montaj: ekip Test ekibi"));
 
         var plan = WebUtility.HtmlDecode(await client.GetStringAsync("/yonetim/siparisler/planlama"));

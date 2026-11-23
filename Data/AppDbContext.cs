@@ -34,6 +34,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Brand> Brands => Set<Brand>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
+    public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
     public DbSet<FinanceAccount> FinanceAccounts => Set<FinanceAccount>();
@@ -51,6 +52,13 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<GlassList> GlassLists => Set<GlassList>();
     public DbSet<GlassListItem> GlassListItems => Set<GlassListItem>();
     public DbSet<ProductionOrder> ProductionOrders => Set<ProductionOrder>();
+    public DbSet<ProductionScan> ProductionScans => Set<ProductionScan>();
+    public DbSet<MachineExportProfile> MachineExportProfiles => Set<MachineExportProfile>();
+    public DbSet<LabelPrinter> LabelPrinters => Set<LabelPrinter>();
+    public DbSet<ServiceRequest> ServiceRequests => Set<ServiceRequest>();
+    public DbSet<WorkLog> WorkLogs => Set<WorkLog>();
+    public DbSet<ServiceVisit> ServiceVisits => Set<ServiceVisit>();
+    public DbSet<ServicePart> ServiceParts => Set<ServicePart>();
     public DbSet<OrderEvent> OrderEvents => Set<OrderEvent>();
     public DbSet<Installer> Installers => Set<Installer>();
     public DbSet<DeliveryNote> DeliveryNotes => Set<DeliveryNote>();
@@ -71,6 +79,8 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
 
         // Üretim siparişleri: müşteri silinemez; teklif, sözleşme, çizim listesi, camcı ve montajcı silinirse bağ kopar.
         builder.Entity<ProductionOrder>().HasIndex(x => x.OrderNumber).IsUnique();
+        builder.Entity<ProductionScan>().HasIndex(x => new { x.ProductionOrderId, x.WindowDesignId, x.Unit, x.Station }).IsUnique();
+        builder.Entity<ProductionScan>().HasOne(x => x.ProductionOrder).WithMany().HasForeignKey(x => x.ProductionOrderId).OnDelete(DeleteBehavior.Cascade);
         builder.Entity<ProductionOrder>().HasIndex(x => x.Status);
         builder.Entity<ProductionOrder>().HasIndex(x => x.PlannedShipDate);
         builder.Entity<ProductionOrder>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
@@ -149,8 +159,24 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<Invoice>().HasIndex(x => new { x.Status, x.DueDate });
         builder.Entity<InvoiceLine>().HasOne(x => x.Invoice).WithMany(x => x.Lines).HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.Cascade);
         builder.Entity<InvoiceLine>().HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<WorkLog>().HasIndex(x => x.Date);
+        builder.Entity<WorkLog>().HasIndex(x => new { x.EmployeeId, x.Date });
+        builder.Entity<WorkLog>().HasOne(x => x.Employee).WithMany().HasForeignKey(x => x.EmployeeId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<WorkLog>().HasOne(x => x.ProductionOrder).WithMany().HasForeignKey(x => x.ProductionOrderId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<WorkLog>().HasOne(x => x.ServiceRequest).WithMany().HasForeignKey(x => x.ServiceRequestId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<ServiceRequest>().HasIndex(x => x.Number).IsUnique();
+        builder.Entity<ServiceRequest>().HasIndex(x => x.Status);
+        builder.Entity<ServiceRequest>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<ServiceRequest>().HasOne(x => x.ProductionOrder).WithMany().HasForeignKey(x => x.ProductionOrderId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<ServiceRequest>().HasOne(x => x.Installer).WithMany().HasForeignKey(x => x.InstallerId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<ServiceVisit>().HasIndex(x => x.Number).IsUnique();
+        builder.Entity<ServiceVisit>().HasOne(x => x.ServiceRequest).WithMany(x => x.Visits).HasForeignKey(x => x.ServiceRequestId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<ServicePart>().HasOne(x => x.ServiceVisit).WithMany(x => x.Parts).HasForeignKey(x => x.ServiceVisitId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<LabelPrinter>().Property(x => x.GapMm).HasColumnType("numeric(5,2)");
+        builder.Entity<ExchangeRate>().HasIndex(x => new { x.Currency, x.Date }).IsUnique();
         builder.Entity<StockMovement>().HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<StockMovement>().HasOne(x => x.Invoice).WithMany().HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<StockMovement>().HasOne<KarakusAluminyum.Web.Models.Production.ProductionOrder>().WithMany().HasForeignKey(x => x.ProductionOrderId).OnDelete(DeleteBehavior.SetNull);
         builder.Entity<Product>().HasIndex(x => x.Code);
         builder.Entity<CashTransaction>().HasOne(x => x.Account).WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<CashTransaction>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);

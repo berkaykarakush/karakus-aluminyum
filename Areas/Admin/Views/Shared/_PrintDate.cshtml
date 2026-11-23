@@ -1,0 +1,17 @@
+@model KarakusAluminyum.Web.Services.Documents.PrintDateVm
+@using KarakusAluminyum.Web.Services.Documents
+@{
+    // Yazdırma araç çubuğundaki tarih seçici: yazdırırken araç çubuğu gizlenir, seçilen tarih belgeye basılır.
+    var others = Context.Request.Query.Where(q => q.Key != PrintDates.Query).ToList();
+    string Link(DateOnly date) => Context.Request.Path + QueryString.Create(others.SelectMany(q => q.Value.Select(v => new KeyValuePair<string, string?>(q.Key, v))).Append(new(PrintDates.Query, date.ToString("yyyy-MM-dd")))).ToString();
+    var today = PrintDates.Today;
+}
+<style>.print-date{display:inline-flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 12px 0 0;font:600 14px Arial,sans-serif;vertical-align:middle}.print-date input{padding:7px 8px;font:inherit;border:1px solid #b8bec7;border-radius:6px}.print-date a{color:#2463eb}@@media print{.print-date{display:none!important}}</style>
+<form method="get" class="print-date" action="@Context.Request.Path">
+  @foreach (var q in others) { foreach (var v in q.Value) { <input type="hidden" name="@q.Key" value="@v" /> } }
+  <label for="print-date">Belge tarihi</label>
+  <input id="print-date" type="date" name="@PrintDates.Query" value="@Model.Date.ToString("yyyy-MM-dd")" onchange="this.form.submit()" required />
+  @if (Model.Date != today) { <a href="@Link(today)">Bugün</a> }
+  @if (Model.Recorded is DateOnly recorded && recorded != Model.Date) { <a href="@Link(recorded)">@Model.RecordedLabel (@recorded.ToString("dd.MM.yyyy"))</a> }
+  <noscript><button type="submit">Uygula</button></noscript>
+</form>

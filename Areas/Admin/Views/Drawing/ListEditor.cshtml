@@ -14,7 +14,7 @@
 }
 <link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
 <link rel="stylesheet" href="~/css/document-editor.css" asp-append-version="true" />
-<div class="admin-actions"><h1>@ViewData["Title"]</h1>@if (editing) { <a class="admin-btn" href="/yonetim/cizim/detay/@Model.Id">Çizim listesini görüntüle</a> }<a class="admin-btn" href="/yonetim/cizim">Çizim listeleri</a></div>
+<div class="admin-actions"><h1>@ViewData["Title"]</h1>@if (editing) { <a class="admin-btn" href="/yonetim/cizim/detay/@Model.Id">Çizim listesini görüntüle</a> }<a class="admin-btn admin-btn--secondary" href="/yonetim/cizim">Çizim listeleri</a></div>
 <form id="dl-form" class="doc-editor" method="post" action="@action" data-selected-poz="@ViewBag.SelectedPoz" data-category="@selected">
   @Html.AntiForgeryToken()
   <input type="hidden" asp-for="ItemsJson" />
@@ -145,7 +145,7 @@
       </div>
     </div>
   </section>
-  <div class="doc-actions"><button class="admin-btn" type="submit">Listeyi kaydet</button><a class="admin-btn" href="@(editing ? $"/yonetim/cizim/detay/{Model.Id}" : "/yonetim/cizim")">İptal</a><span class="admin-muted" id="dl-dirty"></span></div>
+  <div class="doc-actions"><button class="admin-btn" type="submit">Listeyi kaydet</button><a class="admin-btn admin-btn--secondary" href="@(editing ? $"/yonetim/cizim/detay/{Model.Id}" : "/yonetim/cizim")">İptal</a><span class="admin-muted" id="dl-dirty"></span></div>
 </form>
 <script type="application/json" id="dl-brands">@Html.Raw(JsonSerializer.Serialize(brands))</script>
 <script type="application/json" id="dl-systems">@Html.Raw(JsonSerializer.Serialize(systems, new JsonSerializerOptions(JsonSerializerDefaults.Web)))</script>

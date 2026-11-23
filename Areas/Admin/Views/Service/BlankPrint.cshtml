@@ -1,0 +1,48 @@
+@using KarakusAluminyum.Web.Services.Documents
+@{
+    // Boş servis formu: kayıt açılmadan sahada elle doldurulur.
+    Layout = null;
+    var t = (KarakusAluminyum.Web.Models.Documents.DocumentTemplate)ViewBag.Template;
+    var printed = PrintDates.From(Context.Request);
+    var head = new BrandHeadVm("SERVİS FORMU", printed.ToString("dd.MM.yyyy"));
+}
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Boş servis formu</title>
+  <link rel="stylesheet" href="~/css/document-print.css" asp-append-version="true" />
+  <link rel="stylesheet" href="~/css/brand.css" asp-append-version="true" />
+</head>
+<body class="doc doc--proforma">
+  <partial name="~/Areas/Admin/Views/Shared/_BrandLayer.cshtml" />
+  <div class="doc-toolbar"><a class="doc-toolbar__link" href="/yonetim/servis">Servis talepleri</a><partial name="~/Areas/Admin/Views/Shared/_PrintDate.cshtml" model="new PrintDateVm(printed)" /><button type="button" onclick="window.print()">Yazdır / PDF kaydet</button></div>
+  <table class="doc-sheet">
+    <thead><tr><td><partial name="~/Areas/Admin/Views/Shared/_BrandHead.cshtml" model="head" /></td></tr></thead>
+    <tfoot><tr><td><partial name="~/Areas/Admin/Views/Shared/_BrandFoot.cshtml" /></td></tr></tfoot>
+    <tbody><tr><td class="doc-body">
+      <div class="pf-parties">
+        <section class="pf-party"><h3>Servis veren</h3><strong>@(t.SellerLegalName ?? t.SellerName)</strong>@if (!string.IsNullOrWhiteSpace(t.Phone)) { <div>Tel: @t.Phone</div> }</section>
+        <section class="pf-party"><h3>Müşteri</h3><div class="sv-field"><span>Ad / firma</span>&nbsp;</div><div class="sv-field"><span>Telefon</span>&nbsp;</div><div class="sv-field"><span>Adres</span>&nbsp;</div></section>
+      </div>
+      <div class="sv-row">
+        <div class="sv-field"><span>Sipariş / iş</span>&nbsp;</div>
+        <div class="sv-field"><span>Ziyaret tarihi</span>&nbsp;</div>
+        <div class="sv-field"><span>Varış / çıkış</span>&nbsp;</div>
+        <div class="sv-field"><span>Teknisyen / ekip</span>&nbsp;</div>
+      </div>
+      <div class="sv-section"><h3>Bildirilen sorun</h3><div class="sv-box"></div></div>
+      <div class="sv-section"><h3>Tespit</h3><div class="sv-box"></div></div>
+      <div class="sv-section"><h3>Yapılan işlem</h3><div class="sv-box sv-box--tall"></div></div>
+      <table class="pf-lines">
+        <thead><tr><th>Kullanılan parça</th><th class="pf-num">Miktar</th><th>Birim</th><th class="pf-num">Tutar</th></tr></thead>
+        <tbody>@for (var i = 0; i < 4; i++) { <tr><td>&nbsp;</td><td></td><td></td><td></td></tr> }</tbody>
+      </table>
+      <p><span class="sv-check">☐ Sorun giderildi</span><span class="sv-check">☐ Tekrar ziyaret gerekli</span><span class="sv-check">☐ Parça bekleniyor</span></p>
+      <p><span class="sv-check">☐ Garanti kapsamında</span><span class="sv-check">☐ Ücretli · Tutar: ................ ₺</span></p>
+      <partial name="_ServiceSign" />
+    </td></tr></tbody>
+  </table>
+  <div class="doc-print-foot"><partial name="~/Areas/Admin/Views/Shared/_BrandFoot.cshtml" /></div>
+</body>
+</html>

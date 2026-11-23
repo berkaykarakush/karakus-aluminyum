@@ -1,0 +1,29 @@
+@model List<KarakusAluminyum.Web.Models.Production.LabelPrinter>
+@using KarakusAluminyum.Web.Models.Production
+@{ ViewData["Title"] = "Barkod yazıcıları"; }
+<div class="admin-actions"><h1>Barkod yazıcıları</h1><a class="admin-btn" href="/yonetim/uretim/yazicilar/ekle">Yeni yazıcı</a></div>
+<div class="admin-panel">
+  <p class="admin-muted">Zebra ve ZPL uyumlu yazıcılar (Godex, Honeywell, TSC'nin çoğu) için <strong>ZPL</strong>, TSC / Xprinter / Argox için <strong>TSPL</strong> seçin. Etiketler yazıcının kendi diliyle basıldığı için barkod keskin çıkar. Ağ adresi girilirse etiketler sunucudan yazıcıya doğrudan gönderilir; bunun için sunucunun yazıcıyla aynı ağda (veya VPN ile bağlı) olması gerekir. Değilse etiket dosyasını indirip Zebra Setup Utilities, yazıcı sürücüsünün "dosya gönder" özelliği veya <code>lp -o raw</code> ile yazdırın.</p>
+  @if (Model.Count == 0) { <p>Henüz yazıcı yok. Yazıcı tanımlanmadan da etiketler tarayıcıdan (A4 veya termal sürücüyle) basılabilir.</p> }
+  else
+  {
+    <table class="admin-table">
+      <thead><tr><th>Yazıcı</th><th>Dil</th><th>Etiket</th><th>Ağ</th><th></th></tr></thead>
+      <tbody>
+      @foreach (var p in Model)
+      {
+        <tr>
+          <td><a href="/yonetim/uretim/yazicilar/duzenle/@p.Id">@p.Name</a>@if (p.IsDefault) { <span class="admin-muted"> (varsayılan)</span> }@if (!p.IsActive) { <span class="admin-muted"> (pasif)</span> }</td>
+          <td>@LabelLanguages.Label(p.Language) · @p.Dpi dpi</td>
+          <td>@p.WidthMm × @p.HeightMm mm</td>
+          <td>@(p.Host is null ? "-" : $"{p.Host}:{p.Port}")</td>
+          <td class="admin-actions">
+            <form method="post" action="/yonetim/uretim/yazicilar/dene/@p.Id">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--secondary">@(p.Host is null ? "Deneme dosyası" : "Deneme etiketi")</button></form>
+            <form method="post" action="/yonetim/uretim/yazicilar/sil/@p.Id" onsubmit="return confirm('Yazıcı silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form>
+          </td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  }
+</div>

@@ -12,7 +12,7 @@
     var system = Model.System;
     var quote = Model.Quote;
     var customer = quote.Customer;
-    ViewData["DocDate"] = TurkishNumbers.Date(quote.DocumentDate);
+    ViewData["DocDate"] = PrintDates.Text(Model.PrintedOn);
     var technical = Model.Blocks.Where(b => b.Block.Clauses.Any(x => !string.IsNullOrWhiteSpace(x.Text))).ToList();
     var terms = c.Terms.Where(x => !string.IsNullOrWhiteSpace(x.Text)).ToList();
     var buyerTax = string.Join(" / ", new[] { customer?.TaxOffice, customer?.TaxNumber }.Where(x => !string.IsNullOrWhiteSpace(x)));
@@ -44,6 +44,7 @@
       @* Sunumlu ve sunumsuz görünüm arasında geçiş; önizlemede (kayıtsız örnek teklif) gösterilmez. *@
       <a class="doc-toolbar__link" href="/yonetim/crm/teklifler/yazdir/@quote.Id@(Model.Presentation is null ? "?sunum=1" : "")">@(Model.Presentation is null ? "Kurumsal sunumu ekle" : "Sunumsuz göster")</a>
     }
+    @if (quote.Id != 0 && ViewData["PublicNote"] is null) { <partial name="~/Areas/Admin/Views/Shared/_PrintDate.cshtml" model='new PrintDateVm(Model.PrintedOn, DateOnly.FromDateTime(quote.DocumentDate), "Teklif tarihi")' /> }
     <button type="button" onclick="window.print()">Yazdır / PDF kaydet</button>
   </div>
   @if (Model.Presentation is not null)
@@ -77,7 +78,7 @@
         </section>
         <dl class="pf-info">
           <dt>Belge no</dt><dd>@(string.IsNullOrEmpty(quote.QuoteNumber) ? "-" : quote.QuoteNumber)</dd>
-          <dt>Tarih</dt><dd>@TurkishNumbers.Date(quote.DocumentDate)</dd>
+          <dt>Tarih</dt><dd>@PrintDates.Text(Model.PrintedOn)</dd>
           <dt>Geçerlilik</dt><dd>@(quote.ValidUntilUtc is DateTime valid ? TurkishNumbers.Date(valid) : "-")</dd>
           <dt>Para birimi</dt><dd>TL</dd>
           @if (!string.IsNullOrWhiteSpace(quote.Title)) { <dt>Konu</dt><dd>@quote.Title</dd> }

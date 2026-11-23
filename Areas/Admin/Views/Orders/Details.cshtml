@@ -24,6 +24,7 @@
   <a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler">Siparişler</a>
   <a class="admin-btn" href="/yonetim/siparisler/duzenle/@Model.Id">Düzenle</a>
   <a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler/is-emri/@Model.Id" target="_blank" rel="noopener">İş emri</a>
+  @if (Model.DrawingListId is not null) { <a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler/metraj/@Model.Id">Metraj ve stok</a> <a class="admin-btn admin-btn--secondary" href="/yonetim/uretim/etiketler/@Model.Id" target="_blank" rel="noopener">Etiketler</a> <a class="admin-btn admin-btn--secondary" href="/yonetim/uretim/kesim-aktarimi/@Model.Id">Kesim aktarımı</a> }
   @if (systemIds.Count > 0) { <form method="post" action="/yonetim/siparisler/kesime-gonder/@Model.Id">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--secondary" title="Kesim planını açar ve siparişi kesime gönderildi olarak işaretler">Kesime gönder</button></form> }
   @if (!closed && progress.Any(p => p.Remaining > 0)) { <a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler/irsaliye/ekle/@Model.Id">İrsaliye kes</a> }
   <a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler/teslim-tutanagi/@Model.Id" target="_blank" rel="noopener">Teslim tutanağı</a>
@@ -58,6 +59,44 @@
   }
 </div>
 
+@{ var services = (List<ServiceRequest>)ViewBag.Services; var work = ViewBag.Work as WorkProjectRow; }
+<div class="admin-panel">
+  <div class="admin-actions"><h3 style="margin:0">Çalışma (personel takvimi)</h3><a class="admin-btn admin-btn--secondary" href="/yonetim/takvim/ekle?siparis=@Model.Id">Çalışma ekle</a>@if (work is not null) { <a class="admin-btn admin-btn--secondary" href="/yonetim/takvim/rapor?siparis=@Model.Id&bas=2000-01-01&bit=2100-12-31">Ayrıntı</a> }</div>
+  @if (work is null) { <p class="admin-muted">Bu işe henüz çalışma yazılmadı.</p> }
+  else
+  {
+    <p><strong>@work.ManDays.ToString("0.##", culture) adam-gün</strong> · @work.People kişi · @work.WorkDays gün@(work.First is null ? "" : $" ({D(work.First)} – {D(work.Last)})")@(work.PlannedManDays > 0 ? $" · planlanan {work.PlannedManDays.ToString("0.##", culture)} adam-gün" : "")</p>
+    @if (work.Crew.Count > 0) { <p class="admin-muted">@string.Join(", ", work.Crew.Select(c => $"{c.Name} {c.Days.ToString("0.##", culture)} gün"))</p> }
+  }
+</div>
+@if (Model.Status is OrderStatus.Delivered or OrderStatus.Shipped || services.Count > 0)
+{
+  <div class="admin-panel">
+    <div class="admin-actions"><h3 style="margin:0">Servis</h3><a class="admin-btn admin-btn--secondary" href="/yonetim/servis/ekle?siparis=@Model.Id">Servis talebi aç</a></div>
+    @if (services.Count == 0) { <p class="admin-muted">Bu iş için servis talebi yok.</p> }
+    else
+    {
+      <ul>@foreach (var s in services) { <li><a href="/yonetim/servis/detay/@s.Id">@s.Number</a> · @s.ReceivedOn.ToString("dd.MM.yyyy") · @s.Category · @ServiceLabels.Label(s.Status)</li> }</ul>
+    }
+  </div>
+}
+
+@if (load.Units > 0)
+{
+  var scans = (Dictionary<string, int>)ViewBag.Scans;
+  <div class="admin-panel">
+    <h3 style="margin-top:0">Üretim ilerlemesi (barkod)</h3>
+    <div class="or-form-row">
+      @foreach (var station in ProductionStations.All)
+      {
+        var done = scans.GetValueOrDefault(station);
+        <div><strong>@ProductionStations.Label(station)</strong><div>@done / @load.Units adet</div><progress max="@load.Units" value="@done" style="width:100%"></progress></div>
+      }
+    </div>
+    <p class="admin-muted" style="margin:8px 0 0">Etiketleri basıp <a href="/yonetim/uretim/okut">Barkod okut</a> ekranında istasyonlara göre okutun.</p>
+  </div>
+}
+
 <div class="or-grid">
   <div class="admin-panel">
     <h3 style="margin-top:0">Sipariş bilgileri</h3>
@@ -81,7 +120,7 @@
       @Html.AntiForgeryToken()
       <div class="or-checks">
         <label><input type="checkbox" name="sentToCutting" value="true" checked="@Model.SentToCutting" /> Kesime gönderildi</label>
-        <label><input type="checkbox" name="stockDeducted" value="true" checked="@Model.StockDeducted" /> Stok düşüldü</label>
+        <label title="Metraj sayfasından stoktan düşülür"><input type="checkbox" checked="@Model.StockDeducted" disabled /> Stok düşüldü <a href="/yonetim/siparisler/metraj/@Model.Id">(metraj)</a></label>
         <label><input type="checkbox" name="glassExcluded" value="true" checked="@Model.GlassExcluded" /> Cam hariç</label>
         <label><input type="checkbox" name="installationExcluded" value="true" checked="@Model.InstallationExcluded" /> Montaj hariç</label>
         <label><input type="checkbox" name="reserved" value="true" checked="@Model.Reserved" /> Rezerve</label>

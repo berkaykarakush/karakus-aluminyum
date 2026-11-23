@@ -145,7 +145,7 @@ public sealed class ContractsController : Controller
         var contract = await _db.Contracts.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
         if (contract is null) return NotFound();
         ViewData["Qr"] = DocumentLinks.Qr(Request, DocumentLinks.Contract, await DocumentLinks.EnsureContractAsync(_db, contract.Id, contract.PublicToken));
-        return View("~/Areas/Admin/Views/Documents/ContractPrint.cshtml", await BuildPrintVm(contract));
+        return View("~/Areas/Admin/Views/Documents/ContractPrint.cshtml", await DocumentViews.ContractPrintAsync(_db, contract, PrintDates.From(Request)));
     }
 
     // Taslak sözleşme, şablon ayarlarındaki güncel madde metinlerini ve firma bilgilerini alır.
@@ -225,7 +225,6 @@ public sealed class ContractsController : Controller
         return RedirectToAction(nameof(Details), new { id });
     }
 
-    private Task<ContractPrintVm> BuildPrintVm(Contract contract) => DocumentViews.ContractPrintAsync(_db, contract);
 
     private static List<PaymentLine> DefaultPayments(decimal total, string? advanceText)
     {

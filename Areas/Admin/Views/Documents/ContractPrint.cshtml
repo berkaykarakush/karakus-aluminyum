@@ -7,7 +7,7 @@
     var c = Model.Content;
     var contract = Model.Contract;
     var system = Model.System;
-    ViewData["DocDate"] = TurkishNumbers.Date(contract.DocumentDate);
+    ViewData["DocDate"] = PrintDates.Text(Model.PrintedOn);
 }
 <!doctype html>
 <html lang="tr">
@@ -22,7 +22,10 @@
 <body class="doc doc--contract">
   <partial name="~/Areas/Admin/Views/Shared/_BrandLayer.cshtml" />
   @if (ViewData["PublicNote"] is string publicNote) { <partial name="~/Areas/Admin/Views/Documents/_PublicBanner.cshtml" model="publicNote" /> }
-  <div class="doc-toolbar"><button type="button" onclick="window.print()">Yazdır / PDF kaydet</button></div>
+  <div class="doc-toolbar">
+    @if (contract.Id != 0 && ViewData["PublicNote"] is null) { <partial name="~/Areas/Admin/Views/Shared/_PrintDate.cshtml" model='new PrintDateVm(Model.PrintedOn, DateOnly.FromDateTime(contract.DocumentDate), "Sözleşme tarihi")' /> }
+    <button type="button" onclick="window.print()">Yazdır / PDF kaydet</button>
+  </div>
   <table class="doc-sheet">
     <thead><tr><td><partial name="~/Areas/Admin/Views/Documents/_DocumentHead.cshtml" model="t" /></td></tr></thead>
     <tfoot><tr><td><partial name="~/Areas/Admin/Views/Documents/_DocumentFoot.cshtml" model="t" /></td></tr></tfoot>

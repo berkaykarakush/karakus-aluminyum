@@ -1,0 +1,60 @@
+@model KarakusAluminyum.Web.Models.Production.ProductionOrder
+@using KarakusAluminyum.Web.Services.Production
+@{
+    // Malzeme sipariş formu: tedarikçiye verilecek profil, aksesuar ve donanım listesi. Fiyat basılmaz.
+    Layout = null;
+    var t = (KarakusAluminyum.Web.Models.Documents.DocumentTemplate)ViewBag.Template;
+    var takeoff = (TakeoffResult)ViewBag.Takeoff;
+    var stock = (Dictionary<int, decimal>)ViewBag.Stock;
+    var all = (bool)ViewBag.All;
+    var supplier = ViewBag.Supplier as KarakusAluminyum.Web.Models.Crm.Customer;
+    var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
+    var date = KarakusAluminyum.Web.Services.Documents.PrintDates.From(Context.Request);
+    string D(DateOnly? d) => KarakusAluminyum.Web.Areas.Admin.Controllers.OrdersController.Date(d);
+    var rows = takeoff.Lines
+        .Select(l => (Line: l, Quantity: all || Model.StockDeducted ? l.Quantity : Math.Max(0, l.Quantity - stock.GetValueOrDefault(l.Product.Id))))
+        .Where(x => x.Quantity > 0).ToList();
+    if (!all && !Model.StockDeducted) rows = rows.Select(x => (x.Line, MaterialTakeoff.IsCountUnit(x.Line.Product.Unit) ? Math.Ceiling(x.Quantity) : x.Quantity)).ToList();
+    var head = new KarakusAluminyum.Web.Services.Documents.BrandHeadVm("MALZEME SİPARİŞ FORMU", D(date));
+}
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Malzeme sipariş formu - @Model.OrderNumber</title>
+  <link rel="stylesheet" href="~/css/document-print.css" asp-append-version="true" />
+  <link rel="stylesheet" href="~/css/brand.css" asp-append-version="true" />
+</head>
+<body class="doc doc--proforma">
+  <partial name="~/Areas/Admin/Views/Shared/_BrandLayer.cshtml" />
+  <div class="doc-toolbar"><a class="doc-toolbar__link" href="/yonetim/siparisler/metraj/@Model.Id">Metraja dön</a><partial name="~/Areas/Admin/Views/Shared/_PrintDate.cshtml" model="new KarakusAluminyum.Web.Services.Documents.PrintDateVm(date)" /><button type="button" onclick="window.print()">Yazdır / PDF kaydet</button></div>
+  <table class="doc-sheet">
+    <thead><tr><td><partial name="~/Areas/Admin/Views/Shared/_BrandHead.cshtml" model="head" /></td></tr></thead>
+    <tfoot><tr><td><partial name="~/Areas/Admin/Views/Shared/_BrandFoot.cshtml" /></td></tr></tfoot>
+    <tbody><tr><td class="doc-body">
+      <div class="pf-parties">
+        <section class="pf-party"><h3>Sipariş veren</h3><strong>@(t.SellerLegalName ?? t.SellerName)</strong>@if (!string.IsNullOrWhiteSpace(t.SellerAddress)) { <div>@t.SellerAddress</div> }@if (!string.IsNullOrWhiteSpace(t.SellerTaxInfo)) { <div>VD / VKN: @t.SellerTaxInfo</div> }@if (!string.IsNullOrWhiteSpace(t.Phone)) { <div>Tel: @t.Phone</div> }</section>
+        <section class="pf-party"><h3>Tedarikçi</h3>@if (supplier is not null) { <strong>@supplier.Name</strong>@if (!string.IsNullOrWhiteSpace(supplier.Address)) { <div>@supplier.Address</div> }@if (!string.IsNullOrWhiteSpace(supplier.Phone)) { <div>Tel: @supplier.Phone</div> } } else { <div class="pf-sign__field">&nbsp;</div> }</section>
+        <dl class="pf-info"><dt>Tarih</dt><dd>@D(date)</dd><dt>Sipariş</dt><dd>@Model.OrderNumber</dd><dt>İş</dt><dd>@Model.Title</dd></dl>
+      </div>
+      <p>@(all || Model.StockDeducted ? "Siparişin tüm malzeme ihtiyacı" : "Stokta eksik kalan malzemeler") aşağıdadır.</p>
+      <table class="pf-lines">
+        <thead><tr><th class="pf-no">Sıra</th><th>Kod</th><th>Malzeme</th><th class="pf-num">Miktar</th><th>Birim</th></tr></thead>
+        <tbody>
+        @if (rows.Count == 0) { <tr><td colspan="5">Eksik malzeme yok.</td></tr> }
+        @foreach (var (row, i) in rows.Select((r, i) => (r, i)))
+        {
+          <tr><td class="pf-no">@(i + 1)</td><td>@row.Line.Product.Code</td><td>@row.Line.Product.Name</td><td class="pf-num">@row.Quantity.ToString("#,0.###", culture)</td><td>@row.Line.Product.Unit</td></tr>
+        }
+        </tbody>
+      </table>
+      <p class="pf-legal">Miktarlar çizimlerden seri kataloğu kurallarıyla hesaplanmıştır; teslim tarihi ve fiyat tedarikçi ile ayrıca teyit edilir.</p>
+      <table class="pf-sign"><tbody><tr>
+        <td><strong>Sipariş veren</strong><div class="pf-sign__field">Ad Soyad:</div><div class="pf-sign__line">İmza</div></td>
+        <td><strong>Tedarikçi onayı</strong><div class="pf-sign__field">Teslim tarihi:</div><div class="pf-sign__line">Kaşe / İmza</div></td>
+      </tr></tbody></table>
+    </td></tr></tbody>
+  </table>
+  <div class="doc-print-foot"><partial name="~/Areas/Admin/Views/Shared/_BrandFoot.cshtml" /></div>
+</body>
+</html>

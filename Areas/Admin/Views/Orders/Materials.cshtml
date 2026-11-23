@@ -1,0 +1,128 @@
+@model KarakusAluminyum.Web.Models.Production.ProductionOrder
+@using KarakusAluminyum.Web.Services.Production
+@{
+    ViewData["Title"] = "Metraj: " + Model.OrderNumber;
+    var takeoff = (TakeoffResult)ViewBag.Takeoff;
+    var stock = (Dictionary<int, decimal>)ViewBag.Stock;
+    var deducted = (Dictionary<int, decimal>)ViewBag.Deducted;
+    var suppliers = (SelectList)ViewBag.Suppliers;
+    var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
+    string N(decimal v) => v.ToString("#,0.###", culture);
+    var materials = takeoff.Materials;
+    var rates = (Dictionary<string, RateInfo>)ViewBag.Rates;
+    var costs = takeoff.Lines.Select(l => PriceLists.ToTry(l.Quantity * l.Product.PurchasePrice, l.Product.PriceCurrency, rates)).ToList();
+    var noRate = takeoff.Lines.Where(l => PriceLists.ToTry(1, l.Product.PriceCurrency, rates) is null).Select(l => l.Product.PriceCurrency).Distinct().ToList();
+    var noPrice = takeoff.Lines.Count(l => l.Product.PurchasePrice == 0);
+    var shortages = takeoff.Lines.Count(l => !Model.StockDeducted && l.Quantity > stock.GetValueOrDefault(l.Product.Id));
+}
+<link rel="stylesheet" href="~/css/orders.css" asp-append-version="true" />
+<div class="or-page">
+<div class="admin-actions">
+  <h1>Metraj · @Model.OrderNumber</h1>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler/detay/@Model.Id">Siparişe dön</a>
+</div>
+<p class="admin-muted">@Model.Title · @Model.Customer?.Name@if (Model.DrawingList is not null) { <span> · Çizim listesi: <a href="/yonetim/cizim/detay/@Model.DrawingListId">@Model.DrawingList.Name</a></span> }</p>
+
+@if (Model.DrawingListId is null)
+{
+  <div class="admin-panel"><p>Metraj için siparişe çizim listesi bağlayın.</p></div>
+}
+else
+{
+  @if (takeoff.Uncovered.Count > 0 || materials.WithoutSystem.Count > 0 || materials.Invalid.Count > 0)
+  {
+    <div class="admin-panel">
+      <h3 style="margin-top:0">Metraja girmeyenler</h3>
+      <ul>
+        @foreach (var d in materials.WithoutSystem) { <li>@d.Name: profil sistemi seçilmemiş.</li> }
+        @foreach (var d in materials.Invalid) { <li>@d.Design.Name: @string.Join(" ", d.Errors)</li> }
+        @foreach (var text in takeoff.Uncovered) { <li>@text</li> }
+      </ul>
+      <p class="admin-muted">Malzeme kuralları Çizim › Sistemler ekranındaki "Malzemeler (seri kataloğu)" bölümünden tanımlanır.</p>
+    </div>
+  }
+
+  <div class="admin-panel" style="overflow-x:auto">
+    <div class="admin-actions">
+      <h3 style="margin:0">Malzeme ihtiyacı</h3>
+      @if (Model.StockDeducted) { <span class="or-flag">Stoktan düşüldü</span> }
+      else if (shortages > 0) { <span class="or-late">@shortages kalem eksik</span> }
+    </div>
+    @if (takeoff.Lines.Count == 0)
+    {
+      <p class="admin-muted">Hesaplanan malzeme yok.</p>
+    }
+    else
+    {
+      <table class="admin-table">
+        <thead><tr><th>Kod</th><th>Malzeme</th><th class="num">Gereken</th><th>Birim</th><th class="num">@(Model.StockDeducted ? "Düşülen" : "Mevcut stok")</th><th class="num">@(Model.StockDeducted ? "Kalan stok" : "Eksik")</th><th class="num">Birim fiyat</th><th class="num">Tutar (₺)</th><th>Kaynak</th></tr></thead>
+        <tbody>
+        @foreach (var (line, index) in takeoff.Lines.Select((l, i) => (l, i)))
+        {
+          var have = stock.GetValueOrDefault(line.Product.Id);
+          var missing = Math.Max(0, line.Quantity - have);
+          <tr>
+            <td>@line.Product.Code</td>
+            <td><a href="/yonetim/muhasebe/urunler/duzenle/@line.Product.Id">@line.Product.Name</a></td>
+            <td class="num">@N(line.Quantity)</td>
+            <td>@line.Product.Unit</td>
+            @if (Model.StockDeducted)
+            {
+              <td class="num">@N(deducted.GetValueOrDefault(line.Product.Id))</td>
+              <td class="num">@N(have)</td>
+            }
+            else
+            {
+              <td class="num">@N(have)</td>
+              <td class="num">@if (missing > 0) { <strong class="or-late">@N(missing)</strong> } else { <span>-</span> }</td>
+            }
+            <td class="num">@line.Product.PurchasePrice.ToString("#,0.00", culture) @line.Product.PriceCurrency</td>
+            <td class="num">@(costs[index] is decimal c ? c.ToString("#,0.00", culture) : "kur yok")</td>
+            <td class="admin-muted" style="font-size:.85em">@string.Join("; ", line.Sources)</td>
+          </tr>
+        }
+        </tbody>
+        <tfoot><tr><th colspan="7" style="text-align:right">Malzeme maliyeti (KDV hariç, fiyat listesinden)</th><th class="num">@costs.Sum(c => c ?? 0).ToString("#,0.00", culture) ₺</th><th></th></tr></tfoot>
+      </table>
+      @if (noRate.Count > 0 || noPrice > 0)
+      {
+        <p class="admin-muted">@if (noRate.Count > 0) { <span>@string.Join(", ", noRate) kuru girilmemiş; bu kalemler toplama girmedi. </span> }@if (noPrice > 0) { <span>@noPrice kalemin alış fiyatı 0. </span> }<a href="/yonetim/fiyat-listeleri">Fiyat listeleri ve kurlar</a></p>
+      }
+      @if (Model.StockDeducted && deducted.Any(d => takeoff.Lines.All(l => l.Product.Id != d.Key) || takeoff.Lines.First(l => l.Product.Id == d.Key).Quantity != d.Value))
+      {
+        <p class="or-late">Stoktan düşüldükten sonra çizimler veya kurallar değişmiş; düşülen miktarlar güncel metrajdan farklı. Geri alıp yeniden düşebilirsiniz.</p>
+      }
+      <div class="admin-actions" style="margin-top:12px">
+        @if (!Model.StockDeducted)
+        {
+          <form method="post" action="/yonetim/siparisler/stok-dus/@Model.Id" onsubmit="return confirm('Metrajdaki malzemeler stoktan düşülsün mü?')">@Html.AntiForgeryToken()<button class="admin-btn">Stoktan düş</button></form>
+        }
+        else
+        {
+          <form method="post" action="/yonetim/siparisler/stok-geri-al/@Model.Id" onsubmit="return confirm('Düşülen malzemeler stoğa geri alınsın mı?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--secondary">Stoktan düşmeyi geri al</button></form>
+        }
+      </div>
+    }
+  </div>
+
+  @if (takeoff.Lines.Count > 0)
+  {
+    <div class="admin-panel">
+      <h3 style="margin-top:0">Malzeme sipariş formu</h3>
+      <form method="get" action="/yonetim/siparisler/malzeme-listesi/@Model.Id" target="_blank" class="or-form-row">
+        <div><label for="mat-supplier">Tedarikçi</label><select id="mat-supplier" name="tedarikci" asp-items="suppliers"><option value="">Belirtilmedi</option></select></div>
+        <div><label for="mat-date">Belge tarihi</label><input id="mat-date" type="date" name="tarih" value="@DateTime.Today.ToString("yyyy-MM-dd")" /></div>
+        <div><label><input type="checkbox" name="tumu" value="true" style="width:auto" checked="@(shortages == 0)" /> Tüm malzemeler (işaretsizse yalnızca eksikler)</label></div>
+        <div><button class="admin-btn admin-btn--secondary">Yazdır</button></div>
+      </form>
+      <form method="post" action="/yonetim/siparisler/alis-taslagi/@Model.Id" class="or-form-row" style="margin-top:12px" onsubmit="return confirm('Seçilen tedarikçiye taslak alış faturası açılsın mı?')">
+        @Html.AntiForgeryToken()
+        <div><label for="draft-supplier">Tedarikçi</label><select id="draft-supplier" name="supplierId" asp-items="suppliers" required><option value="">Seçin</option></select></div>
+        <div><label><input type="checkbox" name="tumu" value="true" style="width:auto" /> Tüm malzemeler (işaretsizse yalnızca eksikler)</label></div>
+        <div><button class="admin-btn admin-btn--secondary">Taslak alış faturası aç</button></div>
+      </form>
+      <p class="admin-muted">Taslak fatura muhasebede onaylanınca malzeme stoğa girer.</p>
+    </div>
+  }
+}
+</div>

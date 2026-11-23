@@ -305,7 +305,13 @@ public sealed class ContractTests(PostgresFixture postgres)
         Assert.Contains("500.000,00 TL (BeşYüzBinTürkLirası)", html);
         Assert.Contains("peşin olarak ödenecektir", html);
         Assert.Contains($"{articles} ({TurkishNumbers.CountWords(articles)}) maddeden ve 3 (üç) sayfadan", html);
-        Assert.Contains("27/10/2026", html);
+        // Basılan tarih varsayılan olarak bugündür; kayıtlı sözleşme tarihi seçicide önerilir ve ?tarih ile basılır.
+        Assert.Contains(PrintDates.Text(PrintDates.Today), html);
+        Assert.Contains("Sözleşme tarihi (27.10.2026)", html);
+        var id = await IdAsync(app, title);
+        var picked = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/sozlesmeler/yazdir/{id}?tarih=2026-10-27"));
+        Assert.Contains("27/10/2026", picked);
+        Assert.Equal(new DateTime(2026, 10, 27), await app.WithDbAsync(db => db.Contracts.Where(c => c.Id == id).Select(c => c.DocumentDate.Date).SingleAsync())); // kayıt değişmez
         Assert.Contains("A blok eksiksiz yapılacaktır.", html);
         Assert.DoesNotContain("{{", html);
     }
@@ -596,7 +602,7 @@ public sealed class DocumentTemplateTests(PostgresFixture postgres)
             await first.WithDbAsync(db => db.Database.ExecuteSqlRawAsync("""
                 ALTER TABLE "Invoices" DROP COLUMN "ProjectId";
                 ALTER TABLE "Expenses" DROP COLUMN "ProjectId";
-                DROP TABLE IF EXISTS "DeliveryNoteLines", "DeliveryNotes", "OrderEvents", "ProductionOrders", "Installers";
+                ALTER TABLE "StockMovements" DROP COLUMN IF EXISTS "ProductionOrderId"; DROP TABLE IF EXISTS "WorkLogs", "ServiceParts", "ServiceVisits", "ServiceRequests", "ProductionScans", "DeliveryNoteLines", "DeliveryNotes", "OrderEvents", "ProductionOrders", "Installers";
                 DROP TABLE "ProjectCostItems"; DROP TABLE "CostProjects";
                 DROP TABLE "Contracts"; DROP TABLE "DocumentTemplates"; DROP TABLE "TemplateClauses";
                 ALTER TABLE "Quotes" DROP COLUMN "DocumentDate", DROP COLUMN "VatMode", DROP COLUMN "DocumentJson", DROP COLUMN "SnapshotJson",

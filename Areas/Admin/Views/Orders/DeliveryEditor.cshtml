@@ -6,7 +6,7 @@
     ViewData["Title"] = "İrsaliye kes";
     var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
 }
-<div class="admin-actions"><h1>İrsaliye kes · @order.OrderNumber</h1><a class="admin-btn" href="/yonetim/siparisler/detay/@order.Id">Vazgeç</a></div>
+<div class="admin-actions"><h1>İrsaliye kes · @order.OrderNumber</h1><a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler/detay/@order.Id">Vazgeç</a></div>
 <form class="admin-form admin-panel" method="post" action="/yonetim/siparisler/irsaliye/ekle/@order.Id">
   @Html.AntiForgeryToken()
   <div asp-validation-summary="All"></div>

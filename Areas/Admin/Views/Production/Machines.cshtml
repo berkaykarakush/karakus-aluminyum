@@ -1,0 +1,26 @@
+@model List<KarakusAluminyum.Web.Models.Production.MachineExportProfile>
+@using KarakusAluminyum.Web.Models.Production
+@{ ViewData["Title"] = "Kesim makineleri"; }
+<div class="admin-actions"><h1>Kesim makineleri</h1><a class="admin-btn" href="/yonetim/uretim/makineler/ekle">Yeni makine</a></div>
+<div class="admin-panel">
+  <p class="admin-muted">Her makine için kesim listesinin sütunlarını, ayracını ve karakter kodlamasını tanımlayın. Dosya, makinenin metin/CSV listesi içe aktarma özelliği içindir. Makineye özel biçim (ör. Elumatec, Kaban, Özgenç yazılımlarının kendi dosyaları) gerekiyorsa makinenin ürettiği örnek bir dosyayı bize iletin; o biçim örnekle doğrulanarak eklenir.</p>
+  @if (Model.Count == 0) { <p>Henüz makine tanımlı değil.</p> }
+  else
+  {
+    <table class="admin-table">
+      <thead><tr><th>Makine</th><th>Biçim</th><th>Sütunlar</th><th>Durum</th><th></th></tr></thead>
+      <tbody>
+      @foreach (var m in Model)
+      {
+        <tr>
+          <td><a href="/yonetim/uretim/makineler/duzenle/@m.Id">@m.Name</a></td>
+          <td>.@m.Extension · ayraç @(m.Delimiter == "tab" ? "sekme" : m.Delimiter) · @m.Encoding</td>
+          <td>@string.Join(", ", KarakusAluminyum.Web.Services.Production.MachineExport.Columns(m.Columns).Select(MachineExportFields.Label))</td>
+          <td>@(m.IsActive ? "Aktif" : "Pasif")</td>
+          <td><form method="post" action="/yonetim/uretim/makineler/sil/@m.Id" onsubmit="return confirm('Makine silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form></td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  }
+</div>

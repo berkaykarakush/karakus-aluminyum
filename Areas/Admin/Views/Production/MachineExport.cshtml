@@ -1,0 +1,51 @@
+@model KarakusAluminyum.Web.Models.Production.ProductionOrder
+@using KarakusAluminyum.Web.Models.Production
+@using KarakusAluminyum.Web.Services.Production
+@{
+    ViewData["Title"] = "Kesim aktarımı: " + Model.OrderNumber;
+    var profiles = (List<MachineExportProfile>)ViewBag.Profiles;
+    var profile = ViewBag.Profile as MachineExportProfile;
+    var pieces = (List<MachinePiece>)ViewBag.Pieces;
+    var warnings = (List<string>)ViewBag.Warnings;
+    var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
+}
+<div class="admin-actions">
+  <h1>Kesim aktarımı · @Model.OrderNumber</h1>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/siparisler/detay/@Model.Id">Siparişe dön</a>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/uretim/makineler">Makineler</a>
+</div>
+@if (warnings.Count > 0) { <div class="admin-panel"><ul>@foreach (var w in warnings) { <li>@w</li> }</ul></div> }
+<div class="admin-panel">
+  @if (profiles.Count == 0)
+  {
+    <p>Önce bir <a href="/yonetim/uretim/makineler/ekle">kesim makinesi</a> tanımlayın.</p>
+  }
+  else
+  {
+    <form method="get" action="/yonetim/uretim/kesim-aktarimi/@Model.Id" class="admin-actions">
+      <label for="machine">Makine</label>
+      <select id="machine" name="makine" onchange="this.form.submit()">@foreach (var p in profiles) { <option value="@p.Id" selected="@(p.Id == profile?.Id)">@p.Name</option> }</select>
+    </form>
+    @if (profile is not null && pieces.Count > 0)
+    {
+      <p><a class="admin-btn" href="/yonetim/uretim/kesim-dosyasi/@Model.Id?makine=@profile.Id">Dosyayı indir (.@profile.Extension)</a></p>
+      <p class="admin-muted">İlk aktarımda dosyayı makinede deneyip ölçü, açı ve sırayı kesim listesiyle karşılaştırın.</p>
+    }
+  }
+  <p>@pieces.Count parça, @pieces.Select(p => p.Bar).Distinct().Count() boy.</p>
+  @if (pieces.Count > 0)
+  {
+    <div style="overflow-x:auto">
+      <table class="admin-table">
+        <thead><tr><th>Boy</th><th>Profil</th><th>Parça</th><th>Ölçü (mm)</th><th>Açı</th><th>Poz</th><th>Barkod</th></tr></thead>
+        <tbody>
+        @foreach (var p in pieces.Take(300))
+        {
+          <tr><td>@p.Bar</td><td>@p.ProfileCode @p.Profile</td><td>@p.Part</td><td>@p.LengthMm.ToString("0.#", culture)</td><td>@p.AngleLeft / @p.AngleRight</td><td>@p.Position · @p.Design.Name (@p.Unit/@p.Design.Quantity)</td><td><code>@p.Barcode</code></td></tr>
+        }
+        </tbody>
+      </table>
+      @if (pieces.Count > 300) { <p class="admin-muted">İlk 300 parça gösteriliyor; dosyada hepsi var.</p> }
+    </div>
+  }
+</div>

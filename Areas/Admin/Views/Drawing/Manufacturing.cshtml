@@ -10,17 +10,19 @@
     var drawing = WindowDrawings.Drawing(Model);
     var glassLists = (SelectList)ViewBag.GlassLists;
     var glassCount = c.Glass.Sum(g => g.Count) * Model.Quantity;
+    var printed = KarakusAluminyum.Web.Services.Documents.PrintDates.From(Context.Request);
 }
 <link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
 <div class="admin-actions wd-noprint">
   <h1>İmalat föyü</h1>
-  <a class="admin-btn" href="/yonetim/cizim/detay/@Model.DrawingListId">Listeye dön</a>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/cizim/detay/@Model.DrawingListId">Listeye dön</a>
+  <partial name="_PrintDate" model="new KarakusAluminyum.Web.Services.Documents.PrintDateVm(printed)" />
   <button class="admin-btn" type="button" onclick="window.print()">Yazdır / PDF kaydet</button>
 </div>
 <div class="wd-sheet">
   <div class="admin-panel">
     <div class="wd-pos__head"><h2>@Model.Name</h2><partial name="_BrandMark" model="Model.Brand" /></div>
-    <p class="admin-muted">@ProductCategories.Label(Model.Category) · @Model.Customer?.Name · @s.Name · @Units.Size(Model.WidthMm, Model.HeightMm) @Units.Code · @Model.Quantity adet</p>
+    <p class="admin-muted">@ProductCategories.Label(Model.Category) · @Model.Customer?.Name · @s.Name · @Units.Size(Model.WidthMm, Model.HeightMm) @Units.Code · @Model.Quantity adet · Tarih: @printed.ToString("dd.MM.yyyy")</p>
     @if (c.Errors.Count > 0) { <ul class="wd-errors">@foreach (var e in c.Errors) { <li>@e</li> }</ul> }
     @if (c.Warnings.Count > 0) { <ul class="wd-warnings">@foreach (var w in c.Warnings) { <li>@w</li> }</ul> }
     <svg id="wd-sheet-drawing" role="img" aria-label="Pencere çizimi"></svg>

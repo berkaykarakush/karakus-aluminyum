@@ -7,7 +7,7 @@
     var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(3)).ToString("yyyy-MM-dd");
     var next = Enum.GetValues<ChequeStatus>().Where(s => InvoiceRules.CanTransition(Model.Direction, Model.Status, s)).ToList();
 }
-<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/muhasebe/cek-senet">Çek ve senet</a><a class="admin-btn" href="/yonetim/muhasebe/cariler/@Model.CustomerId">Cari ekstre</a></div>
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/cek-senet">Çek ve senet</a><a class="admin-btn" href="/yonetim/muhasebe/cariler/@Model.CustomerId">Cari ekstre</a></div>
 <div class="admin-panel"><div class="admin-grid">
   <div><span class="admin-muted">Yön</span><br />@(Model.Direction == ChequeDirection.Received ? "Alınan" : "Verilen")</div>
   <div><span class="admin-muted">Durum</span><br /><strong>@AccountingLabels.Label(Model.Status)</strong></div>

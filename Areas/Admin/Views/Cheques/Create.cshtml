@@ -1,7 +1,7 @@
 @model KarakusAluminyum.Web.Models.Accounting.Cheque
 @using KarakusAluminyum.Web.Models.Accounting
 @{ ViewData["Title"] = Model.Direction == ChequeDirection.Received ? "Alınan çek / senet" : "Verilen çek / senet"; }
-<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/muhasebe/cek-senet">Çek ve senet</a></div>
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/cek-senet">Çek ve senet</a></div>
 <div class="admin-panel"><form class="admin-form" method="post" action="/yonetim/muhasebe/cek-senet/ekle">@Html.AntiForgeryToken()
   <input type="hidden" asp-for="Direction" />
   <div asp-validation-summary="All" class="wd-errors"></div>

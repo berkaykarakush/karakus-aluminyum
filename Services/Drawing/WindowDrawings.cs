@@ -149,7 +149,12 @@ public sealed record PozView(int Position, WindowDesign Design, string Title, IR
 }
 
 // Poz listesi sayfasının başlığı (liste no, müşteri, tarih, adet, alan, markalar ve QR kodu).
-public sealed record PozSheetHeadVm(DrawingList List, IReadOnlyList<PozView> Pozlar);
+// PrintedOn: başlıkta basılan tarih (varsayılan bugün); listenin son değişiklik tarihi seçicide önerilir.
+public sealed record PozSheetHeadVm(DrawingList List, IReadOnlyList<PozView> Pozlar, DateOnly? PrintedOn = null)
+{
+    public DateOnly Date => PrintedOn ?? KarakusAluminyum.Web.Services.Documents.PrintDates.Today;
+    public DateOnly LastChanged => DateOnly.FromDateTime(List.UpdatedUtc.AddHours(3)); // Türkiye saati
+}
 
 public static class PozSheet
 {

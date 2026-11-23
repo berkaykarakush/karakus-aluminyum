@@ -17,6 +17,7 @@ namespace KarakusAluminyum.Web.Areas.Admin.Controllers;
 public sealed class OrdersController : Controller
 {
     public const string CapacityKey = "ProductionWeeklyCapacityM2";
+    public const string UnitCapacityKey = "ProductionWeeklyCapacityUnits";
     private readonly AppDbContext _db;
     private readonly OrderService _orders;
     private readonly IAuditService _audit;
@@ -90,6 +91,9 @@ public sealed class OrdersController : Controller
             .Include(x => x.Events).Include(x => x.DeliveryNotes).ThenInclude(x => x.Lines).AsSplitQuery().FirstOrDefaultAsync(x => x.Id == id);
         if (order is null) return NotFound();
         ViewBag.Progress = await _orders.ProgressAsync(order);
+        ViewBag.Scans = await ProductionController.ProgressAsync(_db, id);
+        ViewBag.Work = WorkStats.ByProject(await _db.WorkLogs.AsNoTracking().Include(x => x.Employee).Include(x => x.ProductionOrder).Where(x => x.ProductionOrderId == id).ToListAsync(), KarakusAluminyum.Web.Services.Documents.PrintDates.Today).FirstOrDefault();
+        ViewBag.Services = await _db.ServiceRequests.AsNoTracking().Where(x => x.ProductionOrderId == id).OrderByDescending(x => x.Id).ToListAsync();
         ViewBag.Load = (await _orders.LoadsAsync(new[] { order.DrawingListId })).GetValueOrDefault(order.DrawingListId ?? 0, OrderLoad.Empty);
         ViewBag.SystemIds = order.DrawingListId is int listId ? await _db.WindowDesigns.Where(x => x.DrawingListId == listId && x.ProfileSystemId != null).Select(x => x.Id).ToListAsync() : new List<int>();
         await LoadOptions();
@@ -144,7 +148,7 @@ public sealed class OrdersController : Controller
 
     // Ercom'daki sipariş işaretleri: değişen her işaret geçmişe yazılır.
     [HttpPost("isaretler/{id:int}"), ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetFlags(int id, bool sentToCutting, bool stockDeducted, bool glassExcluded, bool installationExcluded, bool reserved)
+    public async Task<IActionResult> SetFlags(int id, bool sentToCutting, bool glassExcluded, bool installationExcluded, bool reserved)
     {
         var order = await _db.ProductionOrders.Include(x => x.Events).FirstOrDefaultAsync(x => x.Id == id);
         if (order is null) return NotFound();
@@ -156,7 +160,6 @@ public sealed class OrdersController : Controller
             changes.Add($"{label}: {(next ? "evet" : "hayır")}");
         }
         Set(order.SentToCutting, sentToCutting, "Kesime gönderildi", v => order.SentToCutting = v);
-        Set(order.StockDeducted, stockDeducted, "Stok düşüldü", v => order.StockDeducted = v);
         Set(order.GlassExcluded, glassExcluded, "Cam hariç", v => order.GlassExcluded = v);
         Set(order.InstallationExcluded, installationExcluded, "Montaj hariç", v => order.InstallationExcluded = v);
         Set(order.Reserved, reserved, "Rezerve", v => order.Reserved = v);
@@ -353,6 +356,144 @@ public sealed class OrdersController : Controller
         return RedirectToAction(nameof(Details), new { id = order.Id });
     }
 
+    // ---- Metraj ve stok ----
+
+    // Seri kataloğu kurallarıyla siparişin malzeme ihtiyacı, mevcut stok ve eksikler.
+    [HttpGet("metraj/{id:int}")]
+    public async Task<IActionResult> Materials(int id)
+    {
+        var order = await _db.ProductionOrders.AsNoTracking().Include(x => x.Customer).Include(x => x.DrawingList).FirstOrDefaultAsync(x => x.Id == id);
+        if (order is null) return NotFound();
+        await LoadTakeoff(order);
+        return View(order);
+    }
+
+    // Malzeme ihtiyaç listesi: tedarikçiye verilecek sipariş formu (yalnızca eksikler veya tümü).
+    [HttpGet("malzeme-listesi/{id:int}")]
+    public async Task<IActionResult> MaterialPrint(int id, bool tumu = false, int? tedarikci = null)
+    {
+        var order = await _db.ProductionOrders.AsNoTracking().Include(x => x.Customer).FirstOrDefaultAsync(x => x.Id == id);
+        if (order is null) return NotFound();
+        await LoadTakeoff(order);
+        ViewBag.All = tumu;
+        ViewBag.Supplier = tedarikci is int supplierId ? await _db.Customers.AsNoTracking().FirstOrDefaultAsync(x => x.Id == supplierId && x.PartyType != PartyType.Customer) : null;
+        ViewBag.Template = await KarakusAluminyum.Web.Services.Documents.DocumentViews.CurrentTemplateAsync(_db, KarakusAluminyum.Web.Models.Documents.DocumentKinds.Contract);
+        return View(order);
+    }
+
+    [HttpPost("stok-dus/{id:int}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeductStock(int id)
+    {
+        var order = await _db.ProductionOrders.Include(x => x.Events).FirstOrDefaultAsync(x => x.Id == id);
+        if (order is null) return NotFound();
+        if (order.StockDeducted) { TempData["Notice"] = "Bu siparişin malzemesi stoktan zaten düşüldü."; return RedirectToAction(nameof(Materials), new { id }); }
+        var takeoff = await TakeoffAsync(order);
+        var lines = takeoff.Lines.Where(x => x.Product.Kind == ProductKind.Stock).ToList();
+        if (lines.Count == 0) { TempData["Notice"] = "Stoktan düşülecek malzeme yok. Profil sistemlerine malzeme kuralı tanımlayın."; return RedirectToAction(nameof(Materials), new { id }); }
+        foreach (var line in lines)
+            _db.StockMovements.Add(new StockMovement { ProductId = line.Product.Id, Date = Today, Kind = StockMovementKind.Production, Quantity = -line.Quantity, ProductionOrderId = id, Note = "Üretim: " + order.OrderNumber });
+        order.StockDeducted = true;
+        OrderService.Record(order, $"Metraj stoktan düşüldü ({lines.Count} kalem).", UserName);
+        await _db.SaveChangesAsync();
+        await _audit.RecordAsync("stock", "ProductionOrder", id.ToString(), $"{order.OrderNumber}: {lines.Count} kalem düşüldü");
+        TempData["Notice"] = $"{lines.Count} kalem malzeme stoktan düşüldü.";
+        return RedirectToAction(nameof(Materials), new { id });
+    }
+
+    // Geri alma, düşülen hareketlerin tersini yazar; geçmiş silinmez (fatura iptalindeki gibi).
+    [HttpPost("stok-geri-al/{id:int}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> RevertStock(int id)
+    {
+        var order = await _db.ProductionOrders.Include(x => x.Events).FirstOrDefaultAsync(x => x.Id == id);
+        if (order is null) return NotFound();
+        var net = (await _db.StockMovements.AsNoTracking().Where(x => x.ProductionOrderId == id).Select(x => new { x.ProductId, x.Quantity }).ToListAsync())
+            .GroupBy(x => x.ProductId).Select(g => (ProductId: g.Key, Quantity: g.Sum(x => x.Quantity))).Where(x => x.Quantity != 0).ToList();
+        foreach (var (productId, quantity) in net)
+            _db.StockMovements.Add(new StockMovement { ProductId = productId, Date = Today, Kind = StockMovementKind.ProductionReturn, Quantity = -quantity, ProductionOrderId = id, Note = "Üretim geri alındı: " + order.OrderNumber });
+        if (order.StockDeducted || net.Count > 0)
+        {
+            order.StockDeducted = false;
+            OrderService.Record(order, $"Stoktan düşülen malzeme geri alındı ({net.Count} kalem).", UserName);
+            await _db.SaveChangesAsync();
+            await _audit.RecordAsync("stock", "ProductionOrder", id.ToString(), $"{order.OrderNumber}: {net.Count} kalem geri alındı");
+        }
+        TempData["Notice"] = net.Count > 0 ? $"{net.Count} kalem stoğa geri alındı." : "Geri alınacak stok hareketi yok.";
+        return RedirectToAction(nameof(Materials), new { id });
+    }
+
+    // Malzeme siparişi: eksikler (veya tümü) seçilen tedarikçiye taslak alış faturası olarak açılır.
+    // Fatura onaylandığında stok muhasebedeki gibi artar. Tek yabancı para birimli listede fatura o para biriminde açılır.
+    [HttpPost("alis-taslagi/{id:int}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> PurchaseDraft(int id, int? supplierId, bool tumu = false)
+    {
+        var order = await _db.ProductionOrders.Include(x => x.Events).FirstOrDefaultAsync(x => x.Id == id);
+        if (order is null) return NotFound();
+        if (supplierId is not int supplier || !await _db.Customers.AnyAsync(x => x.Id == supplier && x.PartyType != PartyType.Customer))
+        {
+            TempData["Notice"] = "Alış faturası için tedarikçi cari seçin.";
+            return RedirectToAction(nameof(Materials), new { id });
+        }
+        var takeoff = await TakeoffAsync(order);
+        var ids = takeoff.Lines.Select(x => x.Product.Id).ToList();
+        var stock = (await _db.StockMovements.AsNoTracking().Where(x => ids.Contains(x.ProductId)).Select(x => new { x.ProductId, x.Quantity }).ToListAsync())
+            .GroupBy(x => x.ProductId).ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+        var lines = takeoff.Lines.Where(x => x.Product.Kind == ProductKind.Stock)
+            .Select(x => (x.Product, Quantity: tumu || order.StockDeducted ? x.Quantity : Math.Max(0, x.Quantity - stock.GetValueOrDefault(x.Product.Id))))
+            .Select(x => (x.Product, Quantity: MaterialTakeoff.IsCountUnit(x.Product.Unit) ? Math.Ceiling(x.Quantity) : x.Quantity))
+            .Where(x => x.Quantity > 0).ToList();
+        if (lines.Count == 0) { TempData["Notice"] = "Sipariş verilecek eksik malzeme yok."; return RedirectToAction(nameof(Materials), new { id }); }
+
+        var rates = await PriceLists.LatestRatesAsync(_db);
+        var currencies = lines.Select(x => x.Product.PriceCurrency).Distinct().ToList();
+        var currency = currencies.Count == 1 && currencies[0] != "TRY" && rates.ContainsKey(currencies[0]) ? currencies[0] : "TRY";
+        var missingRate = lines.Where(x => currency == "TRY" && PriceLists.ToTry(x.Product.PurchasePrice, x.Product.PriceCurrency, rates) is null).Select(x => x.Product.PriceCurrency).Distinct().ToList();
+        var invoice = new Invoice
+        {
+            Kind = InvoiceKind.Purchase, Status = InvoiceStatus.Draft, CustomerId = supplier, Date = Today, DueDate = Today.AddDays(30), Currency = currency,
+            ExchangeRate = currency == "TRY" ? 1 : rates[currency].Rate, Notes = $"{order.OrderNumber} siparişinin malzeme ihtiyacı (metrajdan)."
+        };
+        invoice.Lines.AddRange(lines.Select((x, i) => new InvoiceLine
+        {
+            SortOrder = i, ProductId = x.Product.Id, Description = string.IsNullOrWhiteSpace(x.Product.Code) ? x.Product.Name : $"{x.Product.Code} {x.Product.Name}",
+            Quantity = x.Quantity, Unit = x.Product.Unit, VatRate = x.Product.VatRate,
+            UnitPrice = currency == "TRY" ? decimal.Round(PriceLists.ToTry(x.Product.PurchasePrice, x.Product.PriceCurrency, rates) ?? 0, 4) : x.Product.PurchasePrice
+        }));
+        KarakusAluminyum.Web.Services.Accounting.InvoiceRules.Calculate(invoice);
+        _db.Invoices.Add(invoice);
+        OrderService.Record(order, $"Malzeme için taslak alış faturası açıldı ({lines.Count} kalem).", UserName);
+        await _db.SaveChangesAsync();
+        await _audit.RecordAsync("create", "Invoice", invoice.Id.ToString(), $"{order.OrderNumber} malzeme taslağı");
+        TempData["Notice"] = $"{lines.Count} kalemlik taslak alış faturası açıldı (Muhasebe › Faturalar, taslak no {invoice.Id}). Tedarikçinin fatura numarasını girip onaylayınca stok artar."
+            + (missingRate.Count > 0 ? $" {string.Join(", ", missingRate)} kuru girilmediği için bu kalemlerin fiyatı 0 yazıldı." : "");
+        return RedirectToAction(nameof(Materials), new { id });
+    }
+
+    private async Task<TakeoffResult> TakeoffAsync(ProductionOrder order)
+    {
+        var designs = order.DrawingListId is int listId
+            ? await _db.WindowDesigns.AsNoTracking().Include(x => x.ProfileSystem).Where(x => x.DrawingListId == listId).OrderBy(x => x.SortOrder).ThenBy(x => x.Id).ToListAsync()
+            : new List<KarakusAluminyum.Web.Models.Drawing.WindowDesign>();
+        var productIds = designs.Where(x => x.ProfileSystem is not null).Select(x => x.ProfileSystem!).DistinctBy(x => x.Id)
+            .SelectMany(x => MaterialTakeoff.ParseRules(x.MaterialsJson).Select(r => r.ProductId)).Distinct().ToList();
+        var products = await _db.Products.AsNoTracking().Where(x => productIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id);
+        return MaterialTakeoff.Build(designs, products);
+    }
+
+    private async Task LoadTakeoff(ProductionOrder order)
+    {
+        var takeoff = await TakeoffAsync(order);
+        var ids = takeoff.Lines.Select(x => x.Product.Id).ToList();
+        var stock = (await _db.StockMovements.AsNoTracking().Where(x => ids.Contains(x.ProductId)).Select(x => new { x.ProductId, x.Quantity }).ToListAsync())
+            .GroupBy(x => x.ProductId).ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+        var deducted = (await _db.StockMovements.AsNoTracking().Where(x => x.ProductionOrderId == order.Id).Select(x => new { x.ProductId, x.Quantity }).ToListAsync())
+            .GroupBy(x => x.ProductId).ToDictionary(g => g.Key, g => -g.Sum(x => x.Quantity));
+        ViewBag.Takeoff = takeoff;
+        ViewBag.Rates = await PriceLists.LatestRatesAsync(_db);
+        ViewBag.Stock = stock;
+        ViewBag.Deducted = deducted;
+        ViewBag.Suppliers = new SelectList(await _db.Customers.AsNoTracking().Where(x => x.PartyType != PartyType.Customer).OrderBy(x => x.Name).Select(x => new { x.Id, x.Name }).ToListAsync(), "Id", "Name");
+    }
+
     // ---- Çıktılar ----
 
     // İş emri: atölyeye giden poz listesi (çizimler), sipariş işaretleri ve tarihler.
@@ -394,24 +535,33 @@ public sealed class OrdersController : Controller
             .Where(x => x.Status != OrderStatus.Cancelled && x.Status != OrderStatus.Delivered).ToListAsync();
         ViewBag.Loads = await _orders.LoadsAsync(open.Select(x => x.DrawingListId));
         ViewBag.Capacity = await CapacityAsync();
+        ViewBag.UnitCapacity = await CapacityAsync(UnitCapacityKey);
+        var ids = open.Select(x => x.Id).ToList();
+        ViewBag.Scans = (await _db.ProductionScans.AsNoTracking().Where(x => ids.Contains(x.ProductionOrderId)).GroupBy(x => new { x.ProductionOrderId, x.Station }).Select(g => new { g.Key.ProductionOrderId, g.Key.Station, Count = g.Count() }).ToListAsync())
+            .GroupBy(x => x.ProductionOrderId).ToDictionary(g => g.Key, g => g.ToDictionary(x => x.Station, x => x.Count));
         return View(open);
     }
 
     [HttpPost("planlama/kapasite"), ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetCapacity(decimal capacity)
+    public async Task<IActionResult> SetCapacity(decimal capacity, decimal? unitCapacity)
     {
-        if (capacity is < 0 or > 100000) { TempData["Notice"] = "Haftalık kapasite 0-100000 m² arasında olmalıdır."; return RedirectToAction(nameof(Planning)); }
-        var row = await _db.SiteSettingRecords.FirstOrDefaultAsync(x => x.Key == CapacityKey);
-        if (row is null) _db.SiteSettingRecords.Add(row = new SiteSettingRecord { Key = CapacityKey, Description = "Haftalık üretim kapasitesi (m²)" });
-        row.Value = capacity.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (capacity is < 0 or > 100000 || unitCapacity is < 0 or > 100000) { TempData["Notice"] = "Haftalık kapasite 0-100000 arasında olmalıdır."; return RedirectToAction(nameof(Planning)); }
+        async Task Save(string key, string description, decimal value)
+        {
+            var row = await _db.SiteSettingRecords.FirstOrDefaultAsync(x => x.Key == key);
+            if (row is null) _db.SiteSettingRecords.Add(row = new SiteSettingRecord { Key = key, Description = description });
+            row.Value = value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+        await Save(CapacityKey, "Haftalık üretim kapasitesi (m²)", capacity);
+        await Save(UnitCapacityKey, "Haftalık üretim kapasitesi (adet)", unitCapacity ?? 0);
         await _db.SaveChangesAsync();
         TempData["Notice"] = "Haftalık kapasite kaydedildi.";
         return RedirectToAction(nameof(Planning));
     }
 
-    private async Task<decimal> CapacityAsync()
+    private async Task<decimal> CapacityAsync(string key = CapacityKey)
     {
-        var value = await _db.SiteSettingRecords.Where(x => x.Key == CapacityKey).Select(x => x.Value).FirstOrDefaultAsync();
+        var value = await _db.SiteSettingRecords.Where(x => x.Key == key).Select(x => x.Value).FirstOrDefaultAsync();
         return decimal.TryParse(value, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var capacity) ? capacity : 0;
     }
 

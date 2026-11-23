@@ -1,0 +1,34 @@
+@model KarakusAluminyum.Web.Models.Production.WorkLogInputVm
+@using KarakusAluminyum.Web.Models.Production
+@{
+    ViewData["Title"] = "Çalışma ekle";
+    var employees = (List<KarakusAluminyum.Web.Models.Accounting.Employee>)ViewBag.Employees;
+    var orders = (List<KarakusAluminyum.Web.Services.Production.OrderOption>)ViewBag.Orders;
+    var services = (List<KarakusAluminyum.Web.Services.Production.OrderOption>)ViewBag.Services;
+}
+<h1>Çalışma ekle</h1>
+<div class="admin-panel">
+  <form class="admin-form" method="post" action="/yonetim/takvim/ekle">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="All"></div>
+    <label>Personel</label>
+    @if (employees.Count == 0) { <p class="admin-muted">Aktif personel yok. Muhasebe › Personel bölümünden ekleyin.</p> }
+    <div class="admin-grid">
+      @foreach (var e in employees) { <label style="font-weight:400"><input type="checkbox" name="EmployeeIds" value="@e.Id" checked="@Model.EmployeeIds.Contains(e.Id)" style="width:auto" /> @e.Name@(string.IsNullOrWhiteSpace(e.Position) ? "" : $" ({e.Position})")</label> }
+    </div>
+    <div class="admin-grid">
+      <div><label asp-for="From">Tarih (başlangıç)</label><input asp-for="From" type="date" required /></div>
+      <div><label asp-for="To">Bitiş (birden çok gün için)</label><input asp-for="To" type="date" /></div>
+    </div>
+    <p><label><input asp-for="SkipSundays" type="checkbox" style="width:auto" /> Pazar günlerini atla</label></p>
+    <div class="admin-grid">
+      <div><label asp-for="ProductionOrderId">İş / sipariş</label><select asp-for="ProductionOrderId"><option value="">Seçilmedi</option>@foreach (var o in orders) { <option value="@o.Id" selected="@(Model.ProductionOrderId == o.Id)">@o.Text</option> }</select></div>
+      <div><label asp-for="ServiceRequestId">veya servis talebi</label><select asp-for="ServiceRequestId"><option value="">Seçilmedi</option>@foreach (var s in services) { <option value="@s.Id" selected="@(Model.ServiceRequestId == s.Id)">@s.Text</option> }</select></div>
+      <div><label asp-for="Activity">Faaliyet</label><select asp-for="Activity">@foreach (var a in WorkActivities.All) { <option value="@a">@WorkActivities.Label(a)</option> }</select></div>
+      <div><label asp-for="Days">Süre (her gün için)</label><select asp-for="Days"><option value="1">Tam gün</option><option value="0.75">3/4 gün</option><option value="0.5">Yarım gün</option><option value="0.25">Çeyrek gün</option></select></div>
+    </div>
+    <p class="admin-muted">İş seçilmezse kayıt "genel" sayılır (ör. atölye düzeni, izin dışı genel işler).</p>
+    <label asp-for="Note">Not</label><input asp-for="Note" maxlength="300" />
+    <div class="admin-actions"><button class="admin-btn">Kaydet</button><a href="/yonetim/takvim@(Model.ReturnWeek is null ? "" : "?hafta=" + Model.ReturnWeek)">İptal</a></div>
+  </form>
+</div>

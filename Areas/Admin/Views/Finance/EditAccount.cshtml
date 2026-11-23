@@ -1,7 +1,7 @@
 @model KarakusAluminyum.Web.Models.Accounting.FinanceAccount
 @using KarakusAluminyum.Web.Models.Accounting
 @{ var editing = Model.Id != 0; ViewData["Title"] = editing ? "Hesabı düzenle" : "Yeni hesap"; var action = editing ? $"/yonetim/muhasebe/kasa-banka/hesap/duzenle/{Model.Id}" : "/yonetim/muhasebe/kasa-banka/hesap/ekle"; }
-<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/muhasebe/kasa-banka">Kasa ve banka</a></div>
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/kasa-banka">Kasa ve banka</a></div>
 <div class="admin-panel"><form class="admin-form" method="post" action="@action">@Html.AntiForgeryToken()
   <div asp-validation-summary="All"></div>
   <label asp-for="Name">Hesap adı</label><input asp-for="Name" required />

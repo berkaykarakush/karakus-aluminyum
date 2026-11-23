@@ -9,7 +9,7 @@ public enum PartyType { Customer = 0, Supplier = 1, Both = 2 }
 public enum ProductKind { Stock = 0, Service = 1 }
 public enum InvoiceKind { Sale = 0, Purchase = 1, SaleReturn = 2, PurchaseReturn = 3 }
 public enum InvoiceStatus { Draft = 0, Approved = 1, Cancelled = 2 }
-public enum StockMovementKind { Opening = 0, Invoice = 1, InvoiceCancel = 2, Adjustment = 3 }
+public enum StockMovementKind { Opening = 0, Invoice = 1, InvoiceCancel = 2, Adjustment = 3, Production = 4, ProductionReturn = 5 }
 public enum FinanceAccountKind { Cash = 0, Bank = 1, Pos = 2, CreditCard = 3 }
 public enum CashKind { Collection = 0, Payment = 1, Expense = 2, Salary = 3, Transfer = 4, ChequeCollected = 5, ChequePaid = 6, OtherIn = 7, OtherOut = 8 }
 public enum ChequeKind { Cheque = 0, PromissoryNote = 1 }
@@ -27,9 +27,21 @@ public sealed class Product
     [StringLength(20)] public string Unit { get; set; } = "Adet";
     [Column(TypeName = "numeric(18,2)"), Range(0, 1_000_000_000)] public decimal SalePrice { get; set; }
     [Column(TypeName = "numeric(18,2)"), Range(0, 1_000_000_000)] public decimal PurchasePrice { get; set; }
+    [StringLength(3)] public string PriceCurrency { get; set; } = "TRY"; // alış fiyatının (fiyat listesinin) para birimi
     [Column(TypeName = "numeric(5,2)"), Range(0, 100)] public decimal VatRate { get; set; } = 20m;
     [Column(TypeName = "numeric(18,3)"), Range(0, 1_000_000_000)] public decimal CriticalStock { get; set; }
     public bool IsActive { get; set; } = true;
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+}
+
+// Döviz kuru: fiyat listeleri ve metraj maliyeti için. Elle girilir veya TCMB'den alınır (döviz satış).
+public sealed class ExchangeRate
+{
+    public int Id { get; set; }
+    [Required, StringLength(3)] public string Currency { get; set; } = "EUR";
+    [Column(TypeName = "numeric(18,6)"), Range(0.000001, 1_000_000)] public decimal Rate { get; set; }
+    public DateOnly Date { get; set; }
+    [StringLength(20)] public string Source { get; set; } = "Elle";
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }
 
@@ -43,6 +55,7 @@ public sealed class StockMovement
     [Column(TypeName = "numeric(18,3)")] public decimal Quantity { get; set; } // giriş artı, çıkış eksi
     public int? InvoiceId { get; set; }
     public Invoice? Invoice { get; set; }
+    public int? ProductionOrderId { get; set; } // üretim siparişinin metrajından düşülen / geri alınan
     [StringLength(300)] public string? Note { get; set; }
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }

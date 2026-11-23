@@ -111,3 +111,11 @@ public static partial class ClientExtensions
         return client.PostAsync(url, new FormUrlEncodedContent(values));
     }
 }
+
+// Her test uygulaması yapılandırma dosyalarını izler; inotify kullanılırsa yüzlerce uygulama işletim sisteminin
+// inotify sınırını (WSL'de 128) aşar ve sonraki uygulamalar 500 döner. Testlerde dosya izleme yoklamayla yapılır.
+internal static class FileWatcherSetup
+{
+    [System.Runtime.CompilerServices.ModuleInitializer]
+    internal static void UsePolling() => Environment.SetEnvironmentVariable("DOTNET_USE_POLLING_FILE_WATCHER", "true");
+}
