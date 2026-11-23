@@ -9,7 +9,7 @@
 }
 <link rel="stylesheet" href="~/css/document-editor.css" asp-append-version="true" />
 <link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
-<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/muhasebe/faturalar">Faturalar</a></div>
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/faturalar">Faturalar</a></div>
 <form id="inv-form" class="doc-editor" method="post" action="@action">
   @Html.AntiForgeryToken()
   <input type="hidden" asp-for="Kind" /><input type="hidden" asp-for="LinesJson" /><input type="hidden" asp-for="QuoteId" /><input type="hidden" asp-for="ContractId" />
@@ -39,7 +39,7 @@
     <p class="admin-muted">Tutarlar kaydederken sunucuda yeniden hesaplanır. Fiyatlar KDV hariç yazılır.</p>
   </section>
   <section class="doc-card"><label asp-for="Notes">Notlar</label><textarea asp-for="Notes" rows="2"></textarea></section>
-  <div class="doc-actions"><button class="admin-btn" type="submit">Taslak olarak kaydet</button><a class="admin-btn" href="/yonetim/muhasebe/faturalar">İptal</a></div>
+  <div class="doc-actions"><button class="admin-btn" type="submit">Taslak olarak kaydet</button><a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/faturalar">İptal</a></div>
 </form>
 <script type="application/json" id="inv-products">@Html.Raw(JsonSerializer.Serialize(ViewBag.Products))</script>
 <script src="~/js/invoice-editor.js" asp-append-version="true"></script>

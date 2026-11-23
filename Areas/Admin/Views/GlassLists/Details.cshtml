@@ -12,7 +12,7 @@
 <link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
 <div class="admin-actions wd-noprint">
   <h1>Cam listesi</h1>
-  <a class="admin-btn" href="/yonetim/camlar">Cam listeleri</a>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/camlar">Cam listeleri</a>
   <a class="admin-btn" href="/yonetim/camlar/duzenle/@Model.Id">Düzenle</a>
   <partial name="~/Areas/Admin/Views/Shared/_PrintDate.cshtml" model="new KarakusAluminyum.Web.Services.Documents.PrintDateVm(printed)" />
   <button class="admin-btn" type="button" onclick="window.print()">Yazdır / PDF kaydet</button>

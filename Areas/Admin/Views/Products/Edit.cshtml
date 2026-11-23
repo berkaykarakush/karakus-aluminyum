@@ -3,7 +3,7 @@
 @using KarakusAluminyum.Web.Services.Accounting
 @using KarakusAluminyum.Web.Services.Documents
 @{ var editing = Model.Id != 0; ViewData["Title"] = editing ? "Ürünü düzenle" : "Yeni ürün / hizmet"; var action = editing ? $"/yonetim/muhasebe/urunler/duzenle/{Model.Id}" : "/yonetim/muhasebe/urunler/ekle"; var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(3)).ToString("yyyy-MM-dd"); var movements = ViewBag.Movements as List<StockMovement> ?? new(); }
-<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/muhasebe/urunler">Ürün ve stok</a>@if (editing) { <form method="post" action="/yonetim/muhasebe/urunler/sil/@Model.Id" onsubmit="return confirm('Ürün silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form> }</div>
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/urunler">Ürün ve stok</a>@if (editing) { <form method="post" action="/yonetim/muhasebe/urunler/sil/@Model.Id" onsubmit="return confirm('Ürün silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form> }</div>
 <div class="admin-panel"><form class="admin-form" method="post" action="@action">@Html.AntiForgeryToken()
   <div asp-validation-summary="All"></div>
   <label asp-for="Name">Ad</label><input asp-for="Name" required />

@@ -15,7 +15,7 @@
 <link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
 <div class="admin-actions wd-noprint">
   <h1>İmalat föyü</h1>
-  <a class="admin-btn" href="/yonetim/cizim/detay/@Model.DrawingListId">Listeye dön</a>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/cizim/detay/@Model.DrawingListId">Listeye dön</a>
   <partial name="_PrintDate" model="new KarakusAluminyum.Web.Services.Documents.PrintDateVm(printed)" />
   <button class="admin-btn" type="button" onclick="window.print()">Yazdır / PDF kaydet</button>
 </div>

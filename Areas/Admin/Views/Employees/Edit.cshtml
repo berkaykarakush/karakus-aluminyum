@@ -1,6 +1,6 @@
 @model KarakusAluminyum.Web.Models.Accounting.Employee
 @{ var editing = Model.Id != 0; ViewData["Title"] = editing ? "Personeli düzenle" : "Yeni personel"; var action = editing ? $"/yonetim/muhasebe/personel/duzenle/{Model.Id}" : "/yonetim/muhasebe/personel/ekle"; }
-<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/muhasebe/personel">Personel</a></div>
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/personel">Personel</a></div>
 <div class="admin-panel"><form class="admin-form" method="post" action="@action">@Html.AntiForgeryToken()
   <div asp-validation-summary="All"></div>
   <label asp-for="Name">Ad soyad</label><input asp-for="Name" required />

@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
 <div class="admin-actions">
   <h1>@Model.Name</h1>
-  <a class="admin-btn" href="/yonetim/crm/firmalar">Firma havuzu</a>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/crm/firmalar">Firma havuzu</a>
   @if (Model.CustomerId is int customerId)
   {
     <a class="admin-btn" href="/yonetim/crm/musteriler/duzenle/@customerId">Müşteri kaydı</a>

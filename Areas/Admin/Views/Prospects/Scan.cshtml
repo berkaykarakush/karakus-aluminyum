@@ -11,7 +11,7 @@
 @if (running) { <meta http-equiv="refresh" content="15" /> }
 <div class="admin-actions">
   <h1>Sektörler ve tarama</h1>
-  <a class="admin-btn" href="/yonetim/crm/firmalar">Firma havuzu</a>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/crm/firmalar">Firma havuzu</a>
   <a class="admin-btn" href="/yonetim/crm/firmalar/sektor/ekle">+ Yeni sektör</a>
   @if (o.HasApiKey) { <form method="post" action="/yonetim/crm/firmalar/tarama/baslat" onsubmit="return confirm('Açık tüm sektörler taranacak (en çok @Model.Sectors.Where(s => s.IsActive).Sum(Estimate) istek). Devam edilsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn">Tüm açık sektörleri tara</button></form> }
 </div>

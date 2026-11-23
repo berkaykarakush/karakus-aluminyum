@@ -1,7 +1,7 @@
 @model List<KarakusAluminyum.Web.Models.Drawing.ProfileSystem>
 @using KarakusAluminyum.Web.Models.Drawing
 @{ ViewData["Title"] = "Sistemler"; }
-<div class="admin-actions"><h1>Sistemler</h1><a class="admin-btn" href="/yonetim/cizim">Çizim listesi</a><a class="admin-btn" href="/yonetim/camlar/tipler">Cam tipleri</a></div>
+<div class="admin-actions"><h1>Sistemler</h1><a class="admin-btn admin-btn--secondary" href="/yonetim/cizim">Çizim listesi</a><a class="admin-btn admin-btn--secondary" href="/yonetim/camlar/tipler">Cam tipleri</a></div>
 <p class="admin-muted">Kesim ölçüleri ve maliyetler buradaki değerlerle hesaplanır. Üretime geçmeden önce değerleri kullandığınız ürünün teknik kataloğuna göre girin.</p>
 @foreach (var category in ProductCategories.All)
 {

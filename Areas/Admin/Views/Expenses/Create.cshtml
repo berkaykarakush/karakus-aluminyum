@@ -1,7 +1,7 @@
 @model KarakusAluminyum.Web.Models.Accounting.Expense
 @using KarakusAluminyum.Web.Models.Accounting
 @{ ViewData["Title"] = "Yeni gider"; }
-<div class="admin-actions"><h1>Yeni gider</h1><a class="admin-btn" href="/yonetim/muhasebe/giderler">Giderler</a></div>
+<div class="admin-actions"><h1>Yeni gider</h1><a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/giderler">Giderler</a></div>
 <div class="admin-panel"><form class="admin-form" method="post" action="/yonetim/muhasebe/giderler/ekle">@Html.AntiForgeryToken()
   <div asp-validation-summary="All" class="wd-errors"></div>
   <label asp-for="CategoryId">Kategori</label><select asp-for="CategoryId" asp-items="(SelectList)ViewBag.Categories" required></select>

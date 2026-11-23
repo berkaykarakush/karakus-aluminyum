@@ -4,7 +4,7 @@
     ViewData["Title"] = editing ? "Siparişi düzenle" : "Yeni sipariş";
     var action = editing ? $"/yonetim/siparisler/duzenle/{Model.Id}" : "/yonetim/siparisler/ekle";
 }
-<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="@(editing ? $"/yonetim/siparisler/detay/{Model.Id}" : "/yonetim/siparisler")">Vazgeç</a></div>
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn admin-btn--secondary" href="@(editing ? $"/yonetim/siparisler/detay/{Model.Id}" : "/yonetim/siparisler")">Vazgeç</a></div>
 <form class="admin-form admin-panel" method="post" action="@action">
   @Html.AntiForgeryToken()
   <div asp-validation-summary="All"></div>

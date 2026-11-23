@@ -5,7 +5,7 @@
     var action = editing ? $"/yonetim/crm/firmalar/sektor/{Model.Id}" : "/yonetim/crm/firmalar/sektor/ekle";
 }
 <link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
-<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/crm/firmalar/tarama">Sektörler ve tarama</a></div>
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn admin-btn--secondary" href="/yonetim/crm/firmalar/tarama">Sektörler ve tarama</a></div>
 <div class="admin-panel">
   <form class="admin-form" method="post" action="@action">
     @Html.AntiForgeryToken()

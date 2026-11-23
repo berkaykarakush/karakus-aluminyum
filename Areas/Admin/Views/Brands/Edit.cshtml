@@ -6,7 +6,7 @@
     var action = editing ? $"/yonetim/markalar/duzenle/{Model.Id}" : "/yonetim/markalar/ekle";
 }
 <link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
-<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/markalar">Markalar</a></div>
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn admin-btn--secondary" href="/yonetim/markalar">Markalar</a></div>
 <div class="admin-panel">
   <form method="post" action="@action" enctype="multipart/form-data">
     @Html.AntiForgeryToken()

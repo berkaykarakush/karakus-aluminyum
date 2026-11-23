@@ -7,7 +7,7 @@
 }
 <link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
 <link rel="stylesheet" href="~/css/document-editor.css" asp-append-version="true" />
-<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/camlar">Cam listeleri</a></div>
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn admin-btn--secondary" href="/yonetim/camlar">Cam listeleri</a></div>
 <form id="gl-form" class="doc-editor" method="post" action="@action">
   @Html.AntiForgeryToken()
   <input type="hidden" asp-for="ItemsJson" />
@@ -37,7 +37,7 @@
     <div id="gl-totals"></div>
   </section>
   <section class="doc-card"><label asp-for="Notes">Notlar</label><textarea asp-for="Notes" rows="2"></textarea></section>
-  <div class="doc-actions"><button class="admin-btn" type="submit">Kaydet</button><a class="admin-btn" href="/yonetim/camlar">İptal</a></div>
+  <div class="doc-actions"><button class="admin-btn" type="submit">Kaydet</button><a class="admin-btn admin-btn--secondary" href="/yonetim/camlar">İptal</a></div>
 </form>
 <script type="application/json" id="gl-types">@Html.Raw(JsonSerializer.Serialize(ViewBag.GlassTypes))</script>
 <script src="~/js/glass-list.js" asp-append-version="true"></script>

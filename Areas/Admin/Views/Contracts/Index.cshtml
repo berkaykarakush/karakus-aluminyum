@@ -2,7 +2,7 @@
 @using KarakusAluminyum.Web.Models.Documents
 @using KarakusAluminyum.Web.Services.Documents
 @{ ViewData["Title"] = "Sözleşmeler"; }
-<div class="admin-actions"><h1>Sözleşmeler</h1><a class="admin-btn" href="/yonetim/sozlesmeler/ekle">+ Yeni sözleşme</a>@if (User.IsInRole("Admin")) { <a class="admin-btn" href="/yonetim/sablonlar/contract">Sözleşme şablonu</a> }</div>
+<div class="admin-actions"><h1>Sözleşmeler</h1><a class="admin-btn" href="/yonetim/sozlesmeler/ekle">+ Yeni sözleşme</a>@if (User.IsInRole("Admin")) { <a class="admin-btn admin-btn--secondary" href="/yonetim/sablonlar/contract">Sözleşme şablonu</a> }</div>
 <div class="admin-panel">
   <table class="admin-table">
     <thead><tr><th>No</th><th>Başlık / alıcı</th><th>Tarih</th><th>Durum</th><th>Bedel</th><th></th></tr></thead>

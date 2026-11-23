@@ -11,7 +11,7 @@
     var wanted = Model.Mode == "tahsilat" ? new[] { InvoiceKind.Sale, InvoiceKind.PurchaseReturn } : new[] { InvoiceKind.Purchase, InvoiceKind.SaleReturn };
     var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(3)).ToString("yyyy-MM-dd");
 }
-<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn" href="/yonetim/muhasebe/kasa-banka">Kasa ve banka</a></div>
+<div class="admin-actions"><h1>@ViewData["Title"]</h1><a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/kasa-banka">Kasa ve banka</a></div>
 <div class="admin-panel"><form class="admin-form" method="post" action="/yonetim/muhasebe/kasa-banka/yeni">@Html.AntiForgeryToken()
   <input type="hidden" name="tur" value="@Model.Mode" />
   <div asp-validation-summary="All" class="wd-errors"></div>
