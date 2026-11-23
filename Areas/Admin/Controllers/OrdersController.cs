@@ -93,7 +93,7 @@ public sealed class OrdersController : Controller
         if (order is null) return NotFound();
         ViewBag.Progress = await _orders.ProgressAsync(order);
         ViewBag.Scans = await ProductionController.ProgressAsync(_db, id);
-        var workLogs = await _db.WorkLogs.AsNoTracking().Include(x => x.Employee).Include(x => x.ProductionOrder).Where(x => x.ProductionOrderId == id).ToListAsync();
+        var workLogs = await _db.WorkLogs.AsNoTracking().Include(x => x.Employee).Include(x => x.Installer).Include(x => x.ProductionOrder).Where(x => x.ProductionOrderId == id).ToListAsync();
         var workRows = WorkStats.ByProject(workLogs, KarakusAluminyum.Web.Services.Documents.PrintDates.Today);
         if (User.IsInRole("Admin") || User.IsInRole("Accountant")) workRows = WorkStats.WithCost(workRows, workLogs, KarakusAluminyum.Web.Services.Documents.PrintDates.Today); // maliyet maaştan gelir
         ViewBag.Work = workRows.FirstOrDefault();

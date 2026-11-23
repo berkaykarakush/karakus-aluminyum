@@ -9,8 +9,12 @@ public sealed class WorkLog
 {
     public int Id { get; set; }
     public DateOnly Date { get; set; }
-    public int EmployeeId { get; set; }
+    // Kayıt ya bir personele ya da bir montaj ekibine (taşeron dahil) yazılır.
+    public int? EmployeeId { get; set; }
     public Employee? Employee { get; set; }
+    public int? InstallerId { get; set; }
+    public Installer? Installer { get; set; }
+    public int People { get; set; } = 1; // ekipte kayıt anındaki kişi sayısı; adam-gün = Days × People
     public int? ProductionOrderId { get; set; }
     public ProductionOrder? ProductionOrder { get; set; }
     public int? ServiceRequestId { get; set; }
@@ -46,6 +50,7 @@ public static class WorkActivities
 public sealed class WorkLogInputVm
 {
     public List<int> EmployeeIds { get; set; } = new();
+    public List<int> InstallerIds { get; set; } = new();
     public DateOnly From { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(3));
     public DateOnly? To { get; set; }
     public bool SkipSundays { get; set; } = true;

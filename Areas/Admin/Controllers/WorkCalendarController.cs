@@ -27,8 +27,10 @@ public sealed class WorkCalendarController : Controller
     {
         var start = WorkStats.WeekStart(hafta ?? Today);
         var logs = await Logs().Where(x => x.Date >= start && x.Date < start.AddDays(7)).ToListAsync();
-        var employeeIds = logs.Select(x => x.EmployeeId).ToHashSet();
+        var employeeIds = logs.Where(x => x.EmployeeId != null).Select(x => x.EmployeeId!.Value).ToHashSet();
+        var teamIds = logs.Where(x => x.InstallerId != null).Select(x => x.InstallerId!.Value).ToHashSet();
         ViewBag.Employees = await _db.Employees.AsNoTracking().Where(x => x.IsActive || employeeIds.Contains(x.Id)).OrderBy(x => x.Name).ToListAsync();
+        ViewBag.Teams = await _db.Installers.AsNoTracking().Where(x => x.IsActive || teamIds.Contains(x.Id)).OrderBy(x => x.IsSubcontractor).ThenBy(x => x.Name).ToListAsync();
         ViewBag.Start = start;
         ViewBag.Logs = logs;
         ViewBag.Overbooked = WorkStats.Overbooked(logs);
@@ -37,10 +39,11 @@ public sealed class WorkCalendarController : Controller
     }
 
     [HttpGet("ekle")]
-    public async Task<IActionResult> Create(int? personel, DateOnly? tarih, int? siparis, int? servis, DateOnly? hafta)
+    public async Task<IActionResult> Create(int? personel, int? ekip, DateOnly? tarih, int? siparis, int? servis, DateOnly? hafta)
     {
         var input = new WorkLogInputVm { From = tarih ?? Today, ProductionOrderId = siparis, ServiceRequestId = servis, ReturnWeek = hafta?.ToString("yyyy-MM-dd") };
         if (personel is int id) input.EmployeeIds.Add(id);
+        if (ekip is int team) input.InstallerIds.Add(team);
         if (servis is not null) input.Activity = WorkActivities.Service;
         await LoadOptions();
         return View("Editor", input);
@@ -51,8 +54,10 @@ public sealed class WorkCalendarController : Controller
     public async Task<IActionResult> Create(WorkLogInputVm input)
     {
         var to = input.To ?? input.From;
-        if (input.EmployeeIds.Count == 0) ModelState.AddModelError(nameof(input.EmployeeIds), "En az bir personel seçin.");
+        if (input.EmployeeIds.Count == 0 && input.InstallerIds.Count == 0) ModelState.AddModelError(nameof(input.EmployeeIds), "En az bir personel veya montaj ekibi seçin.");
         else if (await _db.Employees.CountAsync(x => input.EmployeeIds.Contains(x.Id)) != input.EmployeeIds.Distinct().Count()) ModelState.AddModelError(nameof(input.EmployeeIds), "Personel bulunamadı.");
+        var teams = await _db.Installers.AsNoTracking().Where(x => input.InstallerIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id);
+        if (teams.Count != input.InstallerIds.Distinct().Count()) ModelState.AddModelError(nameof(input.InstallerIds), "Montaj ekibi bulunamadı.");
         if (to < input.From) ModelState.AddModelError(nameof(input.To), "Bitiş tarihi başlangıçtan önce olamaz.");
         else if (to.DayNumber - input.From.DayNumber >= MaxRangeDays) ModelState.AddModelError(nameof(input.To), $"Tek seferde en fazla {MaxRangeDays} gün girilebilir.");
         if (input.ProductionOrderId is not null && input.ServiceRequestId is not null) ModelState.AddModelError(string.Empty, "Kayıt ya siparişe ya servis talebine bağlanır.");
@@ -66,18 +71,22 @@ public sealed class WorkCalendarController : Controller
         if (!ModelState.IsValid) { await LoadOptions(); return View("Editor", input); }
 
         var ids = input.EmployeeIds.Distinct().ToList();
-        var existing = (await _db.WorkLogs.AsNoTracking().Where(x => ids.Contains(x.EmployeeId) && x.Date >= input.From && x.Date <= to && x.ProductionOrderId == input.ProductionOrderId && x.ServiceRequestId == input.ServiceRequestId && x.Activity == input.Activity)
-            .Select(x => new { x.EmployeeId, x.Date }).ToListAsync()).Select(x => (x.EmployeeId, x.Date)).ToHashSet();
+        var teamIds = teams.Keys.ToList();
+        var existing = (await _db.WorkLogs.AsNoTracking().Where(x => ((x.EmployeeId != null && ids.Contains(x.EmployeeId.Value)) || (x.InstallerId != null && teamIds.Contains(x.InstallerId.Value)))
+                && x.Date >= input.From && x.Date <= to && x.ProductionOrderId == input.ProductionOrderId && x.ServiceRequestId == input.ServiceRequestId && x.Activity == input.Activity)
+            .Select(x => new { x.EmployeeId, x.InstallerId, x.Date }).ToListAsync()).Select(x => (Worker: x.InstallerId is int t ? $"t{t}" : $"e{x.EmployeeId}", x.Date)).ToHashSet();
+        var workers = ids.Select(id => (Key: $"e{id}", Employee: (int?)id, Team: (int?)null, People: 1))
+            .Concat(teams.Values.Select(t => (Key: $"t{t.Id}", Employee: (int?)null, Team: (int?)t.Id, People: Math.Max(1, t.TeamSize)))).ToList();
         var added = 0;
-        foreach (var employee in ids)
-            foreach (var date in dates.Where(d => !existing.Contains((employee, d))))
+        foreach (var worker in workers)
+            foreach (var date in dates.Where(d => !existing.Contains((worker.Key, d))))
             {
-                _db.WorkLogs.Add(new WorkLog { EmployeeId = employee, Date = date, ProductionOrderId = input.ProductionOrderId, ServiceRequestId = input.ServiceRequestId, Activity = input.Activity, Days = input.Days, Note = input.Note?.Trim(), CreatedBy = User.Identity?.Name });
+                _db.WorkLogs.Add(new WorkLog { EmployeeId = worker.Employee, InstallerId = worker.Team, People = worker.People, Date = date, ProductionOrderId = input.ProductionOrderId, ServiceRequestId = input.ServiceRequestId, Activity = input.Activity, Days = input.Days, Note = input.Note?.Trim(), CreatedBy = User.Identity?.Name });
                 added++;
             }
         await _db.SaveChangesAsync();
         await _audit.RecordAsync("create", "WorkLog", "batch", $"{added} kayıt");
-        TempData["Notice"] = $"{added} çalışma kaydı eklendi." + (added < ids.Count * dates.Count ? $" {ids.Count * dates.Count - added} kayıt zaten vardı." : "");
+        TempData["Notice"] = $"{added} çalışma kaydı eklendi." + (added < workers.Count * dates.Count ? $" {workers.Count * dates.Count - added} kayıt zaten vardı." : "");
         return RedirectToAction(nameof(Index), new { hafta = WorkStats.WeekStart(input.From).ToString("yyyy-MM-dd") });
     }
 
@@ -88,7 +97,7 @@ public sealed class WorkCalendarController : Controller
         if (log is null) return NotFound();
         _db.WorkLogs.Remove(log);
         await _db.SaveChangesAsync();
-        await _audit.RecordAsync("delete", "WorkLog", id.ToString(), $"{log.EmployeeId} {log.Date:yyyy-MM-dd}");
+        await _audit.RecordAsync("delete", "WorkLog", id.ToString(), $"{(log.InstallerId is int t ? $"ekip {t}" : $"personel {log.EmployeeId}")} {log.Date:yyyy-MM-dd}");
         TempData["Notice"] = "Çalışma kaydı silindi.";
         return RedirectToAction(nameof(Index), new { hafta = WorkStats.WeekStart(log.Date).ToString("yyyy-MM-dd") });
     }
@@ -126,18 +135,19 @@ public sealed class WorkCalendarController : Controller
         text.Append("İş;Adam-gün (gerçekleşen);Adam-gün (planlanan);Kişi;Çalışılan gün;İlk gün;Son gün" + cost + "\r\n");
         foreach (var p in projects)
             text.Append(string.Join(';', Cell(p.Label), N(p.ManDays), N(p.PlannedManDays), p.People, p.WorkDays, p.First?.ToString("dd.MM.yyyy") ?? "", p.Last?.ToString("dd.MM.yyyy") ?? "") + (showCost ? ";" + p.LaborCost.ToString("0.00", culture) : "")).Append("\r\n");
-        text.Append("\r\nPersonel;Adam-gün (gerçekleşen);Adam-gün (planlanan);İş sayısı;Çalışılan gün" + cost + "\r\n");
+        text.Append("\r\nPersonel / ekip;Adam-gün (gerçekleşen);Adam-gün (planlanan);İş sayısı;Çalışılan gün" + cost + "\r\n");
         foreach (var e in employees)
             text.Append(string.Join(';', Cell(e.Name), N(e.ManDays), N(e.PlannedManDays), e.Projects, e.WorkDays) + (showCost ? ";" + e.LaborCost.ToString("0.00", culture) : "")).Append("\r\n");
         var bytes = new UTF8Encoding(true).GetPreamble().Concat(Encoding.UTF8.GetBytes(text.ToString())).ToArray(); // Excel Türkçe karakterleri doğru açsın
         return File(bytes, "text/csv", $"adam-gun-{from:yyyy-MM-dd}-{to:yyyy-MM-dd}.csv");
     }
 
-    private IQueryable<WorkLog> Logs() => _db.WorkLogs.AsNoTracking().Include(x => x.Employee).Include(x => x.ProductionOrder).Include(x => x.ServiceRequest);
+    private IQueryable<WorkLog> Logs() => _db.WorkLogs.AsNoTracking().Include(x => x.Employee).Include(x => x.Installer).Include(x => x.ProductionOrder).Include(x => x.ServiceRequest);
 
     private async Task LoadOptions()
     {
         ViewBag.Employees = await _db.Employees.AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.Name).ToListAsync();
+        ViewBag.Teams = await _db.Installers.AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.IsSubcontractor).ThenBy(x => x.Name).ToListAsync();
         // Açık siparişler önce; teslim edilenler montaj sonrası işler ve servis için listede kalır.
         var orders = await _db.ProductionOrders.AsNoTracking().Where(x => x.Status != OrderStatus.Cancelled).OrderBy(x => x.Status == OrderStatus.Delivered).ThenByDescending(x => x.Id).Take(400)
             .Select(x => new { x.Id, x.CustomerId, x.OrderNumber, Customer = x.Customer!.Name, x.Title }).ToListAsync();

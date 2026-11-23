@@ -8,6 +8,7 @@
     <div><label asp-for="Name">Ekip adı *</label><input asp-for="Name" required placeholder="Örn. Ahmet ekibi" /></div>
     <div><label asp-for="Phone">Telefon</label><input asp-for="Phone" /></div>
     <div><label asp-for="TeamSize">Kişi sayısı</label><input asp-for="TeamSize" type="number" min="1" max="50" /></div>
+    <div><label asp-for="DailyCost">Günlük ekip ücreti (TL)</label><input asp-for="DailyCost" type="number" step="0.01" min="0" /></div>
   </div>
   <label><input asp-for="IsSubcontractor" style="width:auto" /> Taşeron ekip</label>
   <label><input asp-for="IsActive" style="width:auto" /> Aktif</label>

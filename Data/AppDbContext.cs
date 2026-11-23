@@ -161,6 +161,8 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<InvoiceLine>().HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<WorkLog>().HasIndex(x => x.Date);
         builder.Entity<WorkLog>().HasIndex(x => new { x.EmployeeId, x.Date });
+        builder.Entity<WorkLog>().HasIndex(x => new { x.InstallerId, x.Date });
+        builder.Entity<WorkLog>().HasOne(x => x.Installer).WithMany().HasForeignKey(x => x.InstallerId).OnDelete(DeleteBehavior.Cascade);
         builder.Entity<WorkLog>().HasOne(x => x.Employee).WithMany().HasForeignKey(x => x.EmployeeId).OnDelete(DeleteBehavior.Cascade);
         builder.Entity<WorkLog>().HasOne(x => x.ProductionOrder).WithMany().HasForeignKey(x => x.ProductionOrderId).OnDelete(DeleteBehavior.Cascade);
         builder.Entity<WorkLog>().HasOne(x => x.ServiceRequest).WithMany().HasForeignKey(x => x.ServiceRequestId).OnDelete(DeleteBehavior.Cascade);

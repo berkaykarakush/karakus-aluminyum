@@ -219,7 +219,7 @@ public sealed class AccountingQueries
         var contractIds = projects.Where(x => x.ContractId != null).Select(x => x.ContractId!.Value).ToList();
         if (quoteIds.Count == 0 && contractIds.Count == 0) return new();
         var today = KarakusAluminyum.Web.Services.Documents.PrintDates.Today;
-        var logs = await _db.WorkLogs.AsNoTracking().Include(x => x.Employee).Include(x => x.ProductionOrder)
+        var logs = await _db.WorkLogs.AsNoTracking().Include(x => x.Employee).Include(x => x.Installer).Include(x => x.ProductionOrder)
             .Where(x => x.Date <= today && x.ProductionOrder != null && ((x.ProductionOrder.QuoteId != null && quoteIds.Contains(x.ProductionOrder.QuoteId.Value)) || (x.ProductionOrder.ContractId != null && contractIds.Contains(x.ProductionOrder.ContractId.Value))))
             .ToListAsync();
         var result = new Dictionary<int, List<ProjectEntry>>();
@@ -227,13 +227,17 @@ public sealed class AccountingQueries
         {
             var own = logs.Where(x => (project.QuoteId != null && x.ProductionOrder!.QuoteId == project.QuoteId) || (project.ContractId != null && x.ProductionOrder!.ContractId == project.ContractId)).ToList();
             if (own.Count == 0) continue;
-            result[project.Id] = own.GroupBy(x => (x.EmployeeId, Name: x.Employee?.Name ?? "")).Select(g =>
+            result[project.Id] = own.GroupBy(x => KarakusAluminyum.Web.Services.Production.WorkStats.Worker(x).Key).Select(g =>
             {
-                var (rate, estimated) = KarakusAluminyum.Web.Services.Production.WorkStats.DailyCost(g.First().Employee);
+                var first = g.First();
+                var (rate, estimated) = KarakusAluminyum.Web.Services.Production.WorkStats.DailyCost(first);
                 var days = g.Sum(x => x.Days);
                 var orders = string.Join(", ", g.Select(x => x.ProductionOrder!.OrderNumber).Distinct());
-                return new ProjectEntry(g.Max(x => x.Date), "Personel takvimi", "İşçilik (takvim)", orders, g.Key.Name,
-                    $"{days.ToString("0.##", TurkishNumbers.Culture)} adam-gün × {rate.ToString("N2", TurkishNumbers.Culture)} TL{(estimated ? " (net maaştan tahmini)" : "")}", InvoiceRules.Money(days * rate), "/yonetim/takvim/rapor");
+                var name = first.InstallerId is null ? first.Employee?.Name ?? "" : first.Installer?.Name ?? "";
+                var unit = first.InstallerId is null ? "adam-gün" : $"ekip günü ({first.People} kişi)";
+                var note = estimated ? first.InstallerId is null ? " (net maaştan tahmini)" : " (ekip ücreti girilmemiş)" : "";
+                return new ProjectEntry(g.Max(x => x.Date), "Personel takvimi", "İşçilik (takvim)", orders, name,
+                    $"{days.ToString("0.##", TurkishNumbers.Culture)} {unit} × {rate.ToString("N2", TurkishNumbers.Culture)} TL{note}", InvoiceRules.Money(days * rate), "/yonetim/takvim/rapor");
             }).ToList();
         }
         return result;

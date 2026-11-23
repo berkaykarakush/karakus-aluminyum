@@ -191,6 +191,7 @@ public sealed class Installer
     [StringLength(40)] public string? Phone { get; set; }
     [Range(1, 50, ErrorMessage = "Ekip kişi sayısı 1-50 arasında olmalıdır.")] public int TeamSize { get; set; } = 2;
     public bool IsSubcontractor { get; set; }
+    [Column(TypeName = "numeric(18,2)"), Range(0, 10_000_000)] public decimal DailyCost { get; set; } // ekibin günlük ücreti (taşeron); takvim işçiliği bununla hesaplanır
     [StringLength(500)] public string? Notes { get; set; }
     public bool IsActive { get; set; } = true;
 }
