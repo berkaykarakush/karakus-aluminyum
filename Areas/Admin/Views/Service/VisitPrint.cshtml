@@ -1,0 +1,72 @@
+@model KarakusAluminyum.Web.Models.Production.ServiceVisit
+@using KarakusAluminyum.Web.Models.Production
+@using KarakusAluminyum.Web.Services.Documents
+@{
+    // Servis formu: ziyaretin kaydı; müşteriye imzalatılır, bir kopyası müşteride kalır.
+    Layout = null;
+    var request = (ServiceRequest)ViewBag.Request;
+    var printed = PrintDates.From(Context.Request);
+    var head = new BrandHeadVm("SERVİS FORMU", printed.ToString("dd.MM.yyyy"));
+    var culture = TurkishNumbers.Culture;
+    var parts = Model.Parts.OrderBy(p => p.SortOrder).ToList();
+    var partsTotal = parts.Sum(p => p.Quantity * p.UnitPrice);
+    var net = partsTotal + Model.LaborCharge;
+    var vat = KarakusAluminyum.Web.Services.Accounting.InvoiceRules.Money(net * 0.20m);
+    string M(decimal v) => v.ToString("#,0.00", culture) + " ₺";
+    string T(TimeOnly? t) => t?.ToString("HH:mm") ?? "-";
+}
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Servis formu - @Model.Number</title>
+  <link rel="stylesheet" href="~/css/document-print.css" asp-append-version="true" />
+  <link rel="stylesheet" href="~/css/brand.css" asp-append-version="true" />
+</head>
+<body class="doc doc--proforma">
+  <partial name="~/Areas/Admin/Views/Shared/_BrandLayer.cshtml" />
+  <div class="doc-toolbar"><a class="doc-toolbar__link" href="/yonetim/servis/detay/@request.Id">Talebe dön</a><partial name="~/Areas/Admin/Views/Shared/_PrintDate.cshtml" model='new PrintDateVm(printed, Model.Date, "Ziyaret tarihi")' /><button type="button" onclick="window.print()">Yazdır / PDF kaydet</button></div>
+  <table class="doc-sheet">
+    <thead><tr><td><partial name="~/Areas/Admin/Views/Shared/_BrandHead.cshtml" model="head" /></td></tr></thead>
+    <tfoot><tr><td><partial name="~/Areas/Admin/Views/Shared/_BrandFoot.cshtml" /></td></tr></tfoot>
+    <tbody><tr><td class="doc-body">
+      <partial name="_ServiceHead" model="request" />
+      <div class="sv-row">
+        <div class="sv-field"><span>Form no</span>@Model.Number</div>
+        <div class="sv-field"><span>Ziyaret tarihi</span>@Model.Date.ToString("dd.MM.yyyy")</div>
+        <div class="sv-field"><span>Varış / çıkış</span>@T(Model.ArrivedAt) / @T(Model.LeftAt)</div>
+        <div class="sv-field"><span>Teknisyen / ekip</span>@(Model.Technicians ?? "-")</div>
+      </div>
+      @if (!string.IsNullOrWhiteSpace(Model.Findings)) { <div class="sv-section"><h3>Tespit</h3><div class="sv-box" style="min-height:0">@Model.Findings</div></div> }
+      <div class="sv-section"><h3>Yapılan işlem</h3><div class="sv-box" style="min-height:0">@Model.WorkDone</div></div>
+      @if (parts.Count > 0 || Model.LaborCharge > 0)
+      {
+        <table class="pf-lines">
+          <thead><tr><th class="pf-no">Sıra</th><th>Açıklama</th><th class="pf-num">Miktar</th><th>Birim</th><th class="pf-num">Birim fiyat</th><th class="pf-num">Tutar</th></tr></thead>
+          <tbody>
+          @foreach (var (p, i) in parts.Select((p, i) => (p, i + 1)))
+          {
+            <tr><td class="pf-no">@i</td><td>@p.Description</td><td class="pf-num">@p.Quantity.ToString("0.###", culture)</td><td>@p.Unit</td><td class="pf-num">@M(p.UnitPrice)</td><td class="pf-num">@M(p.Quantity * p.UnitPrice)</td></tr>
+          }
+          @if (Model.LaborCharge > 0) { <tr><td class="pf-no">@(parts.Count + 1)</td><td>İşçilik</td><td class="pf-num">1</td><td>Hizmet</td><td class="pf-num">@M(Model.LaborCharge)</td><td class="pf-num">@M(Model.LaborCharge)</td></tr> }
+          </tbody>
+        </table>
+        @if (net > 0)
+        {
+          <table class="pf-lines" style="width:auto;margin-left:auto"><tbody>
+            <tr><td>Ara toplam (KDV hariç)</td><td class="pf-num">@M(net)</td></tr>
+            <tr><td>KDV %20</td><td class="pf-num">@M(vat)</td></tr>
+            <tr><td><strong>Genel toplam</strong></td><td class="pf-num"><strong>@M(net + vat)</strong></td></tr>
+          </tbody></table>
+        }
+      }
+      @if (request.Warranty == ServiceWarranty.InWarranty) { <p><strong>Garanti kapsamında yapılmıştır.</strong>@(net > 0 ? " Garanti dışı kalemler yukarıda fiyatlandırılmıştır." : " Ücret alınmamıştır.")</p> }
+      <p><strong>Sonuç:</strong> @ServiceLabels.Label(Model.Result)</p>
+      @if (!string.IsNullOrWhiteSpace(Model.CustomerNote)) { <p><strong>Müşteri görüşü:</strong> @Model.CustomerNote</p> }
+      <p class="pf-legal">Bu form yapılan servis işleminin kaydıdır; fatura yerine geçmez.</p>
+      <partial name="_ServiceSign" />
+    </td></tr></tbody>
+  </table>
+  <div class="doc-print-foot"><partial name="~/Areas/Admin/Views/Shared/_BrandFoot.cshtml" /></div>
+</body>
+</html>

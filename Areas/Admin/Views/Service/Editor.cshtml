@@ -1,0 +1,66 @@
+@model KarakusAluminyum.Web.Models.Production.ServiceRequestInputVm
+@using KarakusAluminyum.Web.Models.Production
+@{
+    var editing = Model.Id != 0;
+    ViewData["Title"] = editing ? "Servis talebini düzenle" : "Yeni servis talebi";
+    var action = editing ? $"/yonetim/servis/duzenle/{Model.Id}" : "/yonetim/servis/ekle";
+    var customers = new SelectList(((SelectList)ViewBag.Customers).Items, "Id", "Name", Model.CustomerId);
+    var installers = new SelectList(((SelectList)ViewBag.Installers).Items, "Id", "Name", Model.InstallerId);
+    var orders = (List<KarakusAluminyum.Web.Services.Production.OrderOption>)ViewBag.Orders;
+    var pozlar = (List<KarakusAluminyum.Web.Models.Drawing.WindowDesign>)ViewBag.OrderPozlar;
+}
+<h1>@ViewData["Title"]</h1>
+<div class="admin-panel">
+  <form class="admin-form" method="post" action="@action" id="service-form">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="All"></div>
+    <div class="admin-grid">
+      <div><label asp-for="CustomerId">Müşteri</label><select asp-for="CustomerId" asp-items="customers" required><option value="">Seçin</option></select></div>
+      <div>
+        <label asp-for="ProductionOrderId">Proje / sipariş (bitmiş iş)</label>
+        <select asp-for="ProductionOrderId" id="service-order">
+          <option value="">Siparişe bağlı değil</option>
+          @foreach (var o in orders) { <option value="@o.Id" data-customer="@o.CustomerId" selected="@(Model.ProductionOrderId == o.Id)">@o.Text</option> }
+        </select>
+      </div>
+      <div><label asp-for="ReceivedOn">Talep tarihi</label><input asp-for="ReceivedOn" type="date" /></div>
+      <div><label asp-for="Channel">Bildirim kanalı</label><select asp-for="Channel">@foreach (var c in ServiceLabels.Channels) { <option>@c</option> }</select></div>
+      <div><label asp-for="Category">Konu</label><select asp-for="Category">@foreach (var c in ServiceLabels.Categories) { <option>@c</option> }</select></div>
+      <div><label asp-for="Warranty">Garanti durumu</label><select asp-for="Warranty">@foreach (var w in Enum.GetValues<ServiceWarranty>()) { <option value="@w">@ServiceLabels.Label(w)</option> }</select></div>
+    </div>
+    <p><label><input asp-for="Urgent" type="checkbox" style="width:auto" /> Acil</label></p>
+    <div class="admin-grid">
+      <div><label asp-for="ContactName">İlgili kişi</label><input asp-for="ContactName" /></div>
+      <div><label asp-for="ContactPhone">Telefon</label><input asp-for="ContactPhone" type="tel" /></div>
+    </div>
+    <label asp-for="Address">Servis adresi</label><input asp-for="Address" />
+    @if (pozlar.Count > 0)
+    {
+      <label>Etkilenen pozlar</label>
+      <div class="admin-grid">
+        @foreach (var (p, i) in pozlar.Select((p, i) => (p, i + 1)))
+        {
+          <label style="font-weight:400"><input type="checkbox" name="PozIds" value="@p.Id" checked="@Model.PozIds.Contains(p.Id)" style="width:auto" /> Poz @i: @p.Name (@p.WidthMm × @p.HeightMm mm)</label>
+        }
+      </div>
+    }
+    else if (Model.ProductionOrderId is not null) { <p class="admin-muted">Siparişin çizim listesinde poz yok.</p> }
+    <label asp-for="Complaint">Müşterinin bildirdiği sorun</label><textarea asp-for="Complaint" rows="4" required></textarea>
+    <h2>Planlama</h2>
+    <div class="admin-grid">
+      <div><label asp-for="PlannedOn">Ziyaret tarihi</label><input asp-for="PlannedOn" type="date" /></div>
+      <div><label asp-for="InstallerId">Servis ekibi</label><select asp-for="InstallerId" asp-items="installers"><option value="">Seçilmedi</option></select></div>
+    </div>
+    <label asp-for="Notes">İç not</label><textarea asp-for="Notes" rows="2"></textarea>
+    <div class="admin-actions"><button class="admin-btn">Kaydet</button><a href="@(editing ? $"/yonetim/servis/detay/{Model.Id}" : "/yonetim/servis")">İptal</a></div>
+  </form>
+</div>
+@if (!editing)
+{
+  <script>
+    // Yeni talepte sipariş seçilince sayfa siparişin bilgileri, pozları ve garanti önerisiyle yeniden açılır.
+    document.getElementById('service-order').addEventListener('change', e => {
+      if (e.target.value) location.href = '/yonetim/servis/ekle?siparis=' + e.target.value;
+    });
+  </script>
+}

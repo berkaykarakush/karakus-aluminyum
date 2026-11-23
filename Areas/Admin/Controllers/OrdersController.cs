@@ -92,6 +92,7 @@ public sealed class OrdersController : Controller
         if (order is null) return NotFound();
         ViewBag.Progress = await _orders.ProgressAsync(order);
         ViewBag.Scans = await ProductionController.ProgressAsync(_db, id);
+        ViewBag.Services = await _db.ServiceRequests.AsNoTracking().Where(x => x.ProductionOrderId == id).OrderByDescending(x => x.Id).ToListAsync();
         ViewBag.Load = (await _orders.LoadsAsync(new[] { order.DrawingListId })).GetValueOrDefault(order.DrawingListId ?? 0, OrderLoad.Empty);
         ViewBag.SystemIds = order.DrawingListId is int listId ? await _db.WindowDesigns.Where(x => x.DrawingListId == listId && x.ProfileSystemId != null).Select(x => x.Id).ToListAsync() : new List<int>();
         await LoadOptions();

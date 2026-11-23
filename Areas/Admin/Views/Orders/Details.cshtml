@@ -59,6 +59,19 @@
   }
 </div>
 
+@{ var services = (List<ServiceRequest>)ViewBag.Services; }
+@if (Model.Status is OrderStatus.Delivered or OrderStatus.Shipped || services.Count > 0)
+{
+  <div class="admin-panel">
+    <div class="admin-actions"><h3 style="margin:0">Servis</h3><a class="admin-btn admin-btn--secondary" href="/yonetim/servis/ekle?siparis=@Model.Id">Servis talebi aç</a></div>
+    @if (services.Count == 0) { <p class="admin-muted">Bu iş için servis talebi yok.</p> }
+    else
+    {
+      <ul>@foreach (var s in services) { <li><a href="/yonetim/servis/detay/@s.Id">@s.Number</a> · @s.ReceivedOn.ToString("dd.MM.yyyy") · @s.Category · @ServiceLabels.Label(s.Status)</li> }</ul>
+    }
+  </div>
+}
+
 @if (load.Units > 0)
 {
   var scans = (Dictionary<string, int>)ViewBag.Scans;

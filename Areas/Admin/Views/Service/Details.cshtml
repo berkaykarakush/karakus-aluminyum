@@ -1,0 +1,86 @@
+@model KarakusAluminyum.Web.Models.Production.ServiceRequest
+@using KarakusAluminyum.Web.Models.Production
+@{
+    ViewData["Title"] = "Servis " + Model.Number;
+    var pozlar = (List<KarakusAluminyum.Web.Models.Drawing.WindowDesign>)ViewBag.Pozlar;
+    var warrantyEnds = ViewBag.WarrantyEnds as DateOnly?;
+    var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
+    string D(DateOnly? d) => d?.ToString("dd.MM.yyyy") ?? "-";
+    var open = ServiceLabels.IsOpen(Model.Status);
+}
+<link rel="stylesheet" href="~/css/orders.css" asp-append-version="true" />
+<div class="or-page">
+<div class="admin-actions">
+  <h1>Servis @Model.Number</h1>
+  <span class="or-flag">@ServiceLabels.Label(Model.Status)</span>@if (Model.Urgent) { <span class="or-late">Acil</span> }
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/servis">Servis talepleri</a>
+  <a class="admin-btn" href="/yonetim/servis/duzenle/@Model.Id">Düzenle</a>
+  @if (Model.Status != ServiceStatus.Cancelled) { <a class="admin-btn" href="/yonetim/servis/ziyaret/ekle/@Model.Id">Servis formu gir</a> }
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/servis/yazdir/@Model.Id" target="_blank" rel="noopener">Talep formunu yazdır</a>
+  @if (Model.Visits.Count == 0) { <form method="post" action="/yonetim/servis/sil/@Model.Id" onsubmit="return confirm('Servis talebi silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form> }
+</div>
+
+<div class="or-grid">
+  <div class="admin-panel">
+    <h3 style="margin-top:0">Talep</h3>
+    <dl class="or-dl">
+      <dt>Müşteri</dt><dd>@Model.Customer?.Name</dd>
+      <dt>İlgili kişi</dt><dd>@(Model.ContactName ?? "-") @(Model.ContactPhone is null ? "" : "· " + Model.ContactPhone)</dd>
+      <dt>Adres</dt><dd>@(Model.Address ?? "-")</dd>
+      <dt>Talep tarihi</dt><dd>@D(Model.ReceivedOn) · @Model.Channel</dd>
+      <dt>Konu</dt><dd>@Model.Category</dd>
+      <dt>Proje / sipariş</dt><dd>@if (Model.ProductionOrder is not null) { <a href="/yonetim/siparisler/detay/@Model.ProductionOrderId">@Model.ProductionOrder.OrderNumber</a> <span>· @Model.ProductionOrder.Title</span> } else { <span>-</span> }</dd>
+      <dt>Teslim</dt><dd>@D(Model.ProductionOrder?.DeliveredOn)</dd>
+      <dt>Garanti</dt><dd>@ServiceLabels.Label(Model.Warranty)@if (warrantyEnds is not null) { <span class="admin-muted"> (bitiş @D(warrantyEnds))</span> }</dd>
+    </dl>
+    <p style="white-space:pre-wrap"><strong>Bildirilen sorun:</strong> @Model.Complaint</p>
+    @if (pozlar.Count > 0) { <p><strong>Pozlar:</strong> @string.Join(", ", pozlar.Select(p => $"{p.Name} ({p.WidthMm} × {p.HeightMm} mm)"))</p> }
+    @if (!string.IsNullOrWhiteSpace(Model.Notes)) { <p class="admin-muted" style="white-space:pre-wrap">@Model.Notes</p> }
+  </div>
+  <div class="admin-panel">
+    <h3 style="margin-top:0">Planlama ve durum</h3>
+    <dl class="or-dl">
+      <dt>Ziyaret tarihi</dt><dd>@D(Model.PlannedOn)</dd>
+      <dt>Servis ekibi</dt><dd>@(Model.Installer?.Name ?? "-")</dd>
+      <dt>Tamamlandı</dt><dd>@D(Model.CompletedOn)</dd>
+    </dl>
+    <div class="admin-actions">
+      @if (open)
+      {
+        <form method="post" action="/yonetim/servis/durum/@Model.Id">@Html.AntiForgeryToken()<input type="hidden" name="status" value="@ServiceStatus.Completed" /><button class="admin-btn admin-btn--secondary">Tamamlandı işaretle</button></form>
+        <form method="post" action="/yonetim/servis/durum/@Model.Id" onsubmit="return confirm('Servis talebi iptal edilsin mi?')">@Html.AntiForgeryToken()<input type="hidden" name="status" value="@ServiceStatus.Cancelled" /><button class="admin-btn admin-btn--danger">İptal et</button></form>
+      }
+      else
+      {
+        <form method="post" action="/yonetim/servis/durum/@Model.Id">@Html.AntiForgeryToken()<input type="hidden" name="status" value="@ServiceStatus.Open" /><button class="admin-btn admin-btn--secondary">Yeniden aç</button></form>
+      }
+    </div>
+  </div>
+</div>
+
+<div class="admin-panel" style="overflow-x:auto">
+  <h3 style="margin-top:0">Servis formları (@Model.Visits.Count)</h3>
+  @if (Model.Visits.Count == 0) { <p class="admin-muted">Henüz ziyaret yok. Sahada doldurmak için talep formunu veya boş servis formunu yazdırabilirsiniz.</p> }
+  else
+  {
+    <table class="admin-table">
+      <thead><tr><th>Form no</th><th>Tarih</th><th>Ekip</th><th>Yapılan işlem</th><th>Sonuç</th><th style="text-align:right">Tutar (KDV hariç)</th><th></th></tr></thead>
+      <tbody>
+      @foreach (var v in Model.Visits.OrderByDescending(x => x.Date).ThenByDescending(x => x.Id))
+      {
+        var total = v.LaborCharge + v.Parts.Sum(p => p.Quantity * p.UnitPrice);
+        <tr>
+          <td><a href="/yonetim/servis/form/@v.Id" target="_blank" rel="noopener">@v.Number</a></td>
+          <td>@D(v.Date)</td>
+          <td>@v.Technicians</td>
+          <td>@(v.WorkDone.Length > 100 ? v.WorkDone[..100] + "…" : v.WorkDone)</td>
+          <td>@ServiceLabels.Label(v.Result)</td>
+          <td style="text-align:right">@total.ToString("#,0.00", culture) ₺</td>
+          <td class="admin-actions"><a class="admin-btn admin-btn--secondary" href="/yonetim/servis/form/@v.Id" target="_blank" rel="noopener">Yazdır</a><form method="post" action="/yonetim/servis/ziyaret/sil/@v.Id" onsubmit="return confirm('Servis formu silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form></td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  }
+</div>
+</div>

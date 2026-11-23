@@ -1,0 +1,32 @@
+@model KarakusAluminyum.Web.Models.Production.ServiceRequest
+@using KarakusAluminyum.Web.Models.Production
+@{
+    // Servis çıktılarının ortak bölümü: firma, müşteri, talep bilgileri ve etkilenen pozlar.
+    var t = (KarakusAluminyum.Web.Models.Documents.DocumentTemplate)ViewBag.Template;
+    var pozlar = (List<KarakusAluminyum.Web.Models.Drawing.WindowDesign>)ViewBag.Pozlar;
+    var warrantyEnds = ViewBag.WarrantyEnds as DateOnly?;
+    string D(DateOnly? d) => d?.ToString("dd.MM.yyyy") ?? "-";
+    var order = Model.ProductionOrder;
+}
+<div class="pf-parties">
+  <section class="pf-party"><h3>Servis veren</h3><strong>@(t.SellerLegalName ?? t.SellerName)</strong>@if (!string.IsNullOrWhiteSpace(t.SellerAddress)) { <div>@t.SellerAddress</div> }@if (!string.IsNullOrWhiteSpace(t.Phone)) { <div>Tel: @t.Phone</div> }</section>
+  <section class="pf-party"><h3>Müşteri</h3><strong>@Model.Customer?.Name</strong>@if (!string.IsNullOrWhiteSpace(Model.ContactName)) { <div>İlgili: @Model.ContactName</div> }@if (!string.IsNullOrWhiteSpace(Model.ContactPhone)) { <div>Tel: @Model.ContactPhone</div> }@if (!string.IsNullOrWhiteSpace(Model.Address)) { <div>@Model.Address</div> }</section>
+  <dl class="pf-info">
+    <dt>Talep no</dt><dd>@Model.Number</dd>
+    <dt>Talep tarihi</dt><dd>@D(Model.ReceivedOn)</dd>
+    @if (order is not null) { <dt>Sipariş</dt><dd>@order.OrderNumber</dd><dt>Teslim</dt><dd>@D(order.DeliveredOn)</dd> }
+    <dt>Garanti</dt><dd>@ServiceLabels.Label(Model.Warranty)@(warrantyEnds is null ? "" : $" ({D(warrantyEnds)}'e kadar)")</dd>
+  </dl>
+</div>
+<div class="sv-section">
+  <h3>Bildirilen sorun · @Model.Category@(Model.Urgent ? " · ACİL" : "")</h3>
+  <div class="sv-box" style="min-height:0">@Model.Complaint</div>
+</div>
+@if (order is not null) { <p><strong>İş:</strong> @order.Title</p> }
+@if (pozlar.Count > 0)
+{
+  <table class="pf-lines">
+    <thead><tr><th class="pf-no">Poz</th><th>Ad</th><th>Ölçü (mm)</th><th class="pf-num">Adet</th></tr></thead>
+    <tbody>@foreach (var p in pozlar) { <tr><td class="pf-no">@(p.SortOrder + 1)</td><td>@p.Name</td><td>@p.WidthMm × @p.HeightMm</td><td class="pf-num">@p.Quantity</td></tr> }</tbody>
+  </table>
+}

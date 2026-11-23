@@ -55,6 +55,9 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ProductionScan> ProductionScans => Set<ProductionScan>();
     public DbSet<MachineExportProfile> MachineExportProfiles => Set<MachineExportProfile>();
     public DbSet<LabelPrinter> LabelPrinters => Set<LabelPrinter>();
+    public DbSet<ServiceRequest> ServiceRequests => Set<ServiceRequest>();
+    public DbSet<ServiceVisit> ServiceVisits => Set<ServiceVisit>();
+    public DbSet<ServicePart> ServiceParts => Set<ServicePart>();
     public DbSet<OrderEvent> OrderEvents => Set<OrderEvent>();
     public DbSet<Installer> Installers => Set<Installer>();
     public DbSet<DeliveryNote> DeliveryNotes => Set<DeliveryNote>();
@@ -155,6 +158,14 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<Invoice>().HasIndex(x => new { x.Status, x.DueDate });
         builder.Entity<InvoiceLine>().HasOne(x => x.Invoice).WithMany(x => x.Lines).HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.Cascade);
         builder.Entity<InvoiceLine>().HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<ServiceRequest>().HasIndex(x => x.Number).IsUnique();
+        builder.Entity<ServiceRequest>().HasIndex(x => x.Status);
+        builder.Entity<ServiceRequest>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<ServiceRequest>().HasOne(x => x.ProductionOrder).WithMany().HasForeignKey(x => x.ProductionOrderId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<ServiceRequest>().HasOne(x => x.Installer).WithMany().HasForeignKey(x => x.InstallerId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<ServiceVisit>().HasIndex(x => x.Number).IsUnique();
+        builder.Entity<ServiceVisit>().HasOne(x => x.ServiceRequest).WithMany(x => x.Visits).HasForeignKey(x => x.ServiceRequestId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<ServicePart>().HasOne(x => x.ServiceVisit).WithMany(x => x.Parts).HasForeignKey(x => x.ServiceVisitId).OnDelete(DeleteBehavior.Cascade);
         builder.Entity<LabelPrinter>().Property(x => x.GapMm).HasColumnType("numeric(5,2)");
         builder.Entity<ExchangeRate>().HasIndex(x => new { x.Currency, x.Date }).IsUnique();
         builder.Entity<StockMovement>().HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);

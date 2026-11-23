@@ -1,0 +1,49 @@
+@model KarakusAluminyum.Web.Models.Production.ServiceVisitInputVm
+@using KarakusAluminyum.Web.Models.Production
+@{
+    var request = (ServiceRequest)ViewBag.Request;
+    ViewData["Title"] = "Servis formu: " + request.Number;
+    var rows = Math.Max(4, Model.Parts.Count + 2);
+    string F(decimal v) => v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+}
+<h1>Servis formu · @request.Number</h1>
+<p class="admin-muted">@request.Customer?.Name · @request.Category · @ServiceLabels.Label(request.Warranty)</p>
+<div class="admin-panel">
+  <p style="white-space:pre-wrap"><strong>Bildirilen sorun:</strong> @request.Complaint</p>
+  <form class="admin-form" method="post" action="/yonetim/servis/ziyaret/ekle/@request.Id">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="All"></div>
+    <div class="admin-grid">
+      <div><label asp-for="Date">Ziyaret tarihi</label><input asp-for="Date" type="date" /></div>
+      <div><label asp-for="ArrivedAt">Varış saati</label><input asp-for="ArrivedAt" type="time" /></div>
+      <div><label asp-for="LeftAt">Çıkış saati</label><input asp-for="LeftAt" type="time" /></div>
+      <div><label asp-for="Technicians">Teknisyen / ekip</label><input asp-for="Technicians" /></div>
+    </div>
+    <label asp-for="Findings">Tespit</label><textarea asp-for="Findings" rows="3"></textarea>
+    <label asp-for="WorkDone">Yapılan işlem</label><textarea asp-for="WorkDone" rows="3" required></textarea>
+    <h2>Kullanılan parçalar</h2>
+    <table class="admin-table">
+      <thead><tr><th>Açıklama</th><th style="width:110px">Miktar</th><th style="width:110px">Birim</th><th style="width:150px">Birim fiyat (₺, KDV hariç)</th></tr></thead>
+      <tbody>
+      @for (var i = 0; i < rows; i++)
+      {
+        var p = i < Model.Parts.Count ? Model.Parts[i] : new ServicePartInput();
+        <tr>
+          <td><input name="Parts[@i].Description" value="@p.Description" aria-label="Parça açıklaması" maxlength="200" /></td>
+          <td><input name="Parts[@i].Quantity" type="number" step="any" min="0" value="@F(p.Quantity)" aria-label="Miktar" /></td>
+          <td><input name="Parts[@i].Unit" value="@(p.Unit ?? "Adet")" aria-label="Birim" maxlength="20" /></td>
+          <td><input name="Parts[@i].UnitPrice" type="number" step="0.01" min="0" value="@F(p.UnitPrice)" aria-label="Birim fiyat" /></td>
+        </tr>
+      }
+      </tbody>
+    </table>
+    <div class="admin-grid">
+      <div><label asp-for="LaborCharge">İşçilik ücreti (₺, KDV hariç)</label><input asp-for="LaborCharge" type="number" step="0.01" min="0" /></div>
+      <div><label asp-for="Result">Sonuç</label><select asp-for="Result">@foreach (var r in Enum.GetValues<ServiceResult>()) { <option value="@r">@ServiceLabels.Label(r)</option> }</select></div>
+    </div>
+    @if (request.Warranty == ServiceWarranty.InWarranty) { <p class="admin-muted">Talep garanti kapsamında; ücret girmeyin.</p> }
+    <label asp-for="CustomerNote">Müşteri görüşü</label><textarea asp-for="CustomerNote" rows="2"></textarea>
+    <p class="admin-muted">"Sorun giderildi" seçilirse talep tamamlanır; diğer sonuçlarda talep yeni ziyaret için açık kalır.</p>
+    <div class="admin-actions"><button class="admin-btn">Kaydet</button><a href="/yonetim/servis/detay/@request.Id">İptal</a></div>
+  </form>
+</div>

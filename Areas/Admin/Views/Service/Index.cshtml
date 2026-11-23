@@ -1,0 +1,48 @@
+@model List<KarakusAluminyum.Web.Models.Production.ServiceRequest>
+@using KarakusAluminyum.Web.Models.Production
+@{
+    ViewData["Title"] = "Servis talepleri";
+    var counts = (Dictionary<ServiceStatus, int>)ViewBag.Counts;
+    var status = ViewBag.Status as ServiceStatus?;
+    var all = (bool)ViewBag.All;
+    string D(DateOnly? d) => d?.ToString("dd.MM.yyyy") ?? "-";
+}
+<link rel="stylesheet" href="~/css/orders.css" asp-append-version="true" />
+<div class="admin-actions">
+  <h1>Servis talepleri</h1>
+  <a class="admin-btn" href="/yonetim/servis/ekle">Yeni servis talebi</a>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/servis/bos-form" target="_blank" rel="noopener">Boş servis formu</a>
+</div>
+<div class="admin-panel admin-actions">
+  <a class="admin-btn @(status is null && !all ? "" : "admin-btn--secondary")" href="/yonetim/servis">Açık (@(counts.GetValueOrDefault(ServiceStatus.Open) + counts.GetValueOrDefault(ServiceStatus.Scheduled)))</a>
+  @foreach (var s in Enum.GetValues<ServiceStatus>())
+  {
+    <a class="admin-btn @(status == s ? "" : "admin-btn--secondary")" href="/yonetim/servis?durum=@s">@ServiceLabels.Label(s) (@counts.GetValueOrDefault(s))</a>
+  }
+  <a class="admin-btn @(all ? "" : "admin-btn--secondary")" href="/yonetim/servis?tumu=true">Tümü</a>
+  <form method="get" class="admin-actions" style="margin-left:auto"><input name="q" value="@ViewBag.Query" placeholder="No, müşteri veya şikâyet" aria-label="Ara" /><button class="admin-btn admin-btn--secondary">Ara</button></form>
+</div>
+<div class="admin-panel" style="overflow-x:auto">
+  @if (Model.Count == 0) { <p class="admin-muted">Kayıt yok.</p> }
+  else
+  {
+    <table class="admin-table">
+      <thead><tr><th>No</th><th>Talep</th><th>Müşteri</th><th>Konu</th><th>Garanti</th><th>Ziyaret</th><th>Ekip</th><th>Durum</th></tr></thead>
+      <tbody>
+      @foreach (var r in Model)
+      {
+        <tr>
+          <td><a href="/yonetim/servis/detay/@r.Id">@r.Number</a>@if (r.Urgent) { <span class="or-late"> acil</span> }</td>
+          <td>@D(r.ReceivedOn)</td>
+          <td>@r.Customer?.Name@if (r.ProductionOrder is not null) { <div class="admin-muted">@r.ProductionOrder.OrderNumber</div> }</td>
+          <td>@r.Category<div class="admin-muted">@(r.Complaint.Length > 80 ? r.Complaint[..80] + "…" : r.Complaint)</div></td>
+          <td>@ServiceLabels.Label(r.Warranty)</td>
+          <td>@D(r.PlannedOn)</td>
+          <td>@(r.Installer?.Name ?? "-")</td>
+          <td>@ServiceLabels.Label(r.Status)</td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  }
+</div>
