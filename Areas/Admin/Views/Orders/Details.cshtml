@@ -59,7 +59,16 @@
   }
 </div>
 
-@{ var services = (List<ServiceRequest>)ViewBag.Services; }
+@{ var services = (List<ServiceRequest>)ViewBag.Services; var work = ViewBag.Work as WorkProjectRow; }
+<div class="admin-panel">
+  <div class="admin-actions"><h3 style="margin:0">Çalışma (personel takvimi)</h3><a class="admin-btn admin-btn--secondary" href="/yonetim/takvim/ekle?siparis=@Model.Id">Çalışma ekle</a>@if (work is not null) { <a class="admin-btn admin-btn--secondary" href="/yonetim/takvim/rapor?siparis=@Model.Id&bas=2000-01-01&bit=2100-12-31">Ayrıntı</a> }</div>
+  @if (work is null) { <p class="admin-muted">Bu işe henüz çalışma yazılmadı.</p> }
+  else
+  {
+    <p><strong>@work.ManDays.ToString("0.##", culture) adam-gün</strong> · @work.People kişi · @work.WorkDays gün@(work.First is null ? "" : $" ({D(work.First)} – {D(work.Last)})")@(work.PlannedManDays > 0 ? $" · planlanan {work.PlannedManDays.ToString("0.##", culture)} adam-gün" : "")</p>
+    @if (work.Crew.Count > 0) { <p class="admin-muted">@string.Join(", ", work.Crew.Select(c => $"{c.Name} {c.Days.ToString("0.##", culture)} gün"))</p> }
+  }
+</div>
 @if (Model.Status is OrderStatus.Delivered or OrderStatus.Shipped || services.Count > 0)
 {
   <div class="admin-panel">

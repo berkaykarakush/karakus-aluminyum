@@ -1,0 +1,75 @@
+@using KarakusAluminyum.Web.Models.Production
+@using KarakusAluminyum.Web.Services.Production
+@{
+    ViewData["Title"] = "Personel takvimi";
+    var start = (DateOnly)ViewBag.Start;
+    var employees = (List<KarakusAluminyum.Web.Models.Accounting.Employee>)ViewBag.Employees;
+    var logs = (List<WorkLog>)ViewBag.Logs;
+    var overbooked = (HashSet<(int, DateOnly)>)ViewBag.Overbooked;
+    var week = (List<WorkProjectRow>)ViewBag.Week;
+    var days = Enumerable.Range(0, 7).Select(start.AddDays).ToList();
+    var today = KarakusAluminyum.Web.Services.Documents.PrintDates.Today;
+    var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
+    string Iso(DateOnly d) => d.ToString("yyyy-MM-dd");
+    var hafta = Iso(start);
+}
+<link rel="stylesheet" href="~/css/orders.css" asp-append-version="true" />
+<div class="or-page">
+<div class="admin-actions">
+  <h1>Personel takvimi</h1>
+  <a class="admin-btn" href="/yonetim/takvim/ekle?hafta=@hafta">Çalışma ekle</a>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/takvim/rapor">Adam-gün raporu</a>
+</div>
+<div class="admin-panel admin-actions">
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/takvim?hafta=@Iso(start.AddDays(-7))">← Önceki hafta</a>
+  <strong>@start.ToString("dd MMMM", culture) – @start.AddDays(6).ToString("dd MMMM yyyy", culture)</strong>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/takvim?hafta=@Iso(start.AddDays(7))">Sonraki hafta →</a>
+  @if (start != WorkStats.WeekStart(today)) { <a class="admin-btn admin-btn--secondary" href="/yonetim/takvim">Bu hafta</a> }
+  <form method="get" class="admin-actions" style="margin-left:auto"><input type="date" name="hafta" value="@hafta" aria-label="Hafta" onchange="this.form.submit()" /></form>
+</div>
+@if (employees.Count == 0)
+{
+  <div class="admin-panel"><p>Takvim için personel kartı gerekir. Personel Muhasebe › Personel bölümünden eklenir.</p></div>
+}
+else
+{
+  <div class="admin-panel" style="overflow-x:auto">
+    <table class="wc-grid">
+      <thead><tr><th class="wc-name">Personel</th>@foreach (var d in days) { <th class="@(d == today ? "is-today" : "") @(d.DayOfWeek == DayOfWeek.Sunday ? "is-sunday" : "")">@d.ToString("ddd dd.MM", culture)</th> }</tr></thead>
+      <tbody>
+      @foreach (var e in employees)
+      {
+        <tr>
+          <th class="wc-name" scope="row">@e.Name@if (!string.IsNullOrWhiteSpace(e.Position)) { <div class="admin-muted" style="font-weight:400">@e.Position</div> }</th>
+          @foreach (var d in days)
+          {
+            var cell = logs.Where(x => x.EmployeeId == e.Id && x.Date == d).ToList();
+            <td class="@(d == today ? "is-today" : "") @(d.DayOfWeek == DayOfWeek.Sunday ? "is-sunday" : "") @(overbooked.Contains((e.Id, d)) ? "is-over" : "")" title="@(overbooked.Contains((e.Id, d)) ? "Bu güne 1 günden fazla iş yazılmış" : "")">
+              @foreach (var l in cell)
+              {
+                var target = WorkStats.Target(l);
+                <div class="wc-entry">
+                  <span>@if (target.Url is not null) { <a href="@target.Url">@WorkStats.ShortLabel(l)</a> } else { @WorkStats.ShortLabel(l) }<small>@WorkActivities.Label(l.Activity)@(l.Days == 1 ? "" : $" · {l.Days.ToString("0.##", culture)} gün")@(string.IsNullOrWhiteSpace(l.Note) ? "" : " · " + l.Note)</small></span>
+                  <form method="post" action="/yonetim/takvim/sil/@l.Id" onsubmit="return confirm('Kayıt silinsin mi?')">@Html.AntiForgeryToken()<button aria-label="Kaydı sil" title="Sil">×</button></form>
+                </div>
+              }
+              <a class="wc-add" href="/yonetim/takvim/ekle?personel=@e.Id&tarih=@Iso(d)&hafta=@hafta" aria-label="@e.Name, @d.ToString("dd.MM") için ekle">+ ekle</a>
+            </td>
+          }
+        </tr>
+      }
+      </tbody>
+    </table>
+  </div>
+  @if (week.Count > 0)
+  {
+    <div class="admin-panel" style="overflow-x:auto">
+      <h3 style="margin-top:0">Bu haftanın özeti</h3>
+      <table class="admin-table">
+        <thead><tr><th>İş</th><th style="text-align:right">Gerçekleşen adam-gün</th><th style="text-align:right">Planlanan</th><th>Kişi</th><th>Gün</th></tr></thead>
+        <tbody>@foreach (var p in week) { <tr><td>@if (p.Url is not null) { <a href="@p.Url">@p.Label</a> } else { @p.Label }</td><td style="text-align:right">@p.ManDays.ToString("0.##", culture)</td><td style="text-align:right">@p.PlannedManDays.ToString("0.##", culture)</td><td>@p.People</td><td>@p.WorkDays</td></tr> }</tbody>
+      </table>
+    </div>
+  }
+}
+</div>

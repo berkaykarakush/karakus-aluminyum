@@ -917,7 +917,7 @@ public sealed class DrawingPageTests(PostgresFixture postgres)
         await using (var first = postgres.CreateApp("drawing_upgrade"))
         {
             first.NewClient();
-            await first.WithDbAsync(db => db.Database.ExecuteSqlRawAsync("ALTER TABLE \"StockMovements\" DROP COLUMN IF EXISTS \"ProductionOrderId\"; DROP TABLE IF EXISTS \"ServiceParts\", \"ServiceVisits\", \"ServiceRequests\", \"ProductionScans\", \"DeliveryNoteLines\", \"DeliveryNotes\", \"OrderEvents\", \"ProductionOrders\", \"Installers\"; ALTER TABLE \"Quotes\" DROP COLUMN \"DrawingListId\", DROP COLUMN \"GlassTypeId\"; DROP TABLE \"WindowDesigns\"; DROP TABLE \"DrawingLists\"; DROP TABLE \"Brands\"; DROP TABLE \"GlassListItems\"; DROP TABLE \"GlassLists\"; DROP TABLE \"GlassTypes\""));
+            await first.WithDbAsync(db => db.Database.ExecuteSqlRawAsync("ALTER TABLE \"StockMovements\" DROP COLUMN IF EXISTS \"ProductionOrderId\"; DROP TABLE IF EXISTS \"WorkLogs\", \"ServiceParts\", \"ServiceVisits\", \"ServiceRequests\", \"ProductionScans\", \"DeliveryNoteLines\", \"DeliveryNotes\", \"OrderEvents\", \"ProductionOrders\", \"Installers\"; ALTER TABLE \"Quotes\" DROP COLUMN \"DrawingListId\", DROP COLUMN \"GlassTypeId\"; DROP TABLE \"WindowDesigns\"; DROP TABLE \"DrawingLists\"; DROP TABLE \"Brands\"; DROP TABLE \"GlassListItems\"; DROP TABLE \"GlassLists\"; DROP TABLE \"GlassTypes\""));
         }
 
         await using var second = postgres.CreateApp("drawing_upgrade", schemaMode: "existing");
@@ -950,7 +950,7 @@ public sealed class DrawingPageTests(PostgresFixture postgres)
                     ALTER TABLE "WindowDesigns" ALTER COLUMN "ProfileSystemId" DROP NOT NULL;
                     ALTER TABLE "WindowDesigns" DROP COLUMN "DrawingListId", DROP COLUMN "BrandId", DROP COLUMN "SortOrder";
                     ALTER TABLE "Quotes" DROP COLUMN "DrawingListId";
-                    ALTER TABLE "StockMovements" DROP COLUMN IF EXISTS "ProductionOrderId"; DROP TABLE IF EXISTS "ServiceParts", "ServiceVisits", "ServiceRequests", "ProductionScans", "DeliveryNoteLines", "DeliveryNotes", "OrderEvents", "ProductionOrders", "Installers";
+                    ALTER TABLE "StockMovements" DROP COLUMN IF EXISTS "ProductionOrderId"; DROP TABLE IF EXISTS "WorkLogs", "ServiceParts", "ServiceVisits", "ServiceRequests", "ProductionScans", "DeliveryNoteLines", "DeliveryNotes", "OrderEvents", "ProductionOrders", "Installers";
                     DROP TABLE "DrawingLists"; DROP TABLE "Brands";
                     """);
                 return (system.Id, design.Id, customer.Id);

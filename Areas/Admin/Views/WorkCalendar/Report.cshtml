@@ -1,0 +1,71 @@
+@model List<KarakusAluminyum.Web.Services.Production.WorkProjectRow>
+@using KarakusAluminyum.Web.Models.Production
+@using KarakusAluminyum.Web.Services.Production
+@{
+    ViewData["Title"] = "Adam-gün raporu";
+    var from = (DateOnly)ViewBag.From;
+    var to = (DateOnly)ViewBag.To;
+    var order = ViewBag.Order as int?;
+    var employees = (List<WorkEmployeeRow>)ViewBag.Employees;
+    var overbooked = (int)ViewBag.Overbooked;
+    var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
+    string N(decimal v) => v.ToString("0.##", culture);
+    string D(DateOnly? d) => d?.ToString("dd.MM.yyyy") ?? "-";
+    var query = $"bas={from:yyyy-MM-dd}&bit={to:yyyy-MM-dd}" + (order is null ? "" : $"&siparis={order}");
+    string Activities(IReadOnlyDictionary<string, decimal> map) => string.Join(", ", WorkActivities.All.Where(map.ContainsKey).Select(a => $"{WorkActivities.Label(a)} {N(map[a])}"));
+}
+<div class="admin-actions">
+  <h1>Adam-gün raporu</h1>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/takvim">Takvim</a>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/takvim/rapor?@query&csv=true">CSV indir</a>
+</div>
+<form class="admin-panel admin-actions" method="get">
+  <label for="bas" style="margin:0">Başlangıç</label><input id="bas" type="date" name="bas" value="@from.ToString("yyyy-MM-dd")" />
+  <label for="bit" style="margin:0">Bitiş</label><input id="bit" type="date" name="bit" value="@to.ToString("yyyy-MM-dd")" />
+  @if (order is not null) { <input type="hidden" name="siparis" value="@order" /> }
+  <button class="admin-btn">Uygula</button>
+  @if (order is not null) { <a href="/yonetim/takvim/rapor?bas=@from.ToString("yyyy-MM-dd")&bit=@to.ToString("yyyy-MM-dd")">Tüm işler</a> }
+</form>
+<div class="report-kpis">
+  <div class="report-kpi"><span class="report-kpi__label">Gerçekleşen adam-gün</span><strong class="report-kpi__value">@N(Model.Sum(x => x.ManDays))</strong></div>
+  <div class="report-kpi"><span class="report-kpi__label">Planlanan adam-gün</span><strong class="report-kpi__value">@N(Model.Sum(x => x.PlannedManDays))</strong></div>
+  <div class="report-kpi"><span class="report-kpi__label">Çalışan personel</span><strong class="report-kpi__value">@employees.Count(e => e.ManDays > 0)</strong></div>
+  <div class="report-kpi"><span class="report-kpi__label">İş sayısı</span><strong class="report-kpi__value">@Model.Count(p => p.ManDays > 0)</strong></div>
+</div>
+@if (overbooked > 0) { <p class="admin-muted">Uyarı: @overbooked kişi-günde 1 günden fazla iş yazılmış.</p> }
+<div class="admin-panel" style="overflow-x:auto">
+  <h3 style="margin-top:0">İş bazında</h3>
+  @if (Model.Count == 0) { <p class="admin-muted">Bu aralıkta kayıt yok.</p> }
+  else
+  {
+    <table class="admin-table">
+      <thead><tr><th>İş</th><th style="text-align:right">Adam-gün</th><th style="text-align:right">Planlanan</th><th>Kişi</th><th>Çalışılan gün</th><th>İlk – son gün</th><th>Faaliyet</th><th>Çalışanlar</th></tr></thead>
+      <tbody>
+      @foreach (var p in Model)
+      {
+        <tr>
+          <td>@if (p.Url is not null) { <a href="@p.Url">@p.Label</a> } else { @p.Label }</td>
+          <td style="text-align:right"><strong>@N(p.ManDays)</strong></td>
+          <td style="text-align:right">@N(p.PlannedManDays)</td>
+          <td>@p.People</td>
+          <td>@p.WorkDays</td>
+          <td>@D(p.First) – @D(p.Last)</td>
+          <td>@Activities(p.ByActivity)</td>
+          <td>@string.Join(", ", p.Crew.Select(c => $"{c.Name} {N(c.Days)}"))</td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  }
+</div>
+<div class="admin-panel" style="overflow-x:auto">
+  <h3 style="margin-top:0">Personel bazında</h3>
+  @if (employees.Count == 0) { <p class="admin-muted">Bu aralıkta kayıt yok.</p> }
+  else
+  {
+    <table class="admin-table">
+      <thead><tr><th>Personel</th><th style="text-align:right">Adam-gün</th><th style="text-align:right">Planlanan</th><th>İş sayısı</th><th>Çalışılan gün</th><th>Faaliyet</th></tr></thead>
+      <tbody>@foreach (var e in employees) { <tr><td>@e.Name</td><td style="text-align:right"><strong>@N(e.ManDays)</strong></td><td style="text-align:right">@N(e.PlannedManDays)</td><td>@e.Projects</td><td>@e.WorkDays</td><td>@Activities(e.ByActivity)</td></tr> }</tbody>
+    </table>
+  }
+</div>

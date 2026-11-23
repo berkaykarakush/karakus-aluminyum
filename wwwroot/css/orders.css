@@ -44,3 +44,18 @@
 .or-page label{display:block;margin:8px 0 4px;font-size:12px;font-weight:600;color:#34435c}
 .or-page .or-checks label{display:flex;margin:0;font-size:14px}
 .or-page .num{text-align:right;white-space:nowrap}
+/* Personel takvimi */
+.wc-grid{width:100%;border-collapse:collapse;min-width:900px;table-layout:fixed}
+.wc-grid th,.wc-grid td{border:1px solid var(--admin-border,#dde1e6);padding:6px;vertical-align:top;font-size:13px}
+.wc-grid thead th{background:var(--admin-subtle,#f5f7f9);text-align:left}
+.wc-grid th.is-today{outline:2px solid #2463eb;outline-offset:-2px}
+.wc-grid td.is-today{background:rgba(36,99,235,.05)}
+.wc-grid td.is-sunday,.wc-grid th.is-sunday{background:rgba(0,0,0,.03)}
+.wc-grid td.is-over{background:rgba(180,35,24,.08)}
+.wc-grid .wc-name{width:150px;font-weight:600}
+.wc-entry{display:flex;gap:4px;align-items:flex-start;justify-content:space-between;margin-bottom:4px;padding:3px 5px;border-radius:5px;background:rgba(36,99,235,.1);line-height:1.25}
+.wc-entry small{display:block;opacity:.75}
+.wc-entry form{margin:0}
+.wc-entry button{border:0;background:none;cursor:pointer;font-size:14px;line-height:1;padding:0 2px;color:inherit}
+.wc-add{font-size:12px;text-decoration:none;opacity:.6}
+.wc-add:hover{opacity:1}

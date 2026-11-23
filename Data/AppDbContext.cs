@@ -56,6 +56,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<MachineExportProfile> MachineExportProfiles => Set<MachineExportProfile>();
     public DbSet<LabelPrinter> LabelPrinters => Set<LabelPrinter>();
     public DbSet<ServiceRequest> ServiceRequests => Set<ServiceRequest>();
+    public DbSet<WorkLog> WorkLogs => Set<WorkLog>();
     public DbSet<ServiceVisit> ServiceVisits => Set<ServiceVisit>();
     public DbSet<ServicePart> ServiceParts => Set<ServicePart>();
     public DbSet<OrderEvent> OrderEvents => Set<OrderEvent>();
@@ -158,6 +159,11 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<Invoice>().HasIndex(x => new { x.Status, x.DueDate });
         builder.Entity<InvoiceLine>().HasOne(x => x.Invoice).WithMany(x => x.Lines).HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.Cascade);
         builder.Entity<InvoiceLine>().HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<WorkLog>().HasIndex(x => x.Date);
+        builder.Entity<WorkLog>().HasIndex(x => new { x.EmployeeId, x.Date });
+        builder.Entity<WorkLog>().HasOne(x => x.Employee).WithMany().HasForeignKey(x => x.EmployeeId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<WorkLog>().HasOne(x => x.ProductionOrder).WithMany().HasForeignKey(x => x.ProductionOrderId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<WorkLog>().HasOne(x => x.ServiceRequest).WithMany().HasForeignKey(x => x.ServiceRequestId).OnDelete(DeleteBehavior.Cascade);
         builder.Entity<ServiceRequest>().HasIndex(x => x.Number).IsUnique();
         builder.Entity<ServiceRequest>().HasIndex(x => x.Status);
         builder.Entity<ServiceRequest>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
