@@ -20,11 +20,12 @@ public sealed record QuoteBlockView(DocumentBlock Block, IReadOnlyList<QuoteItem
 public sealed record QuotePrintVm(Quote Quote, string CustomerName, DocumentTemplate Template, DocumentContent Content, IReadOnlyList<QuoteBlockView> Blocks, AttachmentList Attachments, PresentationVm? Presentation = null)
 {
     public PriceSheet Prices { get; } = PriceSheet.FromQuote(Quote);
+    public DateOnly PrintedOn { get; init; } = PrintDates.Today; // basılan tarih; kayıtlı teklif tarihi değişmez
 
     public Dictionary<string, string> System => new()
     {
         ["musteri"] = CustomerName,
-        ["tarih"] = TurkishNumbers.Date(Quote.DocumentDate),
+        ["tarih"] = PrintDates.Text(PrintedOn),
         ["gecerlilik"] = Quote.ValidUntilUtc is DateTime valid ? TurkishNumbers.Date(valid) : "",
         ["belge_no"] = Quote.QuoteNumber,
         ["toplam"] = TurkishNumbers.Money(Quote.GrandTotal),
@@ -35,6 +36,7 @@ public sealed record QuotePrintVm(Quote Quote, string CustomerName, DocumentTemp
 public sealed record ContractPrintVm(Contract Contract, DocumentTemplate Template, DocumentContent Content, IReadOnlyList<ContractArticle> Articles, AttachmentList Attachments)
 {
     public PriceSheet Prices { get; } = PriceSheet.FromContent(Content, Contract.VatMode, Contract.TaxRate, Contract.DiscountRate);
+    public DateOnly PrintedOn { get; init; } = PrintDates.Today; // basılan tarih; kayıtlı sözleşme tarihi değişmez
 
     public Dictionary<string, string> System
     {
@@ -48,7 +50,7 @@ public sealed record ContractPrintVm(Contract Contract, DocumentTemplate Templat
                 ["satici"] = seller ?? "",
                 ["satici_adres"] = Template.SellerAddress ?? "",
                 ["konu"] = (Content.Subject ?? "").Replace("**", ""), // şablon konuyu zaten kalın basar
-                ["tarih"] = TurkishNumbers.Date(Contract.DocumentDate),
+                ["tarih"] = PrintDates.Text(PrintedOn),
                 ["toplam"] = TurkishNumbers.Money(Contract.TotalAmount),
                 ["toplam_yazi"] = TurkishNumbers.MoneyWords(Contract.TotalAmount),
                 ["madde_sayisi"] = Articles.Count.ToString(),
@@ -81,18 +83,18 @@ public static class DocumentViews
         _ => true
     }).ToList();
 
-    public static async Task<ContractPrintVm> ContractPrintAsync(AppDbContext db, Contract contract)
+    public static async Task<ContractPrintVm> ContractPrintAsync(AppDbContext db, Contract contract, DateOnly? printedOn = null)
     {
         var content = DocumentJson.ParseContent(contract.DocumentJson);
         var template = await TemplateForAsync(db, DocumentKinds.Contract, contract.SnapshotJson);
-        return new ContractPrintVm(contract, template, content, VisibleArticles(DocumentJson.ParseArticles(template.ArticlesJson), content), await LoadAttachmentsAsync(db, content.DesignIds));
+        return new ContractPrintVm(contract, template, content, VisibleArticles(DocumentJson.ParseArticles(template.ArticlesJson), content), await LoadAttachmentsAsync(db, content.DesignIds)) { PrintedOn = printedOn ?? PrintDates.Today };
     }
 
-    public static async Task<QuotePrintVm> QuotePrintAsync(AppDbContext db, Quote quote, PresentationVm? presentation = null)
+    public static async Task<QuotePrintVm> QuotePrintAsync(AppDbContext db, Quote quote, PresentationVm? presentation = null, DateOnly? printedOn = null)
     {
         var content = DocumentJson.ParseContent(quote.DocumentJson);
         var template = await TemplateForAsync(db, DocumentKinds.Quote, quote.SnapshotJson);
-        return new QuotePrintVm(quote, quote.Customer?.Name ?? "", template, content, BuildBlocks(quote, content), await LoadAttachmentsAsync(db, content.DesignIds), presentation);
+        return new QuotePrintVm(quote, quote.Customer?.Name ?? "", template, content, BuildBlocks(quote, content), await LoadAttachmentsAsync(db, content.DesignIds), presentation) { PrintedOn = printedOn ?? PrintDates.Today };
     }
 
     public static async Task<DocumentTemplate> CurrentTemplateAsync(AppDbContext db, string kind)

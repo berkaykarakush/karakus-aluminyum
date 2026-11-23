@@ -7,7 +7,8 @@
     var customer = order.Customer;
     var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
     string D(DateOnly? d) => KarakusAluminyum.Web.Areas.Admin.Controllers.OrdersController.Date(d);
-    var head = new KarakusAluminyum.Web.Services.Documents.BrandHeadVm("SEVK BELGESİ", D(Model.Date));
+    var printed = KarakusAluminyum.Web.Services.Documents.PrintDates.From(Context.Request);
+    var head = new KarakusAluminyum.Web.Services.Documents.BrandHeadVm("SEVK BELGESİ", D(printed));
     var tax = string.Join(" / ", new[] { customer?.TaxOffice, customer?.TaxNumber }.Where(x => !string.IsNullOrWhiteSpace(x)));
 }
 <!doctype html>
@@ -20,7 +21,7 @@
 </head>
 <body class="doc doc--proforma">
   <partial name="~/Areas/Admin/Views/Shared/_BrandLayer.cshtml" />
-  <div class="doc-toolbar"><a class="doc-toolbar__link" href="/yonetim/siparisler/detay/@order.Id">Siparişe dön</a><button type="button" onclick="window.print()">Yazdır / PDF kaydet</button></div>
+  <div class="doc-toolbar"><a class="doc-toolbar__link" href="/yonetim/siparisler/detay/@order.Id">Siparişe dön</a><partial name="~/Areas/Admin/Views/Shared/_PrintDate.cshtml" model='new KarakusAluminyum.Web.Services.Documents.PrintDateVm(printed, Model.Date, "Sevk tarihi")' /><button type="button" onclick="window.print()">Yazdır / PDF kaydet</button></div>
   <table class="doc-sheet">
     <thead><tr><td><partial name="~/Areas/Admin/Views/Shared/_BrandHead.cshtml" model="head" /></td></tr></thead>
     <tfoot><tr><td><partial name="~/Areas/Admin/Views/Shared/_BrandFoot.cshtml" /></td></tr></tfoot>

@@ -29,7 +29,7 @@ public sealed class PresentationController : Controller
     public async Task<IActionResult> Show([FromQuery(Name = "firma")] string? customer, [FromQuery(Name = "yon")] string? orientation)
     {
         customer = string.IsNullOrWhiteSpace(customer) ? null : customer.Trim()[..Math.Min(customer.Trim().Length, 160)];
-        var vm = await _builder.BuildAsync(new PresentationCover(customer, null, null, DateTime.UtcNow), portrait: orientation == "dikey");
+        var vm = await _builder.BuildAsync(new PresentationCover(customer, null, null, KarakusAluminyum.Web.Services.Documents.PrintDates.AsDateTime(KarakusAluminyum.Web.Services.Documents.PrintDates.From(Request))), portrait: orientation == "dikey");
         return View("~/Areas/Admin/Views/Documents/PresentationPrint.cshtml", vm);
     }
 

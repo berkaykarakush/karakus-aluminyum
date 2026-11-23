@@ -9,7 +9,7 @@
     var all = (bool)ViewBag.All;
     var supplier = ViewBag.Supplier as KarakusAluminyum.Web.Models.Crm.Customer;
     var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
-    var date = DateOnly.TryParse(Context.Request.Query["tarih"], System.Globalization.CultureInfo.InvariantCulture, out var picked) ? picked : DateOnly.FromDateTime(DateTime.Today);
+    var date = KarakusAluminyum.Web.Services.Documents.PrintDates.From(Context.Request);
     string D(DateOnly? d) => KarakusAluminyum.Web.Areas.Admin.Controllers.OrdersController.Date(d);
     var rows = takeoff.Lines
         .Select(l => (Line: l, Quantity: all || Model.StockDeducted ? l.Quantity : Math.Max(0, l.Quantity - stock.GetValueOrDefault(l.Product.Id))))
@@ -27,7 +27,7 @@
 </head>
 <body class="doc doc--proforma">
   <partial name="~/Areas/Admin/Views/Shared/_BrandLayer.cshtml" />
-  <div class="doc-toolbar"><a class="doc-toolbar__link" href="/yonetim/siparisler/metraj/@Model.Id">Metraja dön</a><button type="button" onclick="window.print()">Yazdır / PDF kaydet</button></div>
+  <div class="doc-toolbar"><a class="doc-toolbar__link" href="/yonetim/siparisler/metraj/@Model.Id">Metraja dön</a><partial name="~/Areas/Admin/Views/Shared/_PrintDate.cshtml" model="new KarakusAluminyum.Web.Services.Documents.PrintDateVm(date)" /><button type="button" onclick="window.print()">Yazdır / PDF kaydet</button></div>
   <table class="doc-sheet">
     <thead><tr><td><partial name="~/Areas/Admin/Views/Shared/_BrandHead.cshtml" model="head" /></td></tr></thead>
     <tfoot><tr><td><partial name="~/Areas/Admin/Views/Shared/_BrandFoot.cshtml" /></td></tr></tfoot>

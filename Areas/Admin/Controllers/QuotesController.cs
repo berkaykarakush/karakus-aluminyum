@@ -150,9 +150,10 @@ public sealed class QuotesController : Controller
         var quote = await _db.Quotes.AsNoTracking().Include(x => x.Customer).Include(x => x.Items).FirstOrDefaultAsync(x => x.Id == id);
         if (quote is null) return NotFound();
         var customer = quote.Customer?.Name ?? "";
-        var presentation = withPresentation == 1 ? await _presentation.BuildAsync(new PresentationCover(customer, quote.Title, quote.QuoteNumber, quote.DocumentDate), portrait: true) : null;
+        var printedOn = PrintDates.From(Request);
+        var presentation = withPresentation == 1 ? await _presentation.BuildAsync(new PresentationCover(customer, quote.Title, quote.QuoteNumber, PrintDates.AsDateTime(printedOn)), portrait: true) : null;
         ViewData["Qr"] = DocumentLinks.Qr(Request, DocumentLinks.Quote, await DocumentLinks.EnsureQuoteAsync(_db, quote.Id, quote.PublicToken));
-        return View("~/Areas/Admin/Views/Documents/QuotePrint.cshtml", await DocumentViews.QuotePrintAsync(_db, quote, presentation));
+        return View("~/Areas/Admin/Views/Documents/QuotePrint.cshtml", await DocumentViews.QuotePrintAsync(_db, quote, presentation, printedOn));
     }
 
     // Taslak teklif, şablon ayarlarındaki güncel logo ve firma bilgilerini alır.

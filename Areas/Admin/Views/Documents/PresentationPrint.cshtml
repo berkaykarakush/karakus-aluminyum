@@ -2,7 +2,8 @@
 @{
     Layout = null;
     var size = Model.Portrait ? "210mm 297mm" : "297mm 210mm";
-    string Link(bool portrait) => "/yonetim/sunum/goruntule?" + (portrait ? "yon=dikey&" : "") + "firma=" + Uri.EscapeDataString(Model.Cover.Customer ?? "");
+    var printed = DateOnly.FromDateTime(Model.Cover.Date);
+    string Link(bool portrait) => "/yonetim/sunum/goruntule?" + (portrait ? "yon=dikey&" : "") + "firma=" + Uri.EscapeDataString(Model.Cover.Customer ?? "") + "&tarih=" + printed.ToString("yyyy-MM-dd");
 }
 <!doctype html>
 <html lang="tr">
@@ -19,10 +20,12 @@
     <a class="is-secondary" href="/yonetim/sunum">← Bölümleri düzenle</a>
     <form method="get" action="/yonetim/sunum/goruntule">
       @if (Model.Portrait) { <input type="hidden" name="yon" value="dikey" /> }
+      <input type="hidden" name="tarih" value="@printed.ToString("yyyy-MM-dd")" />
       <input name="firma" value="@Model.Cover.Customer" maxlength="160" placeholder="Kapakta görünecek firma adı (isteğe bağlı)" aria-label="Kapaktaki firma adı" />
       <button class="is-secondary" type="submit">Kapağa yaz</button>
     </form>
     <a class="is-secondary" href="@Link(!Model.Portrait)">@(Model.Portrait ? "Yatay (ekran sunumu)" : "Dikey (basılı dosya)")</a>
+    <partial name="~/Areas/Admin/Views/Shared/_PrintDate.cshtml" model="new KarakusAluminyum.Web.Services.Documents.PrintDateVm(printed)" />
     <button type="button" onclick="window.print()">Yazdır / PDF indir</button>
   </div>
   @if (Model.PageCount == 0) { <p style="text-align:center;font:15px Arial,sans-serif">Sunumda açık bölüm yok. <a href="/yonetim/sunum">Bölümleri düzenleyin.</a></p> }
