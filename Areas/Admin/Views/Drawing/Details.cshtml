@@ -10,6 +10,7 @@
     var withSystem = items.Where(x => x.ProfileSystemId is not null).ToList();
     var itemNotes = items.Where(x => !string.IsNullOrWhiteSpace(x.Notes)).ToList();
     var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
+    var head = new PozSheetHeadVm(Model, pozlar, KarakusAluminyum.Web.Services.Documents.PrintDates.From(Context.Request));
 }
 <link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
 <link rel="stylesheet" href="~/css/poz-list.css" asp-append-version="true" />
@@ -21,6 +22,7 @@
   <a class="admin-btn" href="/yonetim/cizim/duzenle/@Model.Id">Pozları düzenle</a>
   @if (withSystem.Count > 0) { <a class="admin-btn admin-btn--secondary" href="/yonetim/cizim/optimizasyon?@string.Join("&", withSystem.Select(x => $"ids={x.Id}"))">Birlikte optimize et</a> }
   <a class="admin-btn admin-btn--secondary" href="/yonetim/cizim/olcu-listesi/@Model.Id">Ölçü listesi</a>
+  <partial name="_PrintDate" model='new KarakusAluminyum.Web.Services.Documents.PrintDateVm(head.Date, head.LastChanged, "Son değişiklik")' />
   <button class="admin-btn admin-btn--secondary" type="button" data-print="drawings" data-print-title="@Model.Name - Çizimler">Çizimi yazdır</button>
   <button class="admin-btn admin-btn--secondary" type="button" data-print="materials" data-print-title="@Model.Name - Malzemeler">Malzemeleri yazdır</button>
   <button class="admin-btn admin-btn--secondary" type="button" data-print="all" data-print-title="@Model.Name - Çizimler ve malzemeler">Hepsini yazdır</button>
@@ -38,7 +40,7 @@
 <div class="wd-sheet wd-pages">
   <table class="poz-sheet wd-page">
     <thead><tr><td>
-      <partial name="_PozSheetHead" model="new PozSheetHeadVm(Model, pozlar)" />
+      <partial name="_PozSheetHead" model="head" />
     </td></tr></thead>
     <tfoot><tr><td><div class="poz-foot-space"></div></td></tr></tfoot>
     <tbody><tr><td>
@@ -98,7 +100,7 @@
   <div class="wd-materials">
     <header class="wd-materials__head">
       <h2>Malzeme listesi</h2>
-      <div class="admin-muted">@Model.Name@(Model.Customer is null ? "" : " · " + Model.Customer.Name) · @items.Count poz · @items.Sum(x => x.Quantity) adet</div>
+      <div class="admin-muted">@Model.Name@(Model.Customer is null ? "" : " · " + Model.Customer.Name) · @items.Count poz · @items.Sum(x => x.Quantity) adet · Tarih: @head.Date.ToString("dd.MM.yyyy")</div>
     </header>
     <partial name="_Materials" model="materials" />
   </div>

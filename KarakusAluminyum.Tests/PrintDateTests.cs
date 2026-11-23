@@ -86,4 +86,31 @@ public sealed class PrintDateTests(PostgresFixture postgres)
         Assert.DoesNotContain("print-date", publicHtml);
         Assert.Contains("10/01/2026", publicHtml);
     }
+
+    // README madde 3: çizim çıktıları (poz listesi, imalat föyü, ölçü listesi, optimizasyon) da bugünü basar, tarih değiştirilebilir.
+    [Fact]
+    public async Task DrawingPrintouts_DefaultToToday_AndAcceptAPickedDate()
+    {
+        await using var app = postgres.CreateApp("print_dates_drawings");
+        var (client, token) = await QuoteDocumentTests.AdminAsync(app);
+        var systemId = await app.WithDbAsync(async db => { var s = new ProfileSystem { Name = "Tarih serisi" }; db.ProfileSystems.Add(s); await db.SaveChangesAsync(); return s.Id; });
+        await DrawingLists.PostAsync(client, token, "Tarihli çizimler", DrawingLists.Rows(DrawingLists.Row("Salon", 1200, 1400, quantity: 1, system: systemId)));
+        var listId = await DrawingLists.ListIdAsync(app, "Tarihli çizimler");
+        var designId = await DrawingLists.DesignIdAsync(app, "Salon");
+        await app.WithDbAsync(db => db.DrawingLists.Where(l => l.Id == listId).ExecuteUpdateAsync(x => x.SetProperty(l => l.UpdatedUtc, new DateTime(2026, 2, 1, 9, 0, 0, DateTimeKind.Utc))));
+
+        foreach (var url in new[] { $"/yonetim/cizim/detay/{listId}", $"/yonetim/cizim/imalat/{designId}", $"/yonetim/cizim/olcu-listesi/{listId}", $"/yonetim/cizim/optimizasyon?ids={designId}" })
+        {
+            var html = WebUtility.HtmlDecode(await client.GetStringAsync(url));
+            Assert.True(html.Contains(Today), url + " bugünü basmalı");
+            Assert.Contains("name=\"tarih\"", html);
+            var chosen = WebUtility.HtmlDecode(await client.GetStringAsync(url + (url.Contains('?') ? "&" : "?") + "tarih=2026-03-05"));
+            Assert.True(chosen.Contains("05.03.2026"), url + " seçilen tarihi basmalı");
+        }
+
+        var details = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/cizim/detay/{listId}?tarih=2026-03-05"));
+        Assert.Contains("05/03/2026", details); // her sayfada tekrar eden antet
+        Assert.Contains("Son değişiklik (01.02.2026)", details);
+        Assert.Contains($"ids={designId}&tarih=", WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/cizim/optimizasyon?ids={designId}&tarih=2026-03-05")).Replace("&amp;", "&")); // seçici diğer sorgu değerlerini korur
+    }
 }
