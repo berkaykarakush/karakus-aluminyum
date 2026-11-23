@@ -20,6 +20,9 @@
     <input type="hidden" asp-for="Category" />
     <div asp-validation-summary="All"></div>
     <label asp-for="Name">Sistem adı</label><input asp-for="Name" required />
+    <label asp-for="PriceCurrency">Fiyat para birimi</label>
+    <select asp-for="PriceCurrency" style="max-width:220px"><option value="TRY">TRY (₺)</option><option value="EUR">EUR (€)</option><option value="USD">USD ($)</option></select>
+    <p class="admin-hint">Üretici fiyat listesi döviz ise birim fiyatları o para biriminde girin; çizim ve teklif fiyatları güncel kurla TL'ye çevrilir (kurlar: Tanımlar › Fiyat listeleri).</p>
 
     @if (isWindow)
     {
@@ -36,7 +39,7 @@
         <div><label asp-for="MullionFitMm">Kayıt geçme payı (her uç, eksi olabilir)</label><input asp-for="MullionFitMm" type="number" step="0.1" /></div>
         <div><label asp-for="WeldAllowanceMm">Kaynak / birleşim payı (her uç)</label><input asp-for="WeldAllowanceMm" type="number" step="0.1" /></div>
       </div>
-      <h2>Birim fiyatlar (₺)</h2>
+      <h2>Birim fiyatlar (@Model.PriceCurrency)</h2>
       <div class="admin-grid">
         <div><label asp-for="FramePricePerM">Kasa (metre)</label><input asp-for="FramePricePerM" type="number" step="0.01" /></div>
         <div><label asp-for="SashPricePerM">Kanat (metre)</label><input asp-for="SashPricePerM" type="number" step="0.01" /></div>
@@ -57,7 +60,7 @@
         <div><label>Lamel yüksekliği</label><input name="LamellaHeightMm" type="number" step="0.1" value="@F(settings.LamellaHeightMm)" /></div>
         <div><label>Yan dikme düşümü (her yan)</label><input name="GuideDeductMm" type="number" step="0.1" value="@F(settings.GuideDeductMm)" /></div>
       </div>
-      <h2>Birim fiyatlar (₺)</h2>
+      <h2>Birim fiyatlar (@Model.PriceCurrency)</h2>
       <div class="admin-grid">
         <div><label>Lamel (m²)</label><input name="LamellaPricePerM2" type="number" step="0.01" value="@F(settings.LamellaPricePerM2)" /></div>
         <div><label>Yan dikme (metre)</label><input name="GuidePricePerM" type="number" step="0.01" value="@F(settings.GuidePricePerM)" /></div>
@@ -76,7 +79,7 @@
         <div><label>Çubuk aralığı</label><input name="BarSpacingMm" type="number" step="1" value="@F(settings.BarSpacingMm)" /></div>
         <div><label asp-for="GlassClearanceMm">Cam boşluğu (her kenar)</label><input asp-for="GlassClearanceMm" type="number" step="0.1" /></div>
       </div>
-      <h2>Birim fiyatlar (₺)</h2>
+      <h2>Birim fiyatlar (@Model.PriceCurrency)</h2>
       <div class="admin-grid">
         <div><label>Dikme (metre)</label><input name="PostPricePerM" type="number" step="0.01" value="@F(settings.PostPricePerM)" /></div>
         <div><label>Küpeşte / ray (metre)</label><input name="RailPricePerM" type="number" step="0.01" value="@F(settings.RailPricePerM)" /></div>
@@ -92,7 +95,7 @@
         <div><label>Panel bindirmesi (sürmede)</label><input name="PanelOverlapMm" type="number" step="0.1" value="@F(settings.PanelOverlapMm)" /></div>
         <div><label asp-for="GlassClearanceMm">Cam boşluğu (her kenar)</label><input asp-for="GlassClearanceMm" type="number" step="0.1" /></div>
       </div>
-      <h2>Birim fiyatlar (₺)</h2>
+      <h2>Birim fiyatlar (@Model.PriceCurrency)</h2>
       <div class="admin-grid">
         <div><label>Ray (metre)</label><input name="RailPricePerM" type="number" step="0.01" value="@F(settings.RailPricePerM)" /></div>
         <div><label>Kanat profili (metre)</label><input name="PanelProfilePricePerM" type="number" step="0.01" value="@F(settings.PanelProfilePricePerM)" /></div>

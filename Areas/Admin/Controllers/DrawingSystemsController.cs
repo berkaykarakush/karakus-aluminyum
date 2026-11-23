@@ -65,6 +65,7 @@ public sealed class DrawingSystemsController : Controller
     private async Task<bool> Prepare(ProfileSystem input, ProductSettings settings, List<MaterialRule>? rules)
     {
         if (!ProductCategories.All.Contains(input.Category)) ModelState.AddModelError(nameof(input.Category), "Geçersiz ürün türü.");
+        if (!AccountingLabels.Currencies.Contains(input.PriceCurrency)) ModelState.AddModelError(nameof(input.PriceCurrency), "Geçersiz para birimi.");
         var cleaned = await CleanRules(rules);
         if (!ModelState.IsValid) return false;
         input.Material = ProductCategories.Label(input.Category);
@@ -118,7 +119,7 @@ public sealed class DrawingSystemsController : Controller
             if (product is not null && rules.Any(r => r.ProductId == product.Id)) continue;
             if (product is null)
             {
-                product = new Product { Name = name, Unit = sample.Unit, Kind = ProductKind.Stock, PurchasePrice = sample.Price, VatRate = 20 };
+                product = new Product { Name = name, Unit = sample.Unit, Kind = ProductKind.Stock, PurchasePrice = sample.Price, PriceCurrency = system.PriceCurrency, VatRate = 20 };
                 _db.Products.Add(product);
                 await _db.SaveChangesAsync();
             }

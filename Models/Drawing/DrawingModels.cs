@@ -13,6 +13,8 @@ public sealed class ProfileSystem
     [StringLength(20)] public string Material { get; set; } = "Alüminyum";
     public string SettingsJson { get; set; } = "{}"; // panjur, korkuluk ve cam balkon ayarları: ProductSettings
     public string MaterialsJson { get; set; } = "[]"; // seri kataloğu: hangi stok kartından ne kadar harcanır, List<MaterialRule>
+    [StringLength(3)] public string PriceCurrency { get; set; } = "TRY"; // birim fiyatların para birimi (üretici fiyat listesi EUR/USD olabilir)
+    [NotMapped] public decimal? RateToTry { get; set; } = 1; // okunurken güncel kur yazılır; null: kur girilmemiş
 
     [Column(TypeName = "numeric(10,2)"), Range(1, 500)] public decimal FrameWidthMm { get; set; } = 70;
     [Column(TypeName = "numeric(10,2)"), Range(1, 500)] public decimal SashWidthMm { get; set; } = 80;
