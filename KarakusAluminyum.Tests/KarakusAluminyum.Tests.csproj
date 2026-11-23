@@ -15,6 +15,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="ZXing.Net" Version="0.16.10" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../KarakusAluminyum.Web.csproj" />

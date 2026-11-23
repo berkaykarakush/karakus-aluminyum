@@ -1,0 +1,45 @@
+@using KarakusAluminyum.Web.Models.Production
+@using KarakusAluminyum.Web.Services.Production
+@{
+    ViewData["Title"] = "Barkod okut";
+    var station = (string)ViewBag.Station;
+    var recent = (List<ProductionScan>)ViewBag.Recent;
+    var names = (Dictionary<int, string>)ViewBag.Names;
+}
+<h1>Barkod okut</h1>
+<div class="admin-panel">
+  <p class="admin-muted">İstasyonu seçin, imleç kutudayken etiketi okutun. Okuyucu Enter gönderdiğinde kayıt düşer ve kutu yeni okutma için boşalır. Onaylı siparişte ilk okutma siparişi üretime alır; tüm adetler paketlenince sipariş depoya geçer.</p>
+  <form method="post" action="/yonetim/uretim/okut" class="admin-form" autocomplete="off">
+    @Html.AntiForgeryToken()
+    <label for="scan-station">İstasyon</label>
+    <select id="scan-station" name="station">@foreach (var s in ProductionStations.All) { <option value="@s" selected="@(s == station)">@ProductionStations.Label(s)</option> }</select>
+    <label for="scan-code">Etiket kodu</label>
+    <input id="scan-code" name="code" autofocus required placeholder="S12-345-1" style="font-size:1.4em;font-family:monospace" />
+    <div class="admin-actions"><button class="admin-btn">Kaydet</button></div>
+  </form>
+</div>
+<div class="admin-panel" style="overflow-x:auto">
+  <h3 style="margin-top:0">Son okutmalar</h3>
+  @if (recent.Count == 0) { <p class="admin-muted">Henüz okutma yok.</p> }
+  else
+  {
+    <table class="admin-table">
+      <thead><tr><th>Zaman</th><th>Sipariş</th><th>Poz</th><th>Adet</th><th>İstasyon</th><th>Kullanıcı</th><th></th></tr></thead>
+      <tbody>
+      @foreach (var s in recent)
+      {
+        <tr>
+          <td>@s.AtUtc.AddHours(3).ToString("dd.MM HH:mm")</td>
+          <td><a href="/yonetim/siparisler/detay/@s.ProductionOrderId">@s.ProductionOrder?.OrderNumber</a></td>
+          <td>@names.GetValueOrDefault(s.WindowDesignId, "#" + s.WindowDesignId)</td>
+          <td>@s.Unit</td>
+          <td>@ProductionStations.Label(s.Station)</td>
+          <td>@s.User</td>
+          <td><form method="post" action="/yonetim/uretim/okut/sil/@s.Id?istasyon=@station" onsubmit="return confirm('Okutma silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--secondary">Sil</button></form></td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  }
+</div>
+<script>document.getElementById('scan-station').addEventListener('change', e => { location.href = '/yonetim/uretim/okut?istasyon=' + e.target.value; });</script>

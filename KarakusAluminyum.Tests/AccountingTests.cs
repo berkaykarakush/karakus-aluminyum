@@ -961,7 +961,7 @@ public sealed class AccountingFlowTests(PostgresFixture postgres)
                 await db.SaveChangesAsync();
                 await db.Database.ExecuteSqlRawAsync("""
                     DROP TABLE "PaymentAllocations"; DROP TABLE "CashTransactions"; DROP TABLE "Cheques"; DROP TABLE "Expenses"; DROP TABLE "ExpenseCategories"; DROP TABLE "StockMovements"; DROP TABLE "InvoiceLines"; DROP TABLE "Invoices";
-                    DROP TABLE IF EXISTS "DeliveryNoteLines", "DeliveryNotes", "OrderEvents", "ProductionOrders", "Installers";
+                    DROP TABLE IF EXISTS "ProductionScans", "DeliveryNoteLines", "DeliveryNotes", "OrderEvents", "ProductionOrders", "Installers";
                     DROP TABLE "ProjectCostItems"; DROP TABLE "CostProjects";
                     DROP TABLE "Products"; DROP TABLE "FinanceAccounts"; DROP TABLE "Employees"; DROP TABLE "CariAdjustments"; DROP TABLE "AccountingSequences";
                     ALTER TABLE "Customers" DROP COLUMN "PartyType";

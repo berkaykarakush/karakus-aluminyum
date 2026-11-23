@@ -51,6 +51,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<GlassList> GlassLists => Set<GlassList>();
     public DbSet<GlassListItem> GlassListItems => Set<GlassListItem>();
     public DbSet<ProductionOrder> ProductionOrders => Set<ProductionOrder>();
+    public DbSet<ProductionScan> ProductionScans => Set<ProductionScan>();
     public DbSet<OrderEvent> OrderEvents => Set<OrderEvent>();
     public DbSet<Installer> Installers => Set<Installer>();
     public DbSet<DeliveryNote> DeliveryNotes => Set<DeliveryNote>();
@@ -71,6 +72,8 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
 
         // Üretim siparişleri: müşteri silinemez; teklif, sözleşme, çizim listesi, camcı ve montajcı silinirse bağ kopar.
         builder.Entity<ProductionOrder>().HasIndex(x => x.OrderNumber).IsUnique();
+        builder.Entity<ProductionScan>().HasIndex(x => new { x.ProductionOrderId, x.WindowDesignId, x.Unit, x.Station }).IsUnique();
+        builder.Entity<ProductionScan>().HasOne(x => x.ProductionOrder).WithMany().HasForeignKey(x => x.ProductionOrderId).OnDelete(DeleteBehavior.Cascade);
         builder.Entity<ProductionOrder>().HasIndex(x => x.Status);
         builder.Entity<ProductionOrder>().HasIndex(x => x.PlannedShipDate);
         builder.Entity<ProductionOrder>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);

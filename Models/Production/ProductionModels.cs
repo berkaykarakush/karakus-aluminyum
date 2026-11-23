@@ -76,6 +76,38 @@ public sealed class ProductionOrder
     public List<DeliveryNote> DeliveryNotes { get; set; } = new();
 }
 
+// Barkodlu üretim takibi: poz etiketinin (veya parça etiketinin) bir istasyonda okutulması.
+// Bir pozun her adedi ayrı etikettir; aynı adet aynı istasyonda bir kez sayılır.
+public sealed class ProductionScan
+{
+    public int Id { get; set; }
+    public int ProductionOrderId { get; set; }
+    public ProductionOrder? ProductionOrder { get; set; }
+    public int WindowDesignId { get; set; }
+    public int Unit { get; set; } // pozun kaçıncı adedi (1'den başlar)
+    [Required, StringLength(20)] public string Station { get; set; } = ProductionStations.Cutting;
+    public DateTime AtUtc { get; set; } = DateTime.UtcNow;
+    [StringLength(160)] public string? User { get; set; }
+}
+
+public static class ProductionStations
+{
+    public const string Cutting = "cut";
+    public const string Assembly = "assembly";
+    public const string Glazing = "glazing";
+    public const string Packed = "packed";
+    public static readonly string[] All = { Cutting, Assembly, Glazing, Packed };
+
+    public static string Label(string station) => station switch
+    {
+        Cutting => "Kesim",
+        Assembly => "Birleştirme / donanım",
+        Glazing => "Camlama",
+        Packed => "Paketlendi (hazır)",
+        _ => station
+    };
+}
+
 // Sipariş geçmişi: durum değişiklikleri, işaretler, cam ve montaj kayıtları.
 public sealed class OrderEvent
 {

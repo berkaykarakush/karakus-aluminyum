@@ -1,0 +1,71 @@
+@model KarakusAluminyum.Web.Models.Production.ProductionOrder
+@using KarakusAluminyum.Web.Services.Production
+@{
+    Layout = null;
+    var kind = (string)ViewBag.Kind;
+    var size = (string)ViewBag.Size;
+    var pozlar = (List<PozLabel>)ViewBag.Pozlar;
+    var parts = (List<PartLabel>)ViewBag.Parts;
+    var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
+    var perSheet = size == "a4" ? 24 : 1;
+    var count = kind == "parca" ? parts.Count : pozlar.Count;
+    string Url(string t, string b) => $"/yonetim/uretim/etiketler/{Model.Id}?tur={t}&boyut={b}";
+}
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>@(kind == "parca" ? "Parça" : "Poz") etiketleri - @Model.OrderNumber</title>
+  <link rel="stylesheet" href="~/css/labels.css" asp-append-version="true" />
+  @if (size == "termal") { <style>@@page{size:100mm 50mm;margin:0}</style> } else { <style>@@page{size:A4;margin:0}</style> }
+</head>
+<body class="lb--@size">
+  <div class="lb-toolbar">
+    <a href="/yonetim/siparisler/detay/@Model.Id">Siparişe dön</a>
+    <a href="@Url("poz", size)">Poz etiketleri</a>
+    <a href="@Url("parca", size)">Parça etiketleri</a>
+    <a href="@Url(kind, size == "a4" ? "termal" : "a4")">@(size == "a4" ? "Termal (100 × 50 mm)" : "A4 (3 × 8)")</a>
+    <span>@count etiket</span>
+    <button type="button" onclick="window.print()">Yazdır</button>
+  </div>
+  @if (count == 0)
+  {
+    <div class="lb-toolbar"><span>@(kind == "parca" ? "Parça etiketi için pozlara profil sistemi seçin." : "Siparişe bağlı çizim listesinde poz yok.")</span></div>
+  }
+  @if (kind == "parca")
+  {
+    @foreach (var page in parts.Chunk(perSheet))
+    {
+      <div class="lb-sheet">
+        @foreach (var p in page)
+        {
+          <div class="lb">
+            <div class="lb-row"><strong>@p.Profile</strong><span>@Model.OrderNumber</span></div>
+            <div class="lb-row"><span class="lb-big">@p.LengthMm.ToString("0.#", culture) mm</span><span>@p.Ends</span></div>
+            <div class="lb-muted">@p.Label · Poz @p.Position (@p.Unit/@p.Design.Quantity) @p.Design.Name</div>
+            @Html.Raw(Code128.Svg(p.Code))
+          </div>
+        }
+      </div>
+    }
+  }
+  else
+  {
+    @foreach (var page in pozlar.Chunk(perSheet))
+    {
+      <div class="lb-sheet">
+        @foreach (var p in page)
+        {
+          <div class="lb">
+            <div class="lb-row"><strong>@Model.OrderNumber</strong><span>Poz @p.Position · @p.Unit/@p.Quantity</span></div>
+            <div class="lb-row"><span class="lb-big">@p.Size</span></div>
+            <div class="lb-muted">@p.Design.Name · @Model.Customer?.Name</div>
+            <div class="lb-muted">@string.Join(" · ", p.Lines.Take(3))</div>
+            @Html.Raw(Code128.Svg(p.Code))
+          </div>
+        }
+      </div>
+    }
+  }
+</body>
+</html>
