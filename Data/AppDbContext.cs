@@ -34,6 +34,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Brand> Brands => Set<Brand>();
     public DbSet<Product> Products => Set<Product>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
+    public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<InvoiceLine> InvoiceLines => Set<InvoiceLine>();
     public DbSet<FinanceAccount> FinanceAccounts => Set<FinanceAccount>();
@@ -153,6 +154,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<Invoice>().HasIndex(x => new { x.Status, x.DueDate });
         builder.Entity<InvoiceLine>().HasOne(x => x.Invoice).WithMany(x => x.Lines).HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.Cascade);
         builder.Entity<InvoiceLine>().HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<ExchangeRate>().HasIndex(x => new { x.Currency, x.Date }).IsUnique();
         builder.Entity<StockMovement>().HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<StockMovement>().HasOne(x => x.Invoice).WithMany().HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<StockMovement>().HasOne<KarakusAluminyum.Web.Models.Production.ProductionOrder>().WithMany().HasForeignKey(x => x.ProductionOrderId).OnDelete(DeleteBehavior.SetNull);

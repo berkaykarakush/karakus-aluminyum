@@ -1,0 +1,63 @@
+@model List<KarakusAluminyum.Web.Models.Accounting.Product>
+@using KarakusAluminyum.Web.Models.Accounting
+@using KarakusAluminyum.Web.Services.Production
+@{
+    ViewData["Title"] = "Fiyat listeleri ve kurlar";
+    var rates = (Dictionary<string, RateInfo>)ViewBag.Rates;
+    var history = (List<ExchangeRate>)ViewBag.History;
+    var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
+    var today = DateTime.UtcNow.AddHours(3).ToString("yyyy-MM-dd");
+}
+<h1>Fiyat listeleri ve kurlar</h1>
+<div class="admin-panel">
+  <h3 style="margin-top:0">Döviz kurları</h3>
+  <p>
+    @foreach (var c in PriceLists.ForeignCurrencies)
+    {
+      <span style="margin-right:18px">@if (rates.TryGetValue(c, out var r)) { <strong>@c @r.Rate.ToString("#,0.0000", culture) ₺</strong> <span class="admin-muted">(@r.Date.ToString("dd.MM.yyyy"), @r.Source)</span> } else { <strong>@c</strong> <span class="or-late" style="color:#b42318">girilmemiş</span> }</span>
+    }
+  </p>
+  <div class="admin-actions">
+    <form method="post" action="/yonetim/fiyat-listeleri/kur" class="admin-actions">
+      @Html.AntiForgeryToken()
+      <select name="currency" aria-label="Para birimi">@foreach (var c in PriceLists.ForeignCurrencies) { <option>@c</option> }</select>
+      <input name="rate" type="number" step="0.0001" min="0" placeholder="Kur (₺)" aria-label="Kur" required style="max-width:140px" />
+      <input name="date" type="date" value="@today" aria-label="Tarih" style="max-width:170px" />
+      <button class="admin-btn admin-btn--secondary">Kuru kaydet</button>
+    </form>
+    <form method="post" action="/yonetim/fiyat-listeleri/kur/tcmb">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--secondary" title="TCMB günlük döviz satış kurları">TCMB'den al</button></form>
+  </div>
+  @if (history.Count > 0)
+  {
+    <details style="margin-top:8px"><summary>Son kayıtlar</summary>
+      <table class="admin-table"><tbody>@foreach (var h in history) { <tr><td>@h.Date.ToString("dd.MM.yyyy")</td><td>@h.Currency</td><td>@h.Rate.ToString("#,0.0000", culture)</td><td>@h.Source</td></tr> }</tbody></table>
+    </details>
+  }
+</div>
+
+<div class="admin-panel">
+  <h3 style="margin-top:0">Tedarikçi fiyat listesi yükle</h3>
+  <p class="admin-muted">Her satıra <code>kod;fiyat;para birimi</code> yazın (ayraç noktalı virgül veya sekme; Excel'den kopyalayıp yapıştırabilirsiniz). Kod, stok kartındaki kodla eşleşir. Fiyat KDV hariç alış fiyatıdır; 1.234,56 ve 1234.56 yazımları okunur. Para birimi boşsa aşağıdaki seçim kullanılır.</p>
+  <form method="post" action="/yonetim/fiyat-listeleri/yukle" enctype="multipart/form-data" class="admin-form">
+    @Html.AntiForgeryToken()
+    <textarea name="text" rows="6" placeholder="K-70;12,50;EUR&#10;C-1;45"></textarea>
+    <label for="pl-file">veya dosya (.csv / .txt)</label><input id="pl-file" type="file" name="file" accept=".csv,.txt,text/plain" />
+    <label for="pl-currency">Varsayılan para birimi</label>
+    <select id="pl-currency" name="currency">@foreach (var c in AccountingLabels.Currencies) { <option>@c</option> }</select>
+    <div class="admin-actions"><button class="admin-btn">Fiyatları güncelle</button></div>
+  </form>
+</div>
+
+<div class="admin-panel" style="overflow-x:auto">
+  <form method="get" class="admin-actions"><h3 style="margin:0">Stok kartları</h3><input name="q" value="@ViewBag.Query" placeholder="Kod veya ad" aria-label="Ara" style="max-width:240px" /><button class="admin-btn admin-btn--secondary">Ara</button></form>
+  <table class="admin-table">
+    <thead><tr><th>Kod</th><th>Ad</th><th>Birim</th><th style="text-align:right">Alış fiyatı</th><th style="text-align:right">TL karşılığı</th></tr></thead>
+    <tbody>
+    @foreach (var p in Model)
+    {
+      var inTry = PriceLists.ToTry(p.PurchasePrice, p.PriceCurrency, rates);
+      <tr><td>@p.Code</td><td>@p.Name</td><td>@p.Unit</td><td style="text-align:right">@p.PurchasePrice.ToString("#,0.00", culture) @p.PriceCurrency</td><td style="text-align:right">@(inTry is decimal t ? t.ToString("#,0.00", culture) + " ₺" : "kur yok")</td></tr>
+    }
+    </tbody>
+  </table>
+</div>

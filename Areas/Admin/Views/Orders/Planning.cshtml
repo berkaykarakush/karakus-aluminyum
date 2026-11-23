@@ -6,6 +6,11 @@
     ViewData["Title"] = "Üretim planı";
     var loads = (Dictionary<int, OrderLoad>)ViewBag.Loads;
     var capacity = (decimal)ViewBag.Capacity;
+    var unitCapacity = (decimal)ViewBag.UnitCapacity;
+    var scans = (Dictionary<int, Dictionary<string, int>>)ViewBag.Scans;
+    int Scanned(ProductionOrder o, string station) => scans.TryGetValue(o.Id, out var s) ? s.GetValueOrDefault(station) : 0;
+    // Paketlenen adetler üretim yükünden düşülür: kalan iş = toplam × (1 - paketlenen / adet).
+    decimal Left(ProductionOrder o) { var units = Load(o).Units; return units == 0 ? 0 : Math.Max(0, 1 - (decimal)Scanned(o, ProductionStations.Packed) / units); }
     var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
     var today = DateOnly.FromDateTime(DateTime.Today);
     var monday = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
@@ -29,8 +34,10 @@
     @Html.AntiForgeryToken()
     <label for="capacity" style="margin:0">Haftalık üretim kapasitesi (m²)</label>
     <input id="capacity" name="capacity" type="number" min="0" step="0.1" value="@capacity.ToString(System.Globalization.CultureInfo.InvariantCulture)" style="max-width:140px" />
+    <label for="unit-capacity" style="margin:0">ve (adet)</label>
+    <input id="unit-capacity" name="unitCapacity" type="number" min="0" step="1" value="@unitCapacity.ToString(System.Globalization.CultureInfo.InvariantCulture)" style="max-width:120px" />
     <button class="admin-btn admin-btn--secondary">Kaydet</button>
-    <span class="admin-muted">@(capacity > 0 ? "Haftalık yük bu değerle karşılaştırılır; aşan hafta kırmızı görünür." : "Kapasite girilirse haftalık yük doluluk oranıyla gösterilir.")</span>
+    <span class="admin-muted">@(capacity > 0 || unitCapacity > 0 ? "Haftalık kalan iş bu değerlerle karşılaştırılır; aşan hafta kırmızı görünür. Barkodla paketlenen adetler yükten düşülür." : "Kapasite girilirse haftalık yük doluluk oranıyla gösterilir.")</span>
   </form>
 </div>
 
@@ -47,19 +54,43 @@
   @foreach (var start in weeks)
   {
     var orders = producing.Where(o => o.PlannedShipDate is DateOnly d && d >= start && d < start.AddDays(7)).OrderBy(o => o.PlannedShipDate).ToList();
-    var area = orders.Sum(o => Load(o).AreaM2);
-    var ratio = capacity > 0 ? area / capacity : 0;
+    var area = orders.Sum(o => Load(o).AreaM2 * Left(o));
+    var units = orders.Sum(o => Load(o).Units * Left(o));
+    var ratio = Math.Max(capacity > 0 ? area / capacity : 0, unitCapacity > 0 ? units / unitCapacity : 0);
+    var hasCapacity = capacity > 0 || unitCapacity > 0;
     <details @(start == monday ? "open" : "")>
       <summary class="or-week">
         <strong>@start.ToString("dd.MM") - @start.AddDays(6).ToString("dd.MM")@(start == monday ? " (bu hafta)" : "")</strong>
-        <span class="or-bar @(ratio > 1 ? "is-over" : "")" title="@(capacity > 0 ? $"Doluluk %{ratio * 100:0}" : "")"><span style="width:@(Math.Min(100, capacity > 0 ? ratio * 100 : (area > 0 ? 100 : 0)).ToString("0", System.Globalization.CultureInfo.InvariantCulture))%"></span></span>
-        <span>@orders.Count sipariş · @area.ToString("0.0", culture) m²@(capacity > 0 ? $" · %{ratio * 100:0}" : "")</span>
+        <span class="or-bar @(ratio > 1 ? "is-over" : "")" title="@(hasCapacity ? $"Doluluk %{ratio * 100:0}" : "")"><span style="width:@(Math.Min(100, hasCapacity ? ratio * 100 : (area > 0 ? 100 : 0)).ToString("0", System.Globalization.CultureInfo.InvariantCulture))%"></span></span>
+        <span>@orders.Count sipariş · kalan @area.ToString("0.0", culture) m² · @units.ToString("0", culture) adet@(hasCapacity ? $" · %{ratio * 100:0}" : "")</span>
       </summary>
       @if (orders.Count > 0) { <partial name="_PlanRows" model="orders" view-data='new ViewDataDictionary(ViewData) { ["Loads"] = loads }' /> }
     </details>
   }
   @if (later.Count > 0) { <p class="admin-muted">Sonraki haftalara planlı: @later.Count sipariş, @later.Sum(o => Load(o).AreaM2).ToString("0.0", culture) m².</p> }
 </div>
+
+@{ var inProduction = Model.Where(o => o.Status == OrderStatus.InProduction).OrderBy(o => o.PlannedShipDate).ToList(); }
+@if (inProduction.Count > 0)
+{
+  <div class="admin-panel" style="overflow-x:auto">
+    <h2 style="margin-top:0">Üretimdeki siparişler: istasyon ilerlemesi</h2>
+    <table class="admin-table">
+      <thead><tr><th>Sipariş</th><th>Sevk</th>@foreach (var st in ProductionStations.All) { <th>@ProductionStations.Label(st)</th> }</tr></thead>
+      <tbody>
+      @foreach (var o in inProduction)
+      {
+        var total = Load(o).Units;
+        <tr>
+          <td><a href="/yonetim/siparisler/detay/@o.Id">@o.OrderNumber</a> @o.Customer?.Name</td>
+          <td>@D(o.PlannedShipDate)</td>
+          @foreach (var st in ProductionStations.All) { var done = Scanned(o, st); <td title="@done / @total">@(total > 0 ? $"%{100m * done / total:0}" : "-") <progress max="@total" value="@done" style="width:70px"></progress></td> }
+        </tr>
+      }
+      </tbody>
+    </table>
+  </div>
+}
 
 @if (undated.Count > 0)
 {

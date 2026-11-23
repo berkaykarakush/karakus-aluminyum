@@ -9,6 +9,10 @@
     var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
     string N(decimal v) => v.ToString("#,0.###", culture);
     var materials = takeoff.Materials;
+    var rates = (Dictionary<string, RateInfo>)ViewBag.Rates;
+    var costs = takeoff.Lines.Select(l => PriceLists.ToTry(l.Quantity * l.Product.PurchasePrice, l.Product.PriceCurrency, rates)).ToList();
+    var noRate = takeoff.Lines.Where(l => PriceLists.ToTry(1, l.Product.PriceCurrency, rates) is null).Select(l => l.Product.PriceCurrency).Distinct().ToList();
+    var noPrice = takeoff.Lines.Count(l => l.Product.PurchasePrice == 0);
     var shortages = takeoff.Lines.Count(l => !Model.StockDeducted && l.Quantity > stock.GetValueOrDefault(l.Product.Id));
 }
 <link rel="stylesheet" href="~/css/orders.css" asp-append-version="true" />
@@ -51,9 +55,9 @@ else
     else
     {
       <table class="admin-table">
-        <thead><tr><th>Kod</th><th>Malzeme</th><th class="num">Gereken</th><th>Birim</th><th class="num">@(Model.StockDeducted ? "Düşülen" : "Mevcut stok")</th><th class="num">@(Model.StockDeducted ? "Kalan stok" : "Eksik")</th><th>Kaynak</th></tr></thead>
+        <thead><tr><th>Kod</th><th>Malzeme</th><th class="num">Gereken</th><th>Birim</th><th class="num">@(Model.StockDeducted ? "Düşülen" : "Mevcut stok")</th><th class="num">@(Model.StockDeducted ? "Kalan stok" : "Eksik")</th><th class="num">Birim fiyat</th><th class="num">Tutar (₺)</th><th>Kaynak</th></tr></thead>
         <tbody>
-        @foreach (var line in takeoff.Lines)
+        @foreach (var (line, index) in takeoff.Lines.Select((l, i) => (l, i)))
         {
           var have = stock.GetValueOrDefault(line.Product.Id);
           var missing = Math.Max(0, line.Quantity - have);
@@ -72,11 +76,18 @@ else
               <td class="num">@N(have)</td>
               <td class="num">@if (missing > 0) { <strong class="or-late">@N(missing)</strong> } else { <span>-</span> }</td>
             }
+            <td class="num">@line.Product.PurchasePrice.ToString("#,0.00", culture) @line.Product.PriceCurrency</td>
+            <td class="num">@(costs[index] is decimal c ? c.ToString("#,0.00", culture) : "kur yok")</td>
             <td class="admin-muted" style="font-size:.85em">@string.Join("; ", line.Sources)</td>
           </tr>
         }
         </tbody>
+        <tfoot><tr><th colspan="7" style="text-align:right">Malzeme maliyeti (KDV hariç, fiyat listesinden)</th><th class="num">@costs.Sum(c => c ?? 0).ToString("#,0.00", culture) ₺</th><th></th></tr></tfoot>
       </table>
+      @if (noRate.Count > 0 || noPrice > 0)
+      {
+        <p class="admin-muted">@if (noRate.Count > 0) { <span>@string.Join(", ", noRate) kuru girilmemiş; bu kalemler toplama girmedi. </span> }@if (noPrice > 0) { <span>@noPrice kalemin alış fiyatı 0. </span> }<a href="/yonetim/fiyat-listeleri">Fiyat listeleri ve kurlar</a></p>
+      }
       @if (Model.StockDeducted && deducted.Any(d => takeoff.Lines.All(l => l.Product.Id != d.Key) || takeoff.Lines.First(l => l.Product.Id == d.Key).Quantity != d.Value))
       {
         <p class="or-late">Stoktan düşüldükten sonra çizimler veya kurallar değişmiş; düşülen miktarlar güncel metrajdan farklı. Geri alıp yeniden düşebilirsiniz.</p>
@@ -104,6 +115,13 @@ else
         <div><label><input type="checkbox" name="tumu" value="true" style="width:auto" checked="@(shortages == 0)" /> Tüm malzemeler (işaretsizse yalnızca eksikler)</label></div>
         <div><button class="admin-btn admin-btn--secondary">Yazdır</button></div>
       </form>
+      <form method="post" action="/yonetim/siparisler/alis-taslagi/@Model.Id" class="or-form-row" style="margin-top:12px" onsubmit="return confirm('Seçilen tedarikçiye taslak alış faturası açılsın mı?')">
+        @Html.AntiForgeryToken()
+        <div><label for="draft-supplier">Tedarikçi</label><select id="draft-supplier" name="supplierId" asp-items="suppliers" required><option value="">Seçin</option></select></div>
+        <div><label><input type="checkbox" name="tumu" value="true" style="width:auto" /> Tüm malzemeler (işaretsizse yalnızca eksikler)</label></div>
+        <div><button class="admin-btn admin-btn--secondary">Taslak alış faturası aç</button></div>
+      </form>
+      <p class="admin-muted">Taslak fatura muhasebede onaylanınca malzeme stoğa girer.</p>
     </div>
   }
 }

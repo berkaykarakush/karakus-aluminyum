@@ -32,6 +32,7 @@ builder.Services.AddScoped<SeoService>();
 builder.Services.AddScoped<LengthUnits>();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<KarakusAluminyum.Web.Services.Production.OrderService>();
+builder.Services.AddHttpClient(KarakusAluminyum.Web.Services.Production.PriceLists.TcmbClient, client => client.Timeout = TimeSpan.FromSeconds(15));
 builder.Services.AddScoped<KarakusAluminyum.Web.Services.Documents.DocumentBrandingProvider>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<KarakusAluminyum.Web.Services.Accounting.AccountingService>();
