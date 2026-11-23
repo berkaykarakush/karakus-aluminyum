@@ -144,7 +144,7 @@ public sealed class OrdersController : Controller
 
     // Ercom'daki sipariş işaretleri: değişen her işaret geçmişe yazılır.
     [HttpPost("isaretler/{id:int}"), ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetFlags(int id, bool sentToCutting, bool stockDeducted, bool glassExcluded, bool installationExcluded, bool reserved)
+    public async Task<IActionResult> SetFlags(int id, bool sentToCutting, bool glassExcluded, bool installationExcluded, bool reserved)
     {
         var order = await _db.ProductionOrders.Include(x => x.Events).FirstOrDefaultAsync(x => x.Id == id);
         if (order is null) return NotFound();
@@ -156,7 +156,6 @@ public sealed class OrdersController : Controller
             changes.Add($"{label}: {(next ? "evet" : "hayır")}");
         }
         Set(order.SentToCutting, sentToCutting, "Kesime gönderildi", v => order.SentToCutting = v);
-        Set(order.StockDeducted, stockDeducted, "Stok düşüldü", v => order.StockDeducted = v);
         Set(order.GlassExcluded, glassExcluded, "Cam hariç", v => order.GlassExcluded = v);
         Set(order.InstallationExcluded, installationExcluded, "Montaj hariç", v => order.InstallationExcluded = v);
         Set(order.Reserved, reserved, "Rezerve", v => order.Reserved = v);
@@ -351,6 +350,96 @@ public sealed class OrdersController : Controller
         await _db.SaveChangesAsync();
         await _audit.RecordAsync("delete", "DeliveryNote", id.ToString(), note.Number);
         return RedirectToAction(nameof(Details), new { id = order.Id });
+    }
+
+    // ---- Metraj ve stok ----
+
+    // Seri kataloğu kurallarıyla siparişin malzeme ihtiyacı, mevcut stok ve eksikler.
+    [HttpGet("metraj/{id:int}")]
+    public async Task<IActionResult> Materials(int id)
+    {
+        var order = await _db.ProductionOrders.AsNoTracking().Include(x => x.Customer).Include(x => x.DrawingList).FirstOrDefaultAsync(x => x.Id == id);
+        if (order is null) return NotFound();
+        await LoadTakeoff(order);
+        return View(order);
+    }
+
+    // Malzeme ihtiyaç listesi: tedarikçiye verilecek sipariş formu (yalnızca eksikler veya tümü).
+    [HttpGet("malzeme-listesi/{id:int}")]
+    public async Task<IActionResult> MaterialPrint(int id, bool tumu = false, int? tedarikci = null)
+    {
+        var order = await _db.ProductionOrders.AsNoTracking().Include(x => x.Customer).FirstOrDefaultAsync(x => x.Id == id);
+        if (order is null) return NotFound();
+        await LoadTakeoff(order);
+        ViewBag.All = tumu;
+        ViewBag.Supplier = tedarikci is int supplierId ? await _db.Customers.AsNoTracking().FirstOrDefaultAsync(x => x.Id == supplierId && x.PartyType != PartyType.Customer) : null;
+        ViewBag.Template = await KarakusAluminyum.Web.Services.Documents.DocumentViews.CurrentTemplateAsync(_db, KarakusAluminyum.Web.Models.Documents.DocumentKinds.Contract);
+        return View(order);
+    }
+
+    [HttpPost("stok-dus/{id:int}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeductStock(int id)
+    {
+        var order = await _db.ProductionOrders.Include(x => x.Events).FirstOrDefaultAsync(x => x.Id == id);
+        if (order is null) return NotFound();
+        if (order.StockDeducted) { TempData["Notice"] = "Bu siparişin malzemesi stoktan zaten düşüldü."; return RedirectToAction(nameof(Materials), new { id }); }
+        var takeoff = await TakeoffAsync(order);
+        var lines = takeoff.Lines.Where(x => x.Product.Kind == ProductKind.Stock).ToList();
+        if (lines.Count == 0) { TempData["Notice"] = "Stoktan düşülecek malzeme yok. Profil sistemlerine malzeme kuralı tanımlayın."; return RedirectToAction(nameof(Materials), new { id }); }
+        foreach (var line in lines)
+            _db.StockMovements.Add(new StockMovement { ProductId = line.Product.Id, Date = Today, Kind = StockMovementKind.Production, Quantity = -line.Quantity, ProductionOrderId = id, Note = "Üretim: " + order.OrderNumber });
+        order.StockDeducted = true;
+        OrderService.Record(order, $"Metraj stoktan düşüldü ({lines.Count} kalem).", UserName);
+        await _db.SaveChangesAsync();
+        await _audit.RecordAsync("stock", "ProductionOrder", id.ToString(), $"{order.OrderNumber}: {lines.Count} kalem düşüldü");
+        TempData["Notice"] = $"{lines.Count} kalem malzeme stoktan düşüldü.";
+        return RedirectToAction(nameof(Materials), new { id });
+    }
+
+    // Geri alma, düşülen hareketlerin tersini yazar; geçmiş silinmez (fatura iptalindeki gibi).
+    [HttpPost("stok-geri-al/{id:int}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> RevertStock(int id)
+    {
+        var order = await _db.ProductionOrders.Include(x => x.Events).FirstOrDefaultAsync(x => x.Id == id);
+        if (order is null) return NotFound();
+        var net = (await _db.StockMovements.AsNoTracking().Where(x => x.ProductionOrderId == id).Select(x => new { x.ProductId, x.Quantity }).ToListAsync())
+            .GroupBy(x => x.ProductId).Select(g => (ProductId: g.Key, Quantity: g.Sum(x => x.Quantity))).Where(x => x.Quantity != 0).ToList();
+        foreach (var (productId, quantity) in net)
+            _db.StockMovements.Add(new StockMovement { ProductId = productId, Date = Today, Kind = StockMovementKind.ProductionReturn, Quantity = -quantity, ProductionOrderId = id, Note = "Üretim geri alındı: " + order.OrderNumber });
+        if (order.StockDeducted || net.Count > 0)
+        {
+            order.StockDeducted = false;
+            OrderService.Record(order, $"Stoktan düşülen malzeme geri alındı ({net.Count} kalem).", UserName);
+            await _db.SaveChangesAsync();
+            await _audit.RecordAsync("stock", "ProductionOrder", id.ToString(), $"{order.OrderNumber}: {net.Count} kalem geri alındı");
+        }
+        TempData["Notice"] = net.Count > 0 ? $"{net.Count} kalem stoğa geri alındı." : "Geri alınacak stok hareketi yok.";
+        return RedirectToAction(nameof(Materials), new { id });
+    }
+
+    private async Task<TakeoffResult> TakeoffAsync(ProductionOrder order)
+    {
+        var designs = order.DrawingListId is int listId
+            ? await _db.WindowDesigns.AsNoTracking().Include(x => x.ProfileSystem).Where(x => x.DrawingListId == listId).OrderBy(x => x.SortOrder).ThenBy(x => x.Id).ToListAsync()
+            : new List<KarakusAluminyum.Web.Models.Drawing.WindowDesign>();
+        var productIds = designs.Where(x => x.ProfileSystem is not null).Select(x => x.ProfileSystem!).DistinctBy(x => x.Id)
+            .SelectMany(x => MaterialTakeoff.ParseRules(x.MaterialsJson).Select(r => r.ProductId)).Distinct().ToList();
+        var products = await _db.Products.AsNoTracking().Where(x => productIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id);
+        return MaterialTakeoff.Build(designs, products);
+    }
+
+    private async Task LoadTakeoff(ProductionOrder order)
+    {
+        var takeoff = await TakeoffAsync(order);
+        var ids = takeoff.Lines.Select(x => x.Product.Id).ToList();
+        var stock = (await _db.StockMovements.AsNoTracking().Where(x => ids.Contains(x.ProductId)).Select(x => new { x.ProductId, x.Quantity }).ToListAsync())
+            .GroupBy(x => x.ProductId).ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+        var deducted = (await _db.StockMovements.AsNoTracking().Where(x => x.ProductionOrderId == order.Id).Select(x => new { x.ProductId, x.Quantity }).ToListAsync())
+            .GroupBy(x => x.ProductId).ToDictionary(g => g.Key, g => -g.Sum(x => x.Quantity));
+        ViewBag.Takeoff = takeoff;
+        ViewBag.Stock = stock;
+        ViewBag.Deducted = deducted;
+        ViewBag.Suppliers = new SelectList(await _db.Customers.AsNoTracking().Where(x => x.PartyType != PartyType.Customer).OrderBy(x => x.Name).Select(x => new { x.Id, x.Name }).ToListAsync(), "Id", "Name");
     }
 
     // ---- Çıktılar ----

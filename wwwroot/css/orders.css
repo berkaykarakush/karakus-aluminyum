@@ -43,3 +43,4 @@
 .or-page .admin-actions input{width:auto;flex:1 1 220px}
 .or-page label{display:block;margin:8px 0 4px;font-size:12px;font-weight:600;color:#34435c}
 .or-page .or-checks label{display:flex;margin:0;font-size:14px}
+.or-page .num{text-align:right;white-space:nowrap}

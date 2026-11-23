@@ -9,7 +9,7 @@ public enum PartyType { Customer = 0, Supplier = 1, Both = 2 }
 public enum ProductKind { Stock = 0, Service = 1 }
 public enum InvoiceKind { Sale = 0, Purchase = 1, SaleReturn = 2, PurchaseReturn = 3 }
 public enum InvoiceStatus { Draft = 0, Approved = 1, Cancelled = 2 }
-public enum StockMovementKind { Opening = 0, Invoice = 1, InvoiceCancel = 2, Adjustment = 3 }
+public enum StockMovementKind { Opening = 0, Invoice = 1, InvoiceCancel = 2, Adjustment = 3, Production = 4, ProductionReturn = 5 }
 public enum FinanceAccountKind { Cash = 0, Bank = 1, Pos = 2, CreditCard = 3 }
 public enum CashKind { Collection = 0, Payment = 1, Expense = 2, Salary = 3, Transfer = 4, ChequeCollected = 5, ChequePaid = 6, OtherIn = 7, OtherOut = 8 }
 public enum ChequeKind { Cheque = 0, PromissoryNote = 1 }
@@ -43,6 +43,7 @@ public sealed class StockMovement
     [Column(TypeName = "numeric(18,3)")] public decimal Quantity { get; set; } // giriş artı, çıkış eksi
     public int? InvoiceId { get; set; }
     public Invoice? Invoice { get; set; }
+    public int? ProductionOrderId { get; set; } // üretim siparişinin metrajından düşülen / geri alınan
     [StringLength(300)] public string? Note { get; set; }
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }

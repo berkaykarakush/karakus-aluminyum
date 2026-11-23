@@ -790,6 +790,9 @@ ALTER TABLE "QuoteItems" ADD COLUMN IF NOT EXISTS "WindowDesignId" integer;
 ALTER TABLE "QuoteItems" ADD COLUMN IF NOT EXISTS "UnitCost" numeric(18,2) NOT NULL DEFAULT 0;
 ALTER TABLE "QuoteItems" ADD COLUMN IF NOT EXISTS "ManualBaseCost" numeric(18,2);
 ALTER TABLE "QuoteItems" ADD COLUMN IF NOT EXISTS "ManualGlassCost" numeric(18,2);
+ALTER TABLE "ProfileSystems" ADD COLUMN IF NOT EXISTS "MaterialsJson" text NOT NULL DEFAULT '[]';
+ALTER TABLE "StockMovements" ADD COLUMN IF NOT EXISTS "ProductionOrderId" integer REFERENCES "ProductionOrders"("Id") ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS "IX_StockMovements_ProductionOrderId" ON "StockMovements" ("ProductionOrderId");
 
 """;
 }

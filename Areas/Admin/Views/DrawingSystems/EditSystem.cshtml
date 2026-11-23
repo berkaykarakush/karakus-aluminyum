@@ -8,6 +8,10 @@
     var settings = (ProductSettings)ViewBag.Settings;
     var isWindow = ProductCategories.IsWindow(Model.Category);
     string F(decimal v) => v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+    var rules = (List<MaterialRule>)ViewBag.Rules;
+    var products = (List<KarakusAluminyum.Web.Models.Accounting.Product>)ViewBag.Products;
+    var keys = MaterialBases.Profiles(Model.Category).Concat(MaterialBases.HardwareNames(Model.Category)).ToList();
+    var blankRows = Math.Max(3, 8 - rules.Count);
 }
 <h1>@ViewData["Title"]</h1>
 <div class="admin-panel">
@@ -104,7 +108,61 @@
       <div><label asp-for="LaborPercent">İşçilik (%)</label><input asp-for="LaborPercent" type="number" step="0.1" /></div>
       <div><label asp-for="MarginPercent">Kâr (%)</label><input asp-for="MarginPercent" type="number" step="0.1" /></div>
     </div>
+    <h2 id="malzemeler">Malzemeler (seri kataloğu)</h2>
+    <p class="admin-muted">Siparişin metrajı ve stoktan düşme bu satırlarla yapılır: miktar = hesap esası × katsayı. Profil ve donanım esaslarında adı çizimdeki gibi yazın (@string.Join(", ", keys)). Stok kartlarını Muhasebe › Ürünler'den ekleyin.</p>
+    @if (products.Count == 0) { <p class="admin-muted">Henüz stoklu ürün kartı yok.</p> }
+    <div style="overflow-x:auto">
+      <table class="admin-table" id="material-rules">
+        <thead><tr><th>Stok kartı</th><th>Hesap esası</th><th>Profil / donanım adı</th><th>Katsayı</th><th></th></tr></thead>
+        <tbody>
+        @for (var i = 0; i < rules.Count + blankRows; i++)
+        {
+          var rule = i < rules.Count ? rules[i] : new MaterialRule { Basis = "" };
+          <tr>
+            <td><select name="rules[@i].ProductId" aria-label="Stok kartı"><option value="0">Seçilmedi</option>@foreach (var p in products) { <option value="@p.Id" selected="@(p.Id == rule.ProductId)">@(string.IsNullOrWhiteSpace(p.Code) ? "" : p.Code + " · ")@p.Name (@p.Unit)</option> }</select></td>
+            <td><select name="rules[@i].Basis" aria-label="Hesap esası">@foreach (var b in MaterialBases.All) { <option value="@b" selected="@(b == rule.Basis)">@MaterialBases.Label(b)</option> }</select></td>
+            <td><input name="rules[@i].Key" value="@rule.Key" list="material-keys" aria-label="Profil veya donanım adı" maxlength="80" /></td>
+            <td><input name="rules[@i].Factor" type="number" step="0.001" min="0" value="@F(rule.Factor)" aria-label="Katsayı" style="max-width:110px" /></td>
+            <td><button type="button" class="admin-btn admin-btn--secondary" data-clear-rule>Temizle</button></td>
+          </tr>
+        }
+        </tbody>
+      </table>
+    </div>
+    <datalist id="material-keys">@foreach (var k in keys) { <option value="@k"></option> }</datalist>
+    <p><button type="button" class="admin-btn admin-btn--secondary" id="add-rule">Satır ekle</button></p>
+
     <p><label><input asp-for="IsActive" type="checkbox" style="width:auto" /> Aktif</label></p>
     <div class="admin-actions"><button class="admin-btn" type="submit">Kaydet</button><a href="/yonetim/cizim/sistemler">İptal</a></div>
   </form>
+  @if (editing)
+  {
+    <form method="post" action="/yonetim/cizim/sistemler/ornek-malzeme/@Model.Id" class="admin-actions" style="margin-top:12px" onsubmit="return confirm('Bu sistemin profil ve donanımları için örnek stok kartları ve tahmini kurallar oluşturulsun mu? Kaydedilmemiş değişiklikler kaybolur.')">
+      @Html.AntiForgeryToken()
+      <button class="admin-btn admin-btn--secondary">Örnek malzeme kurallarını oluştur</button>
+      <span class="admin-muted">Eksik profil ve donanımlar için "(örnek)" etiketli stok kartı ve tahmini katsayı ekler.</span>
+    </form>
+  }
 </div>
+<script>
+  (() => {
+    const body = document.querySelector('#material-rules tbody');
+    if (!body) return;
+    body.addEventListener('click', e => {
+      if (!e.target.matches('[data-clear-rule]')) return;
+      const row = e.target.closest('tr');
+      row.querySelector('select[name$=".ProductId"]').value = '0';
+      row.querySelector('input[name$=".Key"]').value = '';
+      row.querySelector('input[name$=".Factor"]').value = '1';
+    });
+    document.getElementById('add-rule').addEventListener('click', () => {
+      const index = body.rows.length;
+      const row = body.rows[body.rows.length - 1].cloneNode(true);
+      row.querySelectorAll('[name]').forEach(el => el.name = el.name.replace(/rules\[\d+\]/, `rules[${index}]`));
+      row.querySelector('select[name$=".ProductId"]').value = '0';
+      row.querySelector('input[name$=".Key"]').value = '';
+      row.querySelector('input[name$=".Factor"]').value = '1';
+      body.appendChild(row);
+    });
+  })();
+</script>

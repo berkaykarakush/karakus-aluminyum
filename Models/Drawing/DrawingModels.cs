@@ -12,6 +12,7 @@ public sealed class ProfileSystem
     [Required, StringLength(20)] public string Category { get; set; } = ProductCategories.Aluminum;
     [StringLength(20)] public string Material { get; set; } = "Alüminyum";
     public string SettingsJson { get; set; } = "{}"; // panjur, korkuluk ve cam balkon ayarları: ProductSettings
+    public string MaterialsJson { get; set; } = "[]"; // seri kataloğu: hangi stok kartından ne kadar harcanır, List<MaterialRule>
 
     [Column(TypeName = "numeric(10,2)"), Range(1, 500)] public decimal FrameWidthMm { get; set; } = 70;
     [Column(TypeName = "numeric(10,2)"), Range(1, 500)] public decimal SashWidthMm { get; set; } = 80;
@@ -37,6 +38,61 @@ public sealed class ProfileSystem
     [Column(TypeName = "numeric(5,2)"), Range(0, 500)] public decimal LaborPercent { get; set; }
     [Column(TypeName = "numeric(5,2)"), Range(0, 500)] public decimal MarginPercent { get; set; }
     public bool IsActive { get; set; } = true;
+}
+
+// Seri kataloğu satırı: bir stok kartının (profil, aksesuar, conta...) çizimden nasıl metrajlanacağı.
+// Miktar = hesap esasının değeri × katsayı. Örn. "Kasa" profilinin boy adedi × 1, pencere çevresi (m) × 0,1 tüp silikon.
+public sealed class MaterialRule
+{
+    public int ProductId { get; set; }
+    public string Basis { get; set; } = MaterialBases.ProfileBars;
+    public string? Key { get; set; } // profil veya donanım adı; diğer esaslarda boş
+    public decimal Factor { get; set; } = 1;
+}
+
+public static class MaterialBases
+{
+    public const string ProfileBars = "profileBars";       // kesim planındaki boy adedi
+    public const string ProfileMetres = "profileMetres";   // kesilen profil metresi, fire dahil
+    public const string Hardware = "hardware";             // donanım takımı adedi
+    public const string Piece = "piece";                   // poz adedi
+    public const string Perimeter = "perimeter";           // doğrama dış çevresi (m)
+    public const string Area = "area";                     // doğrama alanı (m²)
+    public const string GlassArea = "glassArea";           // cam alanı (m²)
+    public const string GlassPerimeter = "glassPerimeter"; // cam çevresi (m): cam contası, fitil
+    public static readonly string[] All = { ProfileBars, ProfileMetres, Hardware, Piece, Perimeter, Area, GlassArea, GlassPerimeter };
+
+    public static bool NeedsKey(string basis) => basis is ProfileBars or ProfileMetres or Hardware;
+
+    public static string Label(string basis) => basis switch
+    {
+        ProfileBars => "Profil boy adedi",
+        ProfileMetres => "Profil metresi (fire dahil)",
+        Hardware => "Donanım takımı",
+        Piece => "Poz adedi",
+        Perimeter => "Doğrama çevresi (m)",
+        Area => "Doğrama alanı (m²)",
+        GlassArea => "Cam alanı (m²)",
+        GlassPerimeter => "Cam çevresi (m)",
+        _ => basis
+    };
+
+    // Hesap motorlarının ürettiği profil ve donanım adları; kural ekranında öneri olarak çıkar.
+    public static string[] Profiles(string category) => category switch
+    {
+        ProductCategories.Shutter => new[] { "Lamel", "Yan dikme", "Kutu" },
+        ProductCategories.Railing => new[] { "Dikme", "Küpeşte", "Emniyet çubuğu" },
+        ProductCategories.GlassBalcony => new[] { "Ray", "Kanat profili" },
+        _ => new[] { "Kasa", "Kanat", "Kayıt", "Çıta" }
+    };
+
+    public static string[] HardwareNames(string category) => category switch
+    {
+        ProductCategories.Shutter => new[] { "Motor", "Manuel kayış / makara" },
+        ProductCategories.Railing => Array.Empty<string>(),
+        ProductCategories.GlassBalcony => new[] { "Sürme kanat donanımı", "Katlanır kanat donanımı" },
+        _ => new[] { "Açılır kanat donanımı", "Açılır-devrilir / vasistas donanımı", "Sürme donanımı", "Kapı donanımı" }
+    };
 }
 
 public sealed class GlassType
