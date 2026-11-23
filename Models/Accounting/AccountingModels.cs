@@ -30,6 +30,7 @@ public sealed class Product
     [StringLength(3)] public string PriceCurrency { get; set; } = "TRY"; // alış fiyatının (fiyat listesinin) para birimi
     [Column(TypeName = "numeric(5,2)"), Range(0, 100)] public decimal VatRate { get; set; } = 20m;
     [Column(TypeName = "numeric(18,3)"), Range(0, 1_000_000_000)] public decimal CriticalStock { get; set; }
+    [Column(TypeName = "numeric(18,3)"), Range(0, 1_000_000_000)] public decimal TargetStock { get; set; } // sipariş önerisi bu seviyeye tamamlar; 0 ise kritik seviyenin iki katı
     public bool IsActive { get; set; } = true;
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 }

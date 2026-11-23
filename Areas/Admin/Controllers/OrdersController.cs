@@ -21,7 +21,8 @@ public sealed class OrdersController : Controller
     private readonly AppDbContext _db;
     private readonly OrderService _orders;
     private readonly IAuditService _audit;
-    public OrdersController(AppDbContext db, OrderService orders, IAuditService audit) { _db = db; _orders = orders; _audit = audit; }
+    private readonly MaterialPlanning _planning;
+    public OrdersController(AppDbContext db, OrderService orders, IAuditService audit, MaterialPlanning planning) { _db = db; _orders = orders; _audit = audit; _planning = planning; }
 
     private string? UserName => User.Identity?.Name;
     private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
@@ -446,23 +447,7 @@ public sealed class OrdersController : Controller
             .Where(x => x.Quantity > 0).ToList();
         if (lines.Count == 0) { TempData["Notice"] = "Sipariş verilecek eksik malzeme yok."; return RedirectToAction(nameof(Materials), new { id }); }
 
-        var rates = await PriceLists.LatestRatesAsync(_db);
-        var currencies = lines.Select(x => x.Product.PriceCurrency).Distinct().ToList();
-        var currency = currencies.Count == 1 && currencies[0] != "TRY" && rates.ContainsKey(currencies[0]) ? currencies[0] : "TRY";
-        var missingRate = lines.Where(x => currency == "TRY" && PriceLists.ToTry(x.Product.PurchasePrice, x.Product.PriceCurrency, rates) is null).Select(x => x.Product.PriceCurrency).Distinct().ToList();
-        var invoice = new Invoice
-        {
-            Kind = InvoiceKind.Purchase, Status = InvoiceStatus.Draft, CustomerId = supplier, Date = Today, DueDate = Today.AddDays(30), Currency = currency,
-            ExchangeRate = currency == "TRY" ? 1 : rates[currency].Rate, Notes = $"{order.OrderNumber} siparişinin malzeme ihtiyacı (metrajdan)."
-        };
-        invoice.Lines.AddRange(lines.Select((x, i) => new InvoiceLine
-        {
-            SortOrder = i, ProductId = x.Product.Id, Description = string.IsNullOrWhiteSpace(x.Product.Code) ? x.Product.Name : $"{x.Product.Code} {x.Product.Name}",
-            Quantity = x.Quantity, Unit = x.Product.Unit, VatRate = x.Product.VatRate,
-            UnitPrice = currency == "TRY" ? decimal.Round(PriceLists.ToTry(x.Product.PurchasePrice, x.Product.PriceCurrency, rates) ?? 0, 4) : x.Product.PurchasePrice
-        }));
-        KarakusAluminyum.Web.Services.Accounting.InvoiceRules.Calculate(invoice);
-        _db.Invoices.Add(invoice);
+        var (invoice, missingRate) = await _planning.PurchaseDraftAsync(supplier, lines, $"{order.OrderNumber} siparişinin malzeme ihtiyacı (metrajdan).");
         OrderService.Record(order, $"Malzeme için taslak alış faturası açıldı ({lines.Count} kalem).", UserName);
         await _db.SaveChangesAsync();
         await _audit.RecordAsync("create", "Invoice", invoice.Id.ToString(), $"{order.OrderNumber} malzeme taslağı");
@@ -471,16 +456,7 @@ public sealed class OrdersController : Controller
         return RedirectToAction(nameof(Materials), new { id });
     }
 
-    private async Task<TakeoffResult> TakeoffAsync(ProductionOrder order)
-    {
-        var designs = order.DrawingListId is int listId
-            ? await _db.WindowDesigns.AsNoTracking().Include(x => x.ProfileSystem).Where(x => x.DrawingListId == listId).OrderBy(x => x.SortOrder).ThenBy(x => x.Id).ToListAsync()
-            : new List<KarakusAluminyum.Web.Models.Drawing.WindowDesign>();
-        var productIds = designs.Where(x => x.ProfileSystem is not null).Select(x => x.ProfileSystem!).DistinctBy(x => x.Id)
-            .SelectMany(x => MaterialTakeoff.ParseRules(x.MaterialsJson).Select(r => r.ProductId)).Distinct().ToList();
-        var products = await _db.Products.AsNoTracking().Where(x => productIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id);
-        return MaterialTakeoff.Build(designs, products);
-    }
+    private Task<TakeoffResult> TakeoffAsync(ProductionOrder order) => _planning.TakeoffAsync(order);
 
     private async Task LoadTakeoff(ProductionOrder order)
     {

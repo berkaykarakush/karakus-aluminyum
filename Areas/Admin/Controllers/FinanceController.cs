@@ -397,6 +397,7 @@ public sealed class ProductsController : Controller
         if (!ModelState.IsValid) { ViewBag.Movements = new List<StockMovement>(); return View(input); }
         (row.Code, row.Name, row.Kind, row.Unit, row.SalePrice, row.PurchasePrice, row.VatRate, row.CriticalStock, row.IsActive) = (input.Code?.Trim(), input.Name.Trim(), input.Kind, input.Unit.Trim(), input.SalePrice, input.PurchasePrice, input.VatRate, input.CriticalStock, input.IsActive);
         row.PriceCurrency = AccountingLabels.Currencies.Contains(input.PriceCurrency) ? input.PriceCurrency : "TRY";
+        row.TargetStock = input.TargetStock;
         await _db.SaveChangesAsync();
         await _audit.RecordAsync("update", "Product", id.ToString(), row.Name);
         return RedirectToAction(nameof(Index));
