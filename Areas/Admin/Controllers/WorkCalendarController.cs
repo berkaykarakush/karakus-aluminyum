@@ -105,25 +105,30 @@ public sealed class WorkCalendarController : Controller
         var logs = await query.ToListAsync();
         var projects = WorkStats.ByProject(logs, Today);
         var employees = WorkStats.ByEmployee(logs, Today);
-        if (csv) return Csv(projects, employees, from, to);
+        // İşçilik maliyeti maaş bilgisinden gelir; yalnızca yönetici ve muhasebeci görür.
+        var showCost = User.IsInRole("Admin") || User.IsInRole("Accountant");
+        if (showCost) (projects, employees) = (WorkStats.WithCost(projects, logs, Today), WorkStats.WithCost(employees, logs, Today));
+        if (csv) return Csv(projects, employees, from, to, showCost);
+        ViewBag.ShowCost = showCost;
         (ViewBag.From, ViewBag.To, ViewBag.Order) = (from, to, siparis);
         ViewBag.Employees = employees;
         ViewBag.Overbooked = WorkStats.Overbooked(logs).Count;
         return View(projects);
     }
 
-    private FileContentResult Csv(List<WorkProjectRow> projects, List<WorkEmployeeRow> employees, DateOnly from, DateOnly to)
+    private FileContentResult Csv(List<WorkProjectRow> projects, List<WorkEmployeeRow> employees, DateOnly from, DateOnly to, bool showCost)
     {
         var culture = TurkishNumbers.Culture;
         string N(decimal v) => v.ToString("0.##", culture);
         string Cell(string v) => v.Contains(';') || v.Contains('"') ? "\"" + v.Replace("\"", "\"\"") + "\"" : v;
         var text = new StringBuilder();
-        text.Append("İş;Adam-gün (gerçekleşen);Adam-gün (planlanan);Kişi;Çalışılan gün;İlk gün;Son gün\r\n");
+        var cost = showCost ? ";İşçilik maliyeti (TL)" : "";
+        text.Append("İş;Adam-gün (gerçekleşen);Adam-gün (planlanan);Kişi;Çalışılan gün;İlk gün;Son gün" + cost + "\r\n");
         foreach (var p in projects)
-            text.Append(string.Join(';', Cell(p.Label), N(p.ManDays), N(p.PlannedManDays), p.People, p.WorkDays, p.First?.ToString("dd.MM.yyyy") ?? "", p.Last?.ToString("dd.MM.yyyy") ?? "")).Append("\r\n");
-        text.Append("\r\nPersonel;Adam-gün (gerçekleşen);Adam-gün (planlanan);İş sayısı;Çalışılan gün\r\n");
+            text.Append(string.Join(';', Cell(p.Label), N(p.ManDays), N(p.PlannedManDays), p.People, p.WorkDays, p.First?.ToString("dd.MM.yyyy") ?? "", p.Last?.ToString("dd.MM.yyyy") ?? "") + (showCost ? ";" + p.LaborCost.ToString("0.00", culture) : "")).Append("\r\n");
+        text.Append("\r\nPersonel;Adam-gün (gerçekleşen);Adam-gün (planlanan);İş sayısı;Çalışılan gün" + cost + "\r\n");
         foreach (var e in employees)
-            text.Append(string.Join(';', Cell(e.Name), N(e.ManDays), N(e.PlannedManDays), e.Projects, e.WorkDays)).Append("\r\n");
+            text.Append(string.Join(';', Cell(e.Name), N(e.ManDays), N(e.PlannedManDays), e.Projects, e.WorkDays) + (showCost ? ";" + e.LaborCost.ToString("0.00", culture) : "")).Append("\r\n");
         var bytes = new UTF8Encoding(true).GetPreamble().Concat(Encoding.UTF8.GetBytes(text.ToString())).ToArray(); // Excel Türkçe karakterleri doğru açsın
         return File(bytes, "text/csv", $"adam-gun-{from:yyyy-MM-dd}-{to:yyyy-MM-dd}.csv");
     }

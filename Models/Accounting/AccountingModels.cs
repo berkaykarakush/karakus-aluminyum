@@ -225,6 +225,8 @@ public sealed class Employee
     [StringLength(40)] public string? Phone { get; set; }
     [StringLength(40)] public string? Iban { get; set; }
     [Column(TypeName = "numeric(18,2)"), Range(0, 100_000_000)] public decimal NetSalary { get; set; }
+    // Takvimdeki adam-gün maliyeti (SGK ve yan haklar dahil gerçek maliyet). 0 ise net maaş ÷ 26 iş günü ile tahmin edilir.
+    [Column(TypeName = "numeric(18,2)"), Range(0, 10_000_000)] public decimal DailyCost { get; set; }
     public DateOnly? StartDate { get; set; }
     public bool IsActive { get; set; } = true;
 }
