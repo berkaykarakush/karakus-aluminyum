@@ -17,6 +17,8 @@ public sealed class NotificationJob
     public KarakusAluminyum.Web.Models.Production.ProductionOrder? ProductionOrder { get; set; }
     public int? ServiceRequestId { get; set; }
     public KarakusAluminyum.Web.Models.Production.ServiceRequest? ServiceRequest { get; set; }
+    public int? SiteSurveyId { get; set; }
+    public KarakusAluminyum.Web.Models.Production.SiteSurvey? SiteSurvey { get; set; }
     [StringLength(30)] public string? Event { get; set; } // CustomerEvents
     public DateOnly? EventDate { get; set; } // bildirilen tarih; gönderirken kayıttaki tarihle aynı değilse atlanır
     public TimeOnly? EventTime { get; set; }
@@ -45,9 +47,16 @@ public static class CustomerEvents
     public const string ShipDate = "order.shipDate";       // sevk tarihi belirlendi / değişti
     public const string Installation = "order.install";    // montajdan bir gün önce hatırlatma
     public const string ServiceVisit = "service.visit";    // servis ziyareti günü ve saati
-    public static readonly string[] All = { Production, ShipDate, Installation, ServiceVisit };
+    public const string SurveyVisit = "survey.visit";      // keşif (ölçü) randevusu günü ve saati
+    public const string PaymentDue = "payment.due";        // ödeme planında vadesi yaklaşan taksit (README 7.19)
+    public const string MaintenanceAnnual = "maintenance.annual";     // teslimin yıldönümünde bakım hatırlatması (README 7.8)
+    public const string MaintenanceWarranty = "maintenance.warranty"; // garanti bitmeden 30 gün önce
+    public const string ReviewRequest = "review.request";             // teslimden birkaç gün sonra Google yorum isteği (README 7.20)
+    public static readonly string[] All = { Production, ShipDate, Installation, ServiceVisit, SurveyVisit, PaymentDue };
     // Ekibe: müşteri takip sayfasından servis talebi açtı (README 7.7)
     public const string ServiceRequested = "service.request";
+    // Müşteri teklifi QR'lı sayfadan onayladı (README 7.18): ekibe ve müşteriye; iş siparişe bağlıdır.
+    public const string QuoteAccepted = "quote.accepted";
 
     public static string Label(string? e) => e switch
     {
@@ -55,7 +64,13 @@ public static class CustomerEvents
         ShipDate => "Sevk tarihi",
         Installation => "Montaj hatırlatması",
         ServiceVisit => "Servis ziyareti",
+        SurveyVisit => "Keşif randevusu",
+        PaymentDue => "Ödeme hatırlatması",
+        MaintenanceAnnual => "Yıllık bakım hatırlatması",
+        MaintenanceWarranty => "Garanti bitiyor hatırlatması",
+        ReviewRequest => "Google yorum isteği",
         ServiceRequested => "Web servis talebi",
+        QuoteAccepted => "Teklif onayı",
         _ => "Teklif talebi"
     };
 }

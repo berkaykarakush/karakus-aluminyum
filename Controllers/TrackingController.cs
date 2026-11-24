@@ -41,7 +41,7 @@ public sealed class TrackingController : Controller
         [Range(typeof(bool), "true", "true", ErrorMessage = "KVKK aydınlatma metnini onaylayın.")] public bool PrivacyAccepted { get; set; }
     }
 
-    public sealed record TrackingVm(ProductionOrder Order, List<WindowDesign> Pozlar, List<ServiceRequest> Services, ServiceInput Input, bool CanRequestService, SiteSettings Site);
+    public sealed record TrackingVm(ProductionOrder Order, List<WindowDesign> Pozlar, List<ServiceRequest> Services, ServiceInput Input, bool CanRequestService, SiteSettings Site, PaymentSummary Payment);
 
     // Müşteriye gösterilen adımlar: iç durumlar sadeleştirilir.
     public static readonly (string Label, OrderStatus[] Statuses)[] Steps =
@@ -57,9 +57,10 @@ public sealed class TrackingController : Controller
     public static bool CanRequestService(OrderStatus status) => status is OrderStatus.Shipped or OrderStatus.Delivered;
 
     [HttpGet("{token}"), EnableRateLimiting(DocumentLinksController.RateLimitPolicy)]
-    public async Task<IActionResult> Index(string token)
+    public async Task<IActionResult> Index(string token, string? bakim = null)
     {
-        var vm = await LoadAsync(token, new ServiceInput());
+        // bakim=1: bakım hatırlatmasındaki bağlantı; talep formu "Bakım" konusuyla hazır açılır (README 7.8).
+        var vm = await LoadAsync(token, bakim is "1" or "true" ? new ServiceInput { Category = "Bakım", Complaint = "Yıllık bakım ve kontrol yaptırmak istiyorum." } : new ServiceInput());
         return vm is null ? NotFound() : Page(vm);
     }
 
@@ -112,7 +113,8 @@ public sealed class TrackingController : Controller
             ? await _db.WindowDesigns.AsNoTracking().Where(x => x.DrawingListId == listId).OrderBy(x => x.SortOrder).ThenBy(x => x.Id).ToListAsync()
             : new List<WindowDesign>();
         var services = await _db.ServiceRequests.AsNoTracking().Where(x => x.ProductionOrderId == order.Id && x.Status != ServiceStatus.Cancelled).OrderByDescending(x => x.Id).Take(20).ToListAsync();
-        return new TrackingVm(order, pozlar, services, input, CanRequestService(order.Status), await _settings.GetAsync());
+        var payment = await PaymentPlans.SummaryAsync(_db, order.Id, PrintDates.Today);
+        return new TrackingVm(order, pozlar, services, input, CanRequestService(order.Status), await _settings.GetAsync(), payment);
     }
 
     private IActionResult Page(TrackingVm vm)

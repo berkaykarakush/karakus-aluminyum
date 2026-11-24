@@ -1,0 +1,62 @@
+@model KarakusAluminyum.Web.Models.Production.SiteSurvey
+@using KarakusAluminyum.Web.Models.Production
+@using KarakusAluminyum.Web.Models.Drawing
+@using KarakusAluminyum.Web.Services.Documents
+@{
+    // Keşif formu: kayıtlı keşfin bilgileri ve ölçüleri; boş formda sahada elle doldurulacak satırlar.
+    Layout = null;
+    var blank = Model.Id == 0;
+    var printed = PrintDates.From(Context.Request);
+    var head = new BrandHeadVm("KEŞİF / ÖLÇÜ FORMU", printed.ToString("dd.MM.yyyy"));
+    var lines = Model.Lines.OrderBy(x => x.SortOrder).ToList();
+    var empty = Math.Max(blank ? 14 : 4, 0);
+    var back = blank ? "/yonetim/kesif" : "/yonetim/kesif/detay/" + Model.Id;
+    var backText = blank ? "Keşifler" : "Keşfe dön";
+    string V(string? v) => string.IsNullOrWhiteSpace(v) ? " " : v;
+}
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>@(blank ? "Boş keşif formu" : "Keşif formu - " + Model.Number)</title>
+  <link rel="stylesheet" href="~/css/document-print.css" asp-append-version="true" />
+  <link rel="stylesheet" href="~/css/brand.css" asp-append-version="true" />
+  <style>.sv-lines td{height:7mm}</style>
+</head>
+<body class="doc doc--proforma">
+  <partial name="~/Areas/Admin/Views/Shared/_BrandLayer.cshtml" />
+  <div class="doc-toolbar"><a class="doc-toolbar__link" href="@back">@backText</a><partial name="~/Areas/Admin/Views/Shared/_PrintDate.cshtml" model='new PrintDateVm(printed, Model.PlannedOn, "Randevu günü")' /><button type="button" onclick="window.print()">Yazdır / PDF kaydet</button></div>
+  <table class="doc-sheet">
+    <thead><tr><td><partial name="~/Areas/Admin/Views/Shared/_BrandHead.cshtml" model="head" /></td></tr></thead>
+    <tfoot><tr><td><partial name="~/Areas/Admin/Views/Shared/_BrandFoot.cshtml" /></td></tr></tfoot>
+    <tbody><tr><td class="doc-body">
+      <div class="sv-row">
+        <div class="sv-field"><span>Keşif no</span>@V(Model.Number)</div>
+        <div class="sv-field"><span>Müşteri</span>@V(Model.Customer?.Name)</div>
+        <div class="sv-field"><span>Görüşülecek / telefon</span>@V(string.Join(" · ", new[] { Model.ContactName, Model.ContactPhone }.Where(x => !string.IsNullOrWhiteSpace(x))))</div>
+        <div class="sv-field"><span>Randevu</span>@V(Model.PlannedOn is DateOnly d ? d.ToString("dd.MM.yyyy") + (Model.PlannedAt is TimeOnly t ? " " + t.ToString("HH:mm") : "") : null)</div>
+      </div>
+      <div class="sv-row">
+        <div class="sv-field" style="flex:3"><span>Adres</span>@V(Model.Address)</div>
+        <div class="sv-field"><span>Keşfe giden</span>@V(Model.Surveyor)</div>
+      </div>
+      <div class="sv-section"><h3>Notlar (kat, asansör, iskele, müşterinin isteği)</h3><div class="sv-box" style="white-space:pre-wrap">@Model.Notes</div></div>
+      <table class="pf-lines sv-lines">
+        <thead><tr><th class="pf-no">Sıra</th><th>Yer</th><th>Ürün</th><th>Açılım</th><th class="pf-num">Genişlik (mm)</th><th class="pf-num">Yükseklik (mm)</th><th class="pf-num">Adet</th><th>Not</th></tr></thead>
+        <tbody>
+        @foreach (var (l, i) in lines.Select((l, i) => (l, i + 1)))
+        {
+          <tr><td class="pf-no">@i</td><td>@l.Location</td><td>@ProductCategories.Label(l.Category)</td><td>@(ProductCategories.IsWindow(l.Category) ? SurveyLabels.OpeningLabel(l.Opening) : "")</td><td class="pf-num">@l.WidthMm</td><td class="pf-num">@l.HeightMm</td><td class="pf-num">@l.Quantity</td><td>@l.Note</td></tr>
+        }
+        @for (var i = 0; i < empty; i++) { <tr><td class="pf-no">@(lines.Count + i + 1)</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr> }
+        </tbody>
+      </table>
+      <table class="pf-sign"><tbody><tr>
+        <td><strong>Ölçüyü alan</strong><div class="pf-sign__field">Ad Soyad:</div><div class="pf-sign__line">İmza</div></td>
+        <td><strong>Müşteri</strong><div class="pf-sign__field">Ad Soyad:</div><div class="pf-sign__line">İmza</div></td>
+      </tr></tbody></table>
+    </td></tr></tbody>
+  </table>
+  <div class="doc-print-foot"><partial name="~/Areas/Admin/Views/Shared/_BrandFoot.cshtml" /></div>
+</body>
+</html>

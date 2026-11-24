@@ -1,0 +1,45 @@
+@model List<KarakusAluminyum.Web.Areas.Admin.Controllers.PaymentsController.DueRow>
+@using KarakusAluminyum.Web.Models.Production
+@{
+    ViewData["Title"] = "Ödeme takibi";
+    var counts = ((int Late, int Week, int All))ViewBag.Counts;
+    var show = (string)ViewBag.Show;
+    var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
+    string M(decimal v) => v.ToString("#,0.00", culture) + " ₺";
+    var canCollect = User.IsInRole("Admin") || User.IsInRole("Accountant");
+    var canOpenOrder = User.IsInRole("Admin") || User.IsInRole("Editor");
+}
+<link rel="stylesheet" href="~/css/orders.css" asp-append-version="true" />
+<div class="admin-actions"><h1>Ödeme takibi</h1></div>
+<p class="admin-muted">Siparişlerin ödeme planlarında ödenmemiş taksitler. Plan sipariş sayfasından kurulur; tahsilat muhasebeden siparişe bağlanarak girilince burada düşer.</p>
+<div class="admin-panel admin-actions">
+  <a class="admin-btn @(show == "hafta" ? "" : "admin-btn--secondary")" href="/yonetim/odemeler">Geciken ve 7 gün içinde (@(counts.Late + counts.Week))</a>
+  <a class="admin-btn @(show == "geciken" ? "" : "admin-btn--secondary")" href="/yonetim/odemeler?goster=geciken">Geciken (@counts.Late)</a>
+  <a class="admin-btn @(show == "tumu" ? "" : "admin-btn--secondary")" href="/yonetim/odemeler?goster=tumu">Tüm bekleyenler (@counts.All)</a>
+</div>
+<div class="admin-panel" style="overflow-x:auto">
+  @if (Model.Count == 0) { <p class="admin-muted">Bekleyen ödeme yok.</p> }
+  else
+  {
+    <table class="admin-table">
+      <thead><tr><th>Vade</th><th>Sipariş</th><th>Müşteri</th><th>Ödeme</th><th>Tutar</th><th>Kalan</th><th>Durum</th><th></th></tr></thead>
+      <tbody>
+      @foreach (var r in Model)
+      {
+        var s = r.Status;
+        <tr>
+          <td>@(s.Row.DueOn?.ToString("dd.MM.yyyy") ?? "Tarih yok")</td>
+          <td>@if (canOpenOrder) { <a href="/yonetim/siparisler/detay/@r.Order.Id#odeme">@r.Order.OrderNumber</a> } else { @r.Order.OrderNumber }<div class="admin-muted">@r.Order.Title</div></td>
+          <td>@r.Order.Customer?.Name@if (!string.IsNullOrWhiteSpace(r.Order.ContactPhone ?? r.Order.Customer?.Phone)) { <div class="admin-muted">@(r.Order.ContactPhone ?? r.Order.Customer?.Phone)</div> }</td>
+          <td>@s.Row.Label</td>
+          <td>@M(s.Row.Amount)</td>
+          <td><strong>@M(s.Remaining)</strong></td>
+          <td class="@(s.State == InstallmentState.Late ? "or-late" : "")">@InstallmentLabels.Label(s.State)</td>
+          <td>@if (canCollect) { <a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/kasa-banka/yeni?tur=tahsilat&cari=@r.Order.CustomerId&siparis=@r.Order.Id&tutar=@s.Remaining.ToString(System.Globalization.CultureInfo.InvariantCulture)">Tahsilat al</a> }</td>
+        </tr>
+      }
+      </tbody>
+      <tfoot><tr><td colspan="5"><strong>Toplam kalan</strong></td><td><strong>@M((decimal)ViewBag.Total)</strong></td><td colspan="2"></td></tr></tfoot>
+    </table>
+  }
+</div>

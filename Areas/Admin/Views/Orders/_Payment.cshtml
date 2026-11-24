@@ -1,0 +1,58 @@
+@model KarakusAluminyum.Web.Models.Production.ProductionOrder
+@using KarakusAluminyum.Web.Models.Production
+@{
+    // README 7.19: ödeme planı (kapora, ara ödeme, teslimde kalan). Tahsilatlar muhasebede siparişe bağlanarak girilir.
+    var summary = (PaymentSummary)ViewBag.Payment;
+    var rows = (List<OrderInstallment>)ViewBag.PaymentRows;
+    var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
+    string M(decimal v) => v.ToString("#,0.00", culture) + " ₺";
+    var total = KarakusAluminyum.Web.Services.Production.PaymentPlans.OrderTotal(Model);
+    var canCollect = User.IsInRole("Admin") || User.IsInRole("Accountant");
+    var next = summary.Rows.FirstOrDefault(r => r.Remaining > 0);
+    var editRows = rows.Count + 1;
+}
+<div class="admin-panel" id="odeme">
+  <div class="admin-actions">
+    <h3 style="margin:0">Ödeme planı</h3>
+    @if (canCollect) { <a class="admin-btn" href="/yonetim/muhasebe/kasa-banka/yeni?tur=tahsilat&cari=@Model.CustomerId&siparis=@Model.Id@(next is null ? "" : "&tutar=" + next.Remaining.ToString(System.Globalization.CultureInfo.InvariantCulture))">Tahsilat al</a> }
+  </div>
+  @if (summary.HasPlan || summary.Collected > 0)
+  {
+    <p style="margin:10px 0"><strong>Planlanan @M(summary.Planned)</strong> · tahsil edilen @M(summary.Collected) · <strong>kalan @M(summary.Remaining)</strong>@if (summary.Overpaid > 0) { <span> · plandan fazla @M(summary.Overpaid)</span> }@if (summary.LateCount > 0) { <span class="or-late"> · @summary.LateCount taksit gecikti</span> }</p>
+  }
+  @if (rows.Count == 0)
+  {
+    <form method="post" action="/yonetim/siparisler/odeme-plani-oner/@Model.Id" class="or-form-row" style="align-items:end;max-width:640px">
+      @Html.AntiForgeryToken()
+      <div><label for="plan-total">Toplam tutar (₺)</label><input id="plan-total" name="total" type="number" step="0.01" min="0.01" value="@(total?.ToString(System.Globalization.CultureInfo.InvariantCulture))" required /></div>
+      <div><label for="plan-deposit">Kapora (%)</label><input id="plan-deposit" name="depositPercent" type="number" min="0" max="100" step="1" value="30" /></div>
+      <div><button class="admin-btn admin-btn--secondary">Kapora + kalan planı oluştur</button></div>
+    </form>
+    <p class="admin-muted">Kapora bugüne, kalan montaj (yoksa sevk) tarihine yazılır; sonra aşağıdan düzenleyebilirsiniz.</p>
+  }
+  <form method="post" action="/yonetim/siparisler/odeme-plani/@Model.Id">
+    @Html.AntiForgeryToken()
+    <div style="overflow-x:auto">
+    <table class="admin-table">
+      <thead><tr><th>Ödeme</th><th>Vade</th><th>Tutar (₺)</th><th>Not</th><th>Durum</th></tr></thead>
+      <tbody>
+      @for (var i = 0; i < editRows; i++)
+      {
+        var r = i < rows.Count ? rows[i] : null;
+        var status = r is null ? null : summary.Rows.FirstOrDefault(x => x.Row.Id == r.Id);
+        <tr>
+          <td><input name="rows[@i].Label" value="@r?.Label" list="installment-labels" maxlength="60" placeholder="@(r is null ? "Yeni satır" : "")" aria-label="Ödeme" /></td>
+          <td><input name="rows[@i].DueOn" type="date" value="@(r?.DueOn?.ToString("yyyy-MM-dd"))" aria-label="Vade" /></td>
+          <td><input name="rows[@i].Amount" type="number" step="0.01" min="0" value="@(r?.Amount.ToString(System.Globalization.CultureInfo.InvariantCulture))" aria-label="Tutar" style="max-width:140px" /></td>
+          <td><input name="rows[@i].Note" value="@r?.Note" maxlength="200" aria-label="Not" /></td>
+          <td>@if (status is not null) { <span class="@(status.State == InstallmentState.Late ? "or-late" : "")">@InstallmentLabels.Label(status.State)</span>@if (status.State is InstallmentState.Partial or InstallmentState.Late && status.Paid > 0) { <div class="admin-muted">ödenen @M(status.Paid)</div> } }</td>
+        </tr>
+      }
+      </tbody>
+    </table>
+    </div>
+    <datalist id="installment-labels">@foreach (var l in InstallmentLabels.Suggestions) { <option value="@l"></option> }</datalist>
+    <div class="admin-actions" style="margin-top:8px"><button class="admin-btn admin-btn--secondary">Planı kaydet</button></div>
+    <p class="admin-muted">Satırı silmek için tutarını ve adını boşaltın. Vadesi gelecekteki ödenmemiş taksit için müşteriye vadeden önceki gün hatırlatma gider. @(canCollect ? "" : "Tahsilatı muhasebe girer.")</p>
+  </form>
+</div>

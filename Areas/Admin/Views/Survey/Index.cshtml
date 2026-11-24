@@ -1,0 +1,46 @@
+@model List<KarakusAluminyum.Web.Models.Production.SiteSurvey>
+@using KarakusAluminyum.Web.Models.Production
+@{
+    ViewData["Title"] = "Keşifler";
+    var counts = (Dictionary<SurveyStatus, int>)ViewBag.Counts;
+    var status = (SurveyStatus)ViewBag.Status;
+    var today = KarakusAluminyum.Web.Services.Documents.PrintDates.Today;
+    string When(SiteSurvey s) => s.PlannedOn is DateOnly d ? d.ToString("dd.MM.yyyy ddd", new System.Globalization.CultureInfo("tr-TR")) + (s.PlannedAt is TimeOnly t ? " " + t.ToString("HH:mm") : "") : "Tarih yok";
+}
+<link rel="stylesheet" href="~/css/orders.css" asp-append-version="true" />
+<div class="admin-actions">
+  <h1>Keşifler</h1>
+  <a class="admin-btn" href="/yonetim/kesif/ekle">Yeni keşif</a>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/kesif/bos-form" target="_blank" rel="noopener">Boş keşif formu</a>
+</div>
+<p class="admin-muted">Yerinde ölçü randevuları. Web sitesinden gelen talepten "Keşif randevusu oluştur" ile de açılır; ölçüler çizim listesine aktarılır ve teklif oradan hazırlanır.</p>
+<div class="admin-panel admin-actions">
+  @foreach (var s in Enum.GetValues<SurveyStatus>())
+  {
+    <a class="admin-btn @(status == s ? "" : "admin-btn--secondary")" href="/yonetim/kesif?durum=@s">@SurveyLabels.Label(s) (@counts.GetValueOrDefault(s))</a>
+  }
+  <form method="get" class="admin-actions" style="margin-left:auto"><input type="hidden" name="durum" value="@status" /><input name="q" value="@ViewBag.Query" placeholder="No, müşteri veya adres" aria-label="Ara" /><button class="admin-btn admin-btn--secondary">Ara</button></form>
+</div>
+<div class="admin-panel" style="overflow-x:auto">
+  @if (Model.Count == 0) { <p class="admin-muted">Kayıt yok.</p> }
+  else
+  {
+    <table class="admin-table">
+      <thead><tr><th>Randevu</th><th>No</th><th>Müşteri</th><th>Adres</th><th>Giden</th><th>Ölçü</th><th>Durum</th></tr></thead>
+      <tbody>
+      @foreach (var s in Model)
+      {
+        <tr>
+          <td>@When(s)@if (s.Status == SurveyStatus.Planned && s.PlannedOn == today) { <span class="or-late"> bugün</span> } else if (s.Status == SurveyStatus.Planned && s.PlannedOn < today) { <span class="or-late"> geçti</span> }</td>
+          <td><a href="/yonetim/kesif/detay/@s.Id">@s.Number</a></td>
+          <td>@s.Customer?.Name@if (!string.IsNullOrWhiteSpace(s.ContactPhone)) { <div class="admin-muted">@s.ContactPhone</div> }</td>
+          <td>@s.Address</td>
+          <td>@(s.Surveyor ?? "-")</td>
+          <td>@s.Lines.Count poz</td>
+          <td>@SurveyLabels.Label(s.Status)</td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  }
+</div>

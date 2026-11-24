@@ -55,13 +55,21 @@ public sealed class NotificationQueue
 // Müşteri takip sayfasından gelen servis talebi ekibe e-postayla bildirilir (teklif bildirimi alıcıları).
 public static class TeamNotices
 {
-    public static async Task AddServiceRequestAsync(AppDbContext db, SiteSettingsProvider settings, NotificationOptions options, KarakusAluminyum.Web.Models.Production.ServiceRequest request)
+    // Ekibe e-posta (teklif bildirimi alıcıları): web servis talebi, online teklif onayı.
+    public static async Task AddAsync(AppDbContext db, SiteSettingsProvider settings, NotificationOptions options, string e, Action<NotificationJob> link)
     {
         var site = await settings.GetAsync();
         if (site.NotifyEmailEnabled != "true") return;
         foreach (var to in NotificationComposer.Split(string.IsNullOrWhiteSpace(site.NotifyEmailTo) ? options.Smtp.To : site.NotifyEmailTo).Where(NotificationComposer.IsEmail))
-            db.NotificationJobs.Add(new NotificationJob { Channel = NotificationChannel.AdminEmail, Recipient = to, Event = CustomerEvents.ServiceRequested, ServiceRequest = request });
+        {
+            var job = new NotificationJob { Channel = NotificationChannel.AdminEmail, Recipient = to, Event = e };
+            link(job);
+            db.NotificationJobs.Add(job);
+        }
     }
+
+    public static Task AddServiceRequestAsync(AppDbContext db, SiteSettingsProvider settings, NotificationOptions options, KarakusAluminyum.Web.Models.Production.ServiceRequest request)
+        => AddAsync(db, settings, options, CustomerEvents.ServiceRequested, job => job.ServiceRequest = request);
 }
 
 public sealed class NotificationDispatcher
@@ -96,8 +104,10 @@ public sealed class NotificationDispatcher
 
             var job = await _db.NotificationJobs.Include(x => x.ContactMessage)
                 .Include(x => x.ProductionOrder).ThenInclude(x => x!.Customer)
+                .Include(x => x.ProductionOrder).ThenInclude(x => x!.Quote)
                 .Include(x => x.ServiceRequest).ThenInclude(x => x!.Customer)
                 .Include(x => x.ServiceRequest).ThenInclude(x => x!.ProductionOrder)
+                .Include(x => x.SiteSurvey).ThenInclude(x => x!.Customer)
                 .AsSplitQuery().SingleAsync(x => x.Id == id, cancellationToken);
             job.Attempts++;
             try
@@ -105,13 +115,23 @@ public sealed class NotificationDispatcher
                 // Müşteri bildirimi: sıraya alındıktan sonra tarih değiştiyse veya iş iptal edildiyse gönderilmez.
                 var customerEvent = job.Event is not null;
                 if (customerEvent && CustomerNotifier.Obsolete(job, DateTime.UtcNow) is string reason) throw new SkipNotificationException(reason);
+                // Ödeme hatırlatması: o vadede ödenmemiş tutar gönderim anında hesaplanır; ödendiyse veya plan değiştiyse gitmez.
+                var payment = job.Event == CustomerEvents.PaymentDue ? await PaymentAsync(job, cancellationToken) : null;
+                var maintenance = job.Event is CustomerEvents.MaintenanceAnnual or CustomerEvents.MaintenanceWarranty ? await MaintenanceReminders.InfoAsync(_db, job) : null;
+                if (job.Event == CustomerEvents.ReviewRequest)
+                {
+                    if (job.ProductionOrder?.Status != KarakusAluminyum.Web.Models.Production.OrderStatus.Delivered) throw new SkipNotificationException("İş teslim edilmiş görünmüyor; yorum istenmedi.");
+                    if (string.IsNullOrWhiteSpace(site.GoogleReviewUrl)) throw new SkipNotificationException("Google yorum bağlantısı yazılmamış.");
+                    if (await ReviewRequests.OpenIssueAsync(_db, job.ProductionOrderId!.Value, cancellationToken) is string issue) throw new SkipNotificationException(issue);
+                }
                 job.ProviderMessageId = job.Channel switch
                 {
+                    NotificationChannel.AdminEmail when job.Event == CustomerEvents.QuoteAccepted => await _email.SendAsync(CustomerNotifier.TeamQuoteAcceptedEmail(job, site), cancellationToken),
                     NotificationChannel.AdminEmail when job.Event == CustomerEvents.ServiceRequested => await _email.SendAsync(CustomerNotifier.TeamServiceEmail(job, site), cancellationToken),
                     NotificationChannel.AdminEmail => await _email.SendAsync(NotificationComposer.AdminEmail(job.ContactMessage!, job.Recipient, site), cancellationToken),
-                    NotificationChannel.CustomerEmail when customerEvent => await _email.SendAsync(CustomerNotifier.Email(job, site), cancellationToken),
+                    NotificationChannel.CustomerEmail when customerEvent => await _email.SendAsync(CustomerNotifier.Email(job, site, payment, maintenance), cancellationToken),
                     NotificationChannel.CustomerEmail => await _email.SendAsync(NotificationComposer.CustomerEmail(job.Recipient, site), cancellationToken),
-                    NotificationChannel.CustomerWhatsApp => await _whatsApp.SendAsync(CustomerNotifier.WhatsApp(job, site), cancellationToken),
+                    NotificationChannel.CustomerWhatsApp => await _whatsApp.SendAsync(CustomerNotifier.WhatsApp(job, site, payment, maintenance), cancellationToken),
                     _ => await _whatsApp.SendAsync(NotificationComposer.AdminWhatsApp(job.ContactMessage!, job.Recipient, site), cancellationToken)
                 };
                 job.Status = NotificationStatus.Sent;
@@ -145,6 +165,16 @@ public sealed class NotificationDispatcher
         return sent;
     }
 
+    private async Task<CustomerNotifier.PaymentInfo> PaymentAsync(NotificationJob job, CancellationToken cancellationToken)
+    {
+        var today = CustomerNotifier.Today(DateTime.UtcNow);
+        var summary = await KarakusAluminyum.Web.Services.Production.PaymentPlans.SummaryAsync(_db, job.ProductionOrderId!.Value, today);
+        var due = summary.Rows.Where(r => r.Row.DueOn == job.EventDate && r.Remaining > 0).ToList();
+        if (due.Count == 0) throw new SkipNotificationException("Taksit ödendi veya plan değişti; gönderilmedi.");
+        var template = await KarakusAluminyum.Web.Services.Documents.DocumentViews.CurrentTemplateAsync(_db, KarakusAluminyum.Web.Models.Documents.DocumentKinds.Quote);
+        return new CustomerNotifier.PaymentInfo(due.Sum(r => r.Remaining), string.Join(" ve ", due.Select(r => r.Row.Label.ToLower(new System.Globalization.CultureInfo("tr-TR")))), template.BankInfo);
+    }
+
     private void Fail(NotificationJob job, string message)
     {
         job.Status = NotificationStatus.Failed;
@@ -158,6 +188,7 @@ public sealed class NotificationDispatcher
 public sealed class NotificationWorker : BackgroundService
 {
     private static readonly TimeSpan Interval = TimeSpan.FromSeconds(30);
+    private DateTime _lastMaintenanceScan = DateTime.MinValue;
     private readonly IServiceScopeFactory _scopes;
     private readonly NotificationSignal _signal;
     private readonly ILogger<NotificationWorker> _logger;
@@ -170,6 +201,13 @@ public sealed class NotificationWorker : BackgroundService
             try
             {
                 await using var scope = _scopes.CreateAsyncScope();
+                // Bakım hatırlatmaları saatte bir taranır (README 7.8).
+                if (DateTime.UtcNow - _lastMaintenanceScan > TimeSpan.FromHours(1))
+                {
+                    _lastMaintenanceScan = DateTime.UtcNow;
+                    await scope.ServiceProvider.GetRequiredService<MaintenanceReminders>().RunAsync(DateTime.UtcNow, stoppingToken);
+                    await scope.ServiceProvider.GetRequiredService<ReviewRequests>().RunAsync(DateTime.UtcNow, stoppingToken);
+                }
                 await scope.ServiceProvider.GetRequiredService<NotificationDispatcher>().RunOnceAsync(stoppingToken);
                 await _signal.WaitAsync(Interval, stoppingToken);
             }

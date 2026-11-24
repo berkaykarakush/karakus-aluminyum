@@ -6,11 +6,24 @@ namespace KarakusAluminyum.Web.Models.Crm;
 public enum CustomerKind { Individual = 0, Company = 1 }
 public enum CustomerStatus { Lead = 0, Active = 1, Passive = 2 }
 
+// Müşterinin bizi nereden bulduğu (README 7.15): serbest metin, bu liste öneri olarak sunulur ve raporda gruplanır.
+public static class CustomerSources
+{
+    public static readonly string[] Suggestions = { "Web sitesi", "Google", "Instagram", "Facebook", "Tavsiye", "Tabela / dükkân", "Eski müşteri", "Mimar / müteahhit", "Diğer" };
+
+    public static string Normalize(string? source)
+    {
+        if (string.IsNullOrWhiteSpace(source)) return "Belirtilmedi";
+        var trimmed = source.Trim();
+        return Suggestions.FirstOrDefault(x => string.Equals(x, trimmed, StringComparison.CurrentCultureIgnoreCase)) ?? trimmed;
+    }
+}
+
 public sealed class Customer
 {
     public int Id { get; set; }
     [Required, StringLength(160)] public string Name { get; set; } = "";
-    public CustomerKind Kind { get; set; } = CustomerKind.Company;
+    public CustomerKind Kind { get; set; } = CustomerKind.Individual; // işlerin çoğu bireysel müşteri (README 7.23)
     public CustomerStatus Status { get; set; } = CustomerStatus.Lead;
     public PartyType PartyType { get; set; } = PartyType.Customer;
     [StringLength(120)] public string? ContactPerson { get; set; }

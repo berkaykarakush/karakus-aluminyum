@@ -20,7 +20,7 @@
   <button class="admin-btn admin-btn--secondary">Uygula</button>
 </form>
 
-<nav class="report-sections" aria-label="Rapor bölümleri"><a href="#satis">Satış</a><a href="#uretim">Çizim ve cam</a><a href="#iletisim">İletişim</a><a href="#web">Web sitesi</a></nav>
+<nav class="report-sections" aria-label="Rapor bölümleri"><a href="#satis">Satış</a><a href="#donusum">Dönüşüm</a><a href="#uretim">Çizim ve cam</a><a href="#iletisim">İletişim</a><a href="#web">Web sitesi</a></nav>
 
 <section id="satis" class="report-section">
   <div class="report-section__head"><h2>Satış</h2><a class="admin-btn admin-btn--secondary" href="@Csv("satis")">CSV indir</a></div>
@@ -38,6 +38,30 @@
     <div class="admin-panel"><h3>En yüksek teklif tutarlı müşteriler</h3><partial name="_BarList" model="s.TopCustomers" /></div>
     <div class="admin-panel"><h3>Sözleşmeler</h3><partial name="_BarList" model="s.ContractsByStatus" /></div>
     <div class="admin-panel"><h3>İmzalı sözleşmelerde ödeme planı</h3><partial name="_BarList" model="s.PaymentsByKind" /></div>
+  </div>
+</section>
+
+@{ var cv = Model.Conversion; }
+<section id="donusum" class="report-section">
+  <div class="report-section__head"><h2>Satış dönüşümü</h2><a class="admin-btn admin-btn--secondary" href="@Csv("donusum")">CSV indir</a></div>
+  <div class="report-kpis">
+    @foreach (var f in cv.Funnel) { <partial name="_Kpi" model='new KpiVm(f.Label, f.Count.ToString() + (f.RateFromPrevious is decimal rate ? " (" + Percent(rate) + ")" : ""), f.Count, null)' /> }
+    <partial name="_Kpi" model='new KpiVm("Kabul edilen tutar", TurkishNumbers.Money(cv.AcceptedTotal), cv.AcceptedTotal, null)' />
+    <partial name="_Kpi" model='new KpiVm("Kaybedilen tutar", TurkishNumbers.Money(cv.LostTotal), cv.LostTotal, null)' />
+  </div>
+  <p class="admin-muted">Keşif oranı web taleplerine, kabul oranı müşteriye gönderilen tekliflere göredir (taslaklar sayılmaz). Kaynak, müşteri kartındaki "Müşteri kaynağı" alanıdır.</p>
+  <div class="admin-panel" style="overflow-x:auto"><h3>Müşteri kaynağına göre</h3>
+    @if (cv.BySource.Count == 0) { <p class="admin-muted">Bu aralıkta veri yok.</p> }
+    else
+    {
+      <table class="admin-table"><thead><tr><th>Kaynak</th><th>Teklif</th><th>Kabul</th><th>Kabul oranı</th><th>Kabul edilen tutar</th></tr></thead><tbody>
+      @foreach (var x in cv.BySource) { <tr><td>@x.Source</td><td>@x.Quotes</td><td>@x.Accepted</td><td>@Percent(x.Rate)</td><td>@TurkishNumbers.Money(x.AcceptedTotal)</td></tr> }
+      </tbody></table>
+    }
+  </div>
+  <div class="admin-columns">
+    <div class="admin-panel"><h3>Kayıp nedenleri</h3><partial name="_BarList" model="cv.LostReasons" /></div>
+    <div class="admin-panel"><h3>Tercih edilen rakipler</h3><partial name="_BarList" model="cv.Competitors" /></div>
   </div>
 </section>
 

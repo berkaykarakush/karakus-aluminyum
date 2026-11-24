@@ -1,0 +1,51 @@
+@model KarakusAluminyum.Web.Models.Production.SurveyInputVm
+@{
+    var editing = Model.Id != 0;
+    ViewData["Title"] = editing ? "Keşfi düzenle" : "Yeni keşif randevusu";
+    var action = editing ? $"/yonetim/kesif/duzenle/{Model.Id}" : "/yonetim/kesif/ekle";
+    var customers = new SelectList(((SelectList)ViewBag.Customers).Items, "Id", "Name", Model.CustomerId);
+}
+<h1>@ViewData["Title"]</h1>
+<div class="admin-panel">
+  <form class="admin-form" method="post" action="@action">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="ContactMessageId" />
+    <div asp-validation-summary="All"></div>
+    @if (Model.ContactMessageId is int messageId) { <p class="admin-muted">Web sitesinden gelen <a href="/yonetim/mesajlar/@messageId">talepten</a> açılıyor.</p> }
+    <div class="admin-grid">
+      <div><label asp-for="CustomerId">Müşteri</label><select asp-for="CustomerId" asp-items="customers" id="survey-customer"><option value="">Yeni müşteri (aşağıya yazın)</option></select></div>
+    </div>
+    @if (!editing)
+    {
+      <fieldset id="new-customer" style="border:1px solid #e3e6e8;border-radius:10px;padding:10px 14px;margin:10px 0">
+        <legend>Yeni bireysel müşteri</legend>
+        <div class="admin-grid">
+          <div><label asp-for="NewCustomerName">Ad soyad</label><input asp-for="NewCustomerName" /></div>
+          <div><label asp-for="NewCustomerPhone">Telefon</label><input asp-for="NewCustomerPhone" type="tel" /></div>
+          <div><label asp-for="NewCustomerEmail">E-posta</label><input asp-for="NewCustomerEmail" type="email" /></div>
+        </div>
+      </fieldset>
+    }
+    <div class="admin-grid">
+      <div><label asp-for="ContactName">Görüşülecek kişi</label><input asp-for="ContactName" /></div>
+      <div><label asp-for="ContactPhone">Telefon</label><input asp-for="ContactPhone" type="tel" /></div>
+      <div><label asp-for="PlannedOn">Randevu günü</label><input asp-for="PlannedOn" type="date" /></div>
+      <div><label asp-for="PlannedAt">Saat</label><input asp-for="PlannedAt" type="time" /></div>
+      <div><label asp-for="Surveyor">Keşfe giden</label><input asp-for="Surveyor" /></div>
+    </div>
+    <label asp-for="Address">Adres</label><input asp-for="Address" />
+    <label asp-for="Notes">Notlar (müşterinin isteği, kat, asansör, iskele ihtiyacı)</label><textarea asp-for="Notes" rows="4"></textarea>
+    <p class="admin-muted">Randevu günü yazılınca müşteriye e-posta / WhatsApp ile bildirilir (Site ayarları &gt; Müşteri bildirimleri).</p>
+    <div class="admin-actions"><button class="admin-btn">Kaydet</button><a href="@(editing ? $"/yonetim/kesif/detay/{Model.Id}" : "/yonetim/kesif")">İptal</a></div>
+  </form>
+</div>
+@if (!editing)
+{
+  <script>
+    (function () {
+      var select = document.getElementById('survey-customer'), box = document.getElementById('new-customer');
+      function sync() { box.style.display = select.value ? 'none' : ''; }
+      select.addEventListener('change', sync); sync();
+    })();
+  </script>
+}

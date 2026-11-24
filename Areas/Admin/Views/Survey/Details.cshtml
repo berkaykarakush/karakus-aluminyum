@@ -1,0 +1,121 @@
+@model KarakusAluminyum.Web.Models.Production.SiteSurvey
+@using KarakusAluminyum.Web.Models.Production
+@using KarakusAluminyum.Web.Models.Drawing
+@{
+    ViewData["Title"] = "Keşif " + Model.Number;
+    var tr = new System.Globalization.CultureInfo("tr-TR");
+    var when = Model.PlannedOn is DateOnly d ? d.ToString("d MMMM yyyy dddd", tr) + (Model.PlannedAt is TimeOnly t ? ", " + t.ToString("HH:mm") : "") : "Tarih verilmedi";
+    var locked = Model.DrawingListId is not null;
+    // Telefonda boş satırla başlanır; kayıtlı satır yoksa üç boş satır.
+    var rows = Model.Lines.OrderBy(x => x.SortOrder).ToList();
+    var blanks = locked ? 0 : rows.Count == 0 ? 3 : 1;
+    var phone = KarakusAluminyum.Web.Services.Notifications.NotificationComposer.PhoneDigits(Model.ContactPhone ?? Model.Customer?.Phone);
+}
+<link rel="stylesheet" href="~/css/orders.css" asp-append-version="true" />
+<style>
+  .sv-grid{display:grid;gap:6px}
+  .sv-row{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1.5fr) minmax(0,1.4fr) 130px 130px 70px minmax(0,2fr);gap:6px;align-items:end}
+  .sv-head{font-size:12px;font-weight:600;color:#5b6872;text-transform:uppercase}
+  .sv-cell{min-width:0}.sv-cell label{display:none;margin:0 0 2px;font-size:12px;color:#5b6872}
+  .sv-cell input,.sv-cell select{width:100%;min-width:0}
+  .sv-cell .unit-field{display:flex;align-items:center;gap:4px}.sv-cell .unit-field input{flex:1}
+  @@media (max-width:760px){
+    .sv-head{display:none}
+    .sv-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);padding:10px 0;border-bottom:1px solid #e3e6e8}
+    .sv-cell label{display:block}.sv-cell.wide{grid-column:1 / -1}
+  }
+</style>
+<div class="admin-actions">
+  <h1>Keşif @Model.Number</h1>
+  <span class="admin-muted">@SurveyLabels.Label(Model.Status)</span>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/kesif">Keşifler</a>
+  <a class="admin-btn" href="/yonetim/kesif/duzenle/@Model.Id">Düzenle</a>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/kesif/yazdir/@Model.Id" target="_blank" rel="noopener">Keşif formu</a>
+  @if (phone is not null) { <a class="admin-btn admin-btn--secondary" href="tel:+@phone">Ara</a> }
+  @if (!string.IsNullOrWhiteSpace(Model.Address)) { <a class="admin-btn admin-btn--secondary" href="https://www.google.com/maps/search/?api=1&query=@Uri.EscapeDataString(Model.Address)" target="_blank" rel="noopener noreferrer">Yol tarifi</a> }
+</div>
+
+<div class="or-grid">
+  <div class="admin-panel">
+    <h3 style="margin-top:0">Randevu</h3>
+    <dl class="or-dl">
+      <dt>Müşteri</dt><dd><a href="/yonetim/crm/musteriler/duzenle/@Model.CustomerId">@Model.Customer?.Name</a></dd>
+      <dt>Randevu</dt><dd>@when</dd>
+      <dt>Görüşülecek</dt><dd>@(Model.ContactName ?? "-") @(Model.ContactPhone is null ? "" : "· " + Model.ContactPhone)</dd>
+      <dt>Adres</dt><dd>@(Model.Address ?? "-")</dd>
+      <dt>Keşfe giden</dt><dd>@(Model.Surveyor ?? "-")</dd>
+      @if (Model.ContactMessageId is int messageId) { <dt>Kaynak</dt><dd><a href="/yonetim/mesajlar/@messageId">Web talebi</a></dd> }
+    </dl>
+    @if (!string.IsNullOrWhiteSpace(Model.Notes)) { <p style="white-space:pre-wrap;margin:10px 0 0">@Model.Notes</p> }
+  </div>
+  <div class="admin-panel">
+    <h3 style="margin-top:0">Sonraki adım</h3>
+    @if (Model.DrawingList is not null)
+    {
+      <p>Ölçüler <a href="/yonetim/cizim/detay/@Model.DrawingListId">@Model.DrawingList.Name</a> çizim listesine aktarıldı.</p>
+      <div class="admin-actions"><a class="admin-btn" href="/yonetim/crm/teklifler/ekle?liste=@Model.DrawingListId">Teklif hazırla</a><a class="admin-btn admin-btn--secondary" href="/yonetim/cizim/detay/@Model.DrawingListId">Çizim listesi</a></div>
+    }
+    else
+    {
+      <p class="admin-muted">Ölçüleri aşağıya girip çizim listesine aktarın; açılımlar ve profil sistemi çizim ekranında ayrıntılandırılır, teklif oradan hazırlanır.</p>
+      <div class="admin-actions">
+        @if (Model.Lines.Count > 0) { <form method="post" action="/yonetim/kesif/aktar/@Model.Id">@Html.AntiForgeryToken()<button class="admin-btn">Çizim listesine aktar</button></form> }
+        @if (Model.Status == SurveyStatus.Planned)
+        {
+          <form method="post" action="/yonetim/kesif/durum/@Model.Id" onsubmit="return confirm('Keşif iptal edilsin mi?')">@Html.AntiForgeryToken()<input type="hidden" name="status" value="@SurveyStatus.Cancelled" /><button class="admin-btn admin-btn--danger">İptal et</button></form>
+        }
+        else if (Model.Status == SurveyStatus.Cancelled)
+        {
+          <form method="post" action="/yonetim/kesif/durum/@Model.Id">@Html.AntiForgeryToken()<input type="hidden" name="status" value="@SurveyStatus.Planned" /><button class="admin-btn admin-btn--secondary">Yeniden planla</button></form>
+          <form method="post" action="/yonetim/kesif/sil/@Model.Id" onsubmit="return confirm('Keşif silinsin mi?')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button></form>
+        }
+      </div>
+    }
+  </div>
+</div>
+
+<div class="admin-panel" id="olculer" style="margin-top:14px">
+  <h3 style="margin-top:0">Ölçüler (mm)</h3>
+  <form method="post" action="/yonetim/kesif/olculer/@Model.Id" id="survey-lines">
+    @Html.AntiForgeryToken()
+    <div class="sv-grid" id="survey-rows">
+      <div class="sv-row sv-head"><span>Yer</span><span>Ürün</span><span>Açılım</span><span>Genişlik</span><span>Yükseklik</span><span>Adet</span><span>Not</span></div>
+      @for (var i = 0; i < rows.Count + blanks; i++)
+      {
+        var r = i < rows.Count ? rows[i] : new SurveyLine { Quantity = 1 };
+        var blank = i >= rows.Count;
+        <div class="sv-row sv-line">
+          <div class="sv-cell wide"><label>Yer</label><input name="lines[@i].Location" value="@r.Location" placeholder="Salon, mutfak…" maxlength="120" disabled="@locked" aria-label="Yer" /></div>
+          <div class="sv-cell"><label>Ürün</label><select name="lines[@i].Category" disabled="@locked" aria-label="Ürün">@foreach (var c in ProductCategories.All) { <option value="@c" selected="@(c == r.Category)">@ProductCategories.Label(c)</option> }</select></div>
+          <div class="sv-cell"><label>Açılım</label><select name="lines[@i].Opening" disabled="@locked" aria-label="Açılım">@foreach (var o in SurveyLabels.Openings) { <option value="@o.Key" selected="@(o.Key == r.Opening)">@o.Label</option> }</select></div>
+          <div class="sv-cell"><label>Genişlik</label><input name="lines[@i].WidthMm" value="@(blank ? "" : r.WidthMm.ToString())" inputmode="numeric" pattern="[0-9]*" disabled="@locked" aria-label="Genişlik" /></div>
+          <div class="sv-cell"><label>Yükseklik</label><input name="lines[@i].HeightMm" value="@(blank ? "" : r.HeightMm.ToString())" inputmode="numeric" pattern="[0-9]*" disabled="@locked" aria-label="Yükseklik" /></div>
+          <div class="sv-cell"><label>Adet</label><input name="lines[@i].Quantity" value="@r.Quantity" inputmode="numeric" pattern="[0-9]*" disabled="@locked" aria-label="Adet" /></div>
+          <div class="sv-cell wide"><label>Not</label><input name="lines[@i].Note" value="@r.Note" maxlength="300" placeholder="Renk, cam, panjur kutusu…" disabled="@locked" aria-label="Not" /></div>
+        </div>
+      }
+    </div>
+    @if (!locked)
+    {
+      <div class="admin-actions" style="margin-top:10px"><button type="button" class="admin-btn admin-btn--secondary" id="add-line">Satır ekle</button><button class="admin-btn">Ölçüleri kaydet</button></div>
+      <p class="admin-muted">Boş satırlar kaydedilmez. Ölçüler mm; açılım, çizim listesindeki başlangıç çizimini belirler.</p>
+    }
+  </form>
+</div>
+
+<partial name="~/Areas/Admin/Views/Shared/_CustomerNotices.cshtml" model='(List<KarakusAluminyum.Web.Models.NotificationJob>)ViewBag.Notices' view-data='new ViewDataDictionary(ViewData) { ["NoticeCustomer"] = Model.Customer }' />
+
+@if (!locked)
+{
+  <script>
+    document.getElementById('add-line').addEventListener('click', function () {
+      var box = document.getElementById('survey-rows'), rows = box.querySelectorAll('.sv-line'), row = rows[rows.length - 1].cloneNode(true), index = rows.length;
+      row.querySelectorAll('input,select').forEach(function (el) {
+        el.name = el.name.replace(/lines\[\d+\]/, 'lines[' + index + ']');
+        if (el.tagName === 'INPUT') el.value = el.name.endsWith('Quantity') ? '1' : '';
+      });
+      box.appendChild(row);
+      row.querySelector('input').focus();
+    });
+  </script>
+}

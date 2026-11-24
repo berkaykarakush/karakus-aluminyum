@@ -120,10 +120,12 @@ public sealed class AccountingService
         }
     }
 
-    public async Task RecordPaymentAsync(bool isCollection, int customerId, int accountId, DateOnly date, decimal amount, decimal rate, int? invoiceId, string? description)
+    public async Task RecordPaymentAsync(bool isCollection, int customerId, int accountId, DateOnly date, decimal amount, decimal rate, int? invoiceId, string? description, int? orderId = null)
     {
         if (amount <= 0) throw new AccountingException("Tutar sıfırdan büyük olmalıdır.");
         if (!await _db.Customers.AnyAsync(x => x.Id == customerId)) throw new AccountingException("Cari bulunamadı.");
+        // Siparişe bağlı tahsilat ödeme planında düşülür (README 7.19); sipariş bu cariye ait olmalıdır.
+        if (orderId is int oid && (!isCollection || !await _db.ProductionOrders.AnyAsync(x => x.Id == oid && x.CustomerId == customerId))) throw new AccountingException("Seçilen sipariş bu cariye ait değil.");
         await InTransactionAsync(async () =>
         {
         var account = await ActiveAccountAsync(accountId);
@@ -131,7 +133,7 @@ public sealed class AccountingService
         var row = new CashTransaction
         {
             AccountId = accountId, Date = date, Kind = isCollection ? CashKind.Collection : CashKind.Payment, IsIn = isCollection, Amount = amount, ExchangeRate = rate,
-            AmountTry = InvoiceRules.Money(amount * rate), CustomerId = customerId, Description = description?.Trim()
+            AmountTry = InvoiceRules.Money(amount * rate), CustomerId = customerId, Description = description?.Trim(), ProductionOrderId = orderId
         };
         _db.CashTransactions.Add(row);
         await _db.SaveChangesAsync();

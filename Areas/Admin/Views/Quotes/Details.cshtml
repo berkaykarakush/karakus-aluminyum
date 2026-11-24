@@ -14,7 +14,27 @@
 </tbody></table></div>
 <div style="max-width:360px;margin:20px 0 0 auto"><p>Ara toplam: <strong>@Model.Subtotal.ToString("N2", KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture) ₺</strong></p><p>İskonto (@Model.DiscountRate.ToString("N2", KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture)%): <strong>-@Model.DiscountAmount.ToString("N2", KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture) ₺</strong></p><p>KDV (@Model.TaxRate.ToString("N2", KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture)%): <strong>@Model.TaxAmount.ToString("N2", KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture) ₺</strong></p><h2>Genel toplam: @Model.GrandTotal.ToString("N2", KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture) ₺</h2></div>
 @if(!string.IsNullOrWhiteSpace(Model.Notes)){<hr/><h3>Notlar ve koşullar</h3><p style="white-space:pre-wrap">@Model.Notes</p>}
-<hr/><form method="post" action="/yonetim/crm/teklifler/durum/@Model.Id" class="admin-form">@Html.AntiForgeryToken()<label>Teklif durumunu değiştir</label><div class="admin-actions"><select name="status">@foreach(var s in AllowedStatuses(Model.Status)){<option value="@((int)s)" selected="@(Model.Status==s)">@QuoteLabel(s)</option>}</select><button class="admin-btn">Durumu kaydet</button></div></form></div>
+<hr/>@if (Model.Status == QuoteStatus.Rejected && Model.LostReason is not null) { <p><strong>Kayıp nedeni:</strong> @Model.LostReason@(Model.LostCompetitor is null ? "" : " · rakip: " + Model.LostCompetitor)@(Model.LostNote is null ? "" : " · " + Model.LostNote)</p> }<form method="post" action="/yonetim/crm/teklifler/durum/@Model.Id" class="admin-form" id="quote-status">@Html.AntiForgeryToken()<label>Teklif durumunu değiştir</label><div class="admin-actions"><select name="status" id="quote-status-select">@foreach(var s in AllowedStatuses(Model.Status)){<option value="@((int)s)" selected="@(Model.Status==s)">@QuoteLabel(s)</option>}</select><button class="admin-btn">Durumu kaydet</button></div><div id="lost-fields" style="display:none;margin-top:8px"><div class="admin-grid"><div><label for="lostReason">Kayıp nedeni</label><select id="lostReason" name="lostReason"><option value="">Seçin</option>@foreach (var r in QuoteLoss.Reasons) { <option selected="@(r == Model.LostReason)">@r</option> }</select></div><div><label for="lostCompetitor">Tercih edilen firma (biliniyorsa)</label><input id="lostCompetitor" name="lostCompetitor" maxlength="120" value="@Model.LostCompetitor" /></div></div><label for="lostNote">Not</label><input id="lostNote" name="lostNote" maxlength="300" value="@Model.LostNote" placeholder="ör. %10 daha ucuz teklif aldı" /></div><script>(function(){var s=document.getElementById('quote-status-select'),b=document.getElementById('lost-fields'),r=document.getElementById('lostReason');function u(){var on=s.value=='@((int)QuoteStatus.Rejected)';b.style.display=on?'':'none';r.required=on;}s.addEventListener('change',u);u();})();</script></form></div>
+@{
+    // README 7.18: müşteri teklifi bu bağlantıdan inceleyip online onaylar.
+    var approvalPhone = KarakusAluminyum.Web.Services.Notifications.NotificationComposer.PhoneDigits(Model.Customer?.Phone);
+    var approvalText = $"Merhaba, {Model.QuoteNumber} numaralı teklifimizi bu bağlantıdan inceleyip onaylayabilirsiniz: {(string)ViewBag.PublicUrl}";
+    var approvalWa = (approvalPhone is null ? "https://wa.me/" : $"https://wa.me/{approvalPhone}") + "?text=" + Uri.EscapeDataString(approvalText);
+}
+<div class="admin-panel" id="online-onay">
+  <h3 style="margin-top:0">Online onay</h3>
+  @if (Model.AcceptedUtc is DateTime acceptedUtc)
+  {
+    <p><strong>@Model.AcceptedName</strong> teklifi @acceptedUtc.AddHours(3).ToString("dd.MM.yyyy HH:mm") tarihinde @(Model.AcceptedTotal?.ToString("N2", tr)) ₺ tutarla onayladı.</p>
+    <p class="admin-muted">IP: @(Model.AcceptedIp ?? "-") · Tarayıcı: @(Model.AcceptedUserAgent ?? "-")<br />Belge özeti (SHA-256): <code style="word-break:break-all">@Model.AcceptedHash</code>@(Model.AcceptedHash == KarakusAluminyum.Web.Services.Documents.QuoteAcceptance.Hash(Model) ? " · teklif onaydan sonra değişmedi" : " · teklif onaydan sonra değişti")</p>
+  }
+  else if (Model.Status == QuoteStatus.Sent)
+  {
+    <p class="admin-muted">Müşteri teklifi aşağıdaki bağlantıdan (veya PDF'teki QR kodundan) inceleyip adını yazarak onaylayabilir; onaylanınca sipariş kendiliğinden açılır ve size e-posta gelir.</p>
+    <div class="admin-actions"><a class="admin-btn" href="@approvalWa" target="_blank" rel="noopener noreferrer">Onay bağlantısını WhatsApp ile gönder</a></div>
+  }
+  else { <p class="admin-muted">Online onay, durumu "Gönderildi" olan teklifte açıktır.</p> }
+</div>
 @{ var link = ((string)ViewBag.PublicUrl, "/yonetim/crm/teklifler/baglantiyi-yenile/" + Model.Id); }
 <partial name="_DocumentLink" model="link" />
 <style>@@media print{body.admin{background:white}.admin-nav,header,.admin-actions button,.admin-actions a,form{display:none!important}.admin-shell{max-width:none;padding:0}.admin-panel{border:0}}</style>

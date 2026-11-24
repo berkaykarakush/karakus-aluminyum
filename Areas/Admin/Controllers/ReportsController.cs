@@ -28,6 +28,10 @@ public sealed class ReportsController : Controller
         var report = await _reports.BuildAsync(ReportRange.Parse(aralik, bas, bit));
         var (name, sections) = bolum switch
         {
+            "donusum" => ("donusum", new (string, IReadOnlyList<BarRow>)[] {
+                ("Huni", report.Conversion.Funnel.Select(f => new BarRow(f.Label, f.Count, f.Count.ToString())).ToList()),
+                ("Kaynağa göre kabul edilen teklif tutarı", report.Conversion.BySource.Select(x => new BarRow(x.Source, x.AcceptedTotal, $"{x.Accepted}/{x.Quotes}")).ToList()),
+                ("Kayıp nedenleri", report.Conversion.LostReasons), ("Tercih edilen rakipler", report.Conversion.Competitors) }),
             "uretim" => ("uretim", new (string, IReadOnlyList<BarRow>)[] { ("Ürün türüne göre adet", report.Production.UnitsByCategory), ("Cam tipine göre alan", report.Production.GlassByType) }),
             "iletisim" => ("iletisim", new (string, IReadOnlyList<BarRow>)[] { ("Hizmete göre mesaj", report.Contact.ByService) }),
             "web" => ("web", new (string, IReadOnlyList<BarRow>)[] { ("En çok görüntülenen sayfalar", report.Web.TopPages), ("Kaynaklar", report.Web.Sources), ("Cihazlar", report.Web.Devices), ("Olaylar", report.Web.Events), ("Kaynağa göre form", report.Web.LeadsBySource) }),

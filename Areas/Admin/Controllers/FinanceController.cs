@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace KarakusAluminyum.Web.Areas.Admin.Controllers;
 
-public sealed record CashFormVm(string Mode, int? CustomerId, int? InvoiceId);
+public sealed record CashFormVm(string Mode, int? CustomerId, int? InvoiceId, int? OrderId = null, decimal? Amount = null);
 
 // Kasa, banka, tahsilat, ödeme, virman.
 [Area("Admin"), Authorize(Roles = "Admin,Accountant"), Route("yonetim/muhasebe/kasa-banka")]
@@ -75,15 +75,15 @@ public sealed class FinanceController : Controller
     }
 
     [HttpGet("yeni")]
-    public async Task<IActionResult> New(string tur = "tahsilat", int? cari = null, int? fatura = null)
+    public async Task<IActionResult> New(string tur = "tahsilat", int? cari = null, int? fatura = null, int? siparis = null, decimal? tutar = null)
     {
         if (tur is not ("tahsilat" or "odeme" or "virman" or "giris" or "cikis")) return NotFound();
         await LoadOptions(cari);
-        return View(new CashFormVm(tur, cari, fatura));
+        return View(new CashFormVm(tur, cari, fatura, siparis, tutar));
     }
 
     [HttpPost("yeni"), ValidateAntiForgeryToken]
-    public async Task<IActionResult> New(string tur, int accountId, int? toAccountId, int? customerId, int? invoiceId, DateOnly date, decimal amount, decimal exchangeRate = 1m, string? description = null)
+    public async Task<IActionResult> New(string tur, int accountId, int? toAccountId, int? customerId, int? invoiceId, DateOnly date, decimal amount, decimal exchangeRate = 1m, string? description = null, int? orderId = null)
     {
         try
         {
@@ -91,7 +91,7 @@ public sealed class FinanceController : Controller
             {
                 case "tahsilat" or "odeme":
                     if (customerId is null) throw new AccountingException("Cari seçin.");
-                    await _accounting.RecordPaymentAsync(tur == "tahsilat", customerId.Value, accountId, date, amount, exchangeRate, invoiceId, description);
+                    await _accounting.RecordPaymentAsync(tur == "tahsilat", customerId.Value, accountId, date, amount, exchangeRate, invoiceId, description, tur == "tahsilat" ? orderId : null);
                     break;
                 case "virman":
                     if (toAccountId is null) throw new AccountingException("Hedef hesabı seçin.");
@@ -107,9 +107,10 @@ public sealed class FinanceController : Controller
         {
             ModelState.AddModelError(string.Empty, error.Message);
             await LoadOptions(customerId);
-            return View(new CashFormVm(tur, customerId, invoiceId));
+            return View(new CashFormVm(tur, customerId, invoiceId, orderId, amount));
         }
         TempData["Notice"] = "Hareket kaydedildi.";
+        if (tur == "tahsilat" && orderId is not null && Request.Query["donus"] == "siparis" && (User.IsInRole("Admin") || User.IsInRole("Editor"))) return Redirect($"/yonetim/siparisler/detay/{orderId}#odeme");
         return invoiceId is not null ? Redirect($"/yonetim/muhasebe/faturalar/detay/{invoiceId}") : customerId is not null ? Redirect($"/yonetim/muhasebe/cariler/{customerId}") : RedirectToAction(nameof(Movements), new { id = accountId });
     }
 
@@ -127,6 +128,8 @@ public sealed class FinanceController : Controller
     {
         ViewBag.Accounts = await _db.FinanceAccounts.AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.Kind).ThenBy(x => x.Name).ToListAsync();
         ViewBag.Customers = new SelectList(await _db.Customers.AsNoTracking().Where(x => x.Status != CustomerStatus.Passive || x.Id == customerId).OrderBy(x => x.Name).Select(x => new { x.Id, x.Name }).ToListAsync(), "Id", "Name", customerId);
+        ViewBag.Orders = customerId is null ? new List<KarakusAluminyum.Web.Models.Production.ProductionOrder>()
+            : await _db.ProductionOrders.AsNoTracking().Where(x => x.CustomerId == customerId && x.Status != KarakusAluminyum.Web.Models.Production.OrderStatus.Cancelled).OrderByDescending(x => x.Id).Take(50).ToListAsync();
         ViewBag.OpenInvoices = customerId is null ? new List<OpenInvoice>() : await _queries.OpenInvoicesAsync(customerId);
     }
 }

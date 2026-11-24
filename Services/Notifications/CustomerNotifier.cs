@@ -21,6 +21,12 @@ public sealed record ServiceSnapshot(ServiceStatus Status, DateOnly? Date, TimeO
     public static readonly ServiceSnapshot None = new(ServiceStatus.Open, null, null);
 }
 
+public sealed record SurveySnapshot(SurveyStatus Status, DateOnly? Date, TimeOnly? Time)
+{
+    public static SurveySnapshot Of(SiteSurvey survey) => new(survey.Status, survey.PlannedOn, survey.PlannedAt);
+    public static readonly SurveySnapshot None = new(SurveyStatus.Cancelled, null, null);
+}
+
 // Sıraya alınacak bir olay: ne zaman ve hangi tarih için.
 public sealed record PlannedNotice(string Event, DateOnly? Date, TimeOnly? Time, DateTime SendAtUtc);
 
@@ -68,6 +74,50 @@ public sealed class CustomerNotifier
         if (request.Status != ServiceStatus.Scheduled || request.PlannedOn is not DateOnly date || date < Today(nowUtc)) return new();
         if (before.Status == ServiceStatus.Scheduled && before.Date == date && before.Time == request.PlannedAt) return new();
         return new() { new(CustomerEvents.ServiceVisit, date, request.PlannedAt, nowUtc + Delay) };
+    }
+
+    public static List<PlannedNotice> PlanSurvey(SurveySnapshot before, SiteSurvey survey, DateTime nowUtc)
+    {
+        if (survey.Status != SurveyStatus.Planned || survey.PlannedOn is not DateOnly date || date < Today(nowUtc)) return new();
+        if (before.Status == SurveyStatus.Planned && before.Date == date && before.Time == survey.PlannedAt) return new();
+        return new() { new(CustomerEvents.SurveyVisit, date, survey.PlannedAt, nowUtc + Delay) };
+    }
+
+    public async Task SurveyChangedAsync(SiteSurvey survey, SurveySnapshot before, DateTime? now = null)
+    {
+        var nowUtc = now ?? DateTime.UtcNow;
+        var planned = PlanSurvey(before, survey, nowUtc);
+        var changed = before.Date != survey.PlannedOn || before.Time != survey.PlannedAt || survey.Status != SurveyStatus.Planned;
+        if (!changed && planned.Count == 0) return;
+        if (survey.Id != 0) await SupersedeAsync(x => x.SiteSurveyId == survey.Id, new List<string> { CustomerEvents.SurveyVisit }, planned);
+        if (planned.Count == 0) return;
+        var customer = survey.Customer ?? await _db.Customers.FirstOrDefaultAsync(x => x.Id == survey.CustomerId);
+        await AddAsync(planned, customer, survey.ContactPhone, job => job.SiteSurvey = survey, nowUtc);
+    }
+
+    // Ödeme hatırlatması: vadesi gelecekte olan taksit için vadeden önceki gün 10:00 (TR); o saat geçtiyse kısa beklemeyle.
+    public static DateTime PaymentReminderUtc(DateOnly due, DateTime nowUtc)
+    {
+        var at = due.AddDays(-1).ToDateTime(new TimeOnly(10, 0), DateTimeKind.Utc) - TurkeyOffset;
+        return at < nowUtc + Delay ? nowUtc + Delay : at;
+    }
+
+    public static List<PlannedNotice> PlanPayments(IEnumerable<OrderInstallment> installments, DateTime nowUtc)
+    {
+        var today = Today(nowUtc);
+        return installments.Where(x => x.DueOn is DateOnly d && d > today && x.Amount > 0).Select(x => x.DueOn!.Value).Distinct()
+            .Select(d => new PlannedNotice(CustomerEvents.PaymentDue, d, null, PaymentReminderUtc(d, nowUtc))).ToList();
+    }
+
+    public async Task PaymentPlanChangedAsync(ProductionOrder order, IEnumerable<OrderInstallment> installments, DateTime? now = null)
+    {
+        var nowUtc = now ?? DateTime.UtcNow;
+        var planned = order.Status == OrderStatus.Cancelled ? new List<PlannedNotice>() : PlanPayments(installments, nowUtc);
+        await SupersedeAsync(x => x.ProductionOrderId == order.Id, new List<string> { CustomerEvents.PaymentDue }, planned);
+        if (planned.Count == 0) return;
+        var customer = order.Customer ?? await _db.Customers.FirstOrDefaultAsync(x => x.Id == order.CustomerId);
+        order.TrackingToken ??= KarakusAluminyum.Web.Services.Documents.DocumentLinks.NewToken();
+        await AddAsync(planned, customer, order.ContactPhone, job => job.ProductionOrderId = order.Id, nowUtc);
     }
 
     public async Task OrderChangedAsync(ProductionOrder order, OrderSnapshot before, DateTime? now = null)
@@ -138,16 +188,17 @@ public sealed class CustomerNotifier
         var tracked = _db.ChangeTracker.Entries<NotificationJob>().Select(e => e.Entity)
             .Any(x => x != job && Same(x, job) && x.Status is NotificationStatus.Pending or NotificationStatus.Sent);
         if (tracked) return Task.FromResult(true);
-        int? orderId = job.ProductionOrderId, serviceId = job.ServiceRequest?.Id is int id && id != 0 ? id : null;
-        if (orderId is null && serviceId is null) return Task.FromResult(false); // yeni kayıt: veritabanında eşi olamaz
+        int? orderId = job.ProductionOrderId, serviceId = job.ServiceRequest?.Id is int id && id != 0 ? id : null, surveyId = job.SiteSurvey?.Id is int sid && sid != 0 ? sid : null;
+        if (orderId is null && serviceId is null && surveyId is null) return Task.FromResult(false); // yeni kayıt: veritabanında eşi olamaz
         var (e, channel, recipient, date, time) = (job.Event, job.Channel, job.Recipient, job.EventDate, job.EventTime);
         return _db.NotificationJobs.AnyAsync(x => x.Event == e && x.Channel == channel && x.Recipient == recipient && x.EventDate == date && x.EventTime == time
-            && (orderId != null ? x.ProductionOrderId == orderId : x.ServiceRequestId == serviceId)
+            && (orderId != null ? x.ProductionOrderId == orderId : serviceId != null ? x.ServiceRequestId == serviceId : x.SiteSurveyId == surveyId)
             && (x.Status == NotificationStatus.Pending || x.Status == NotificationStatus.Sent || x.Status == NotificationStatus.Processing));
     }
 
     private static bool Same(NotificationJob a, NotificationJob b) => a.Event == b.Event && a.Channel == b.Channel && a.Recipient == b.Recipient && a.EventDate == b.EventDate && a.EventTime == b.EventTime
-        && a.ProductionOrderId == b.ProductionOrderId && ReferenceEquals(a.ServiceRequest, b.ServiceRequest) && a.ServiceRequestId == b.ServiceRequestId;
+        && a.ProductionOrderId == b.ProductionOrderId && ReferenceEquals(a.ServiceRequest, b.ServiceRequest) && a.ServiceRequestId == b.ServiceRequestId
+        && ReferenceEquals(a.SiteSurvey, b.SiteSurvey) && a.SiteSurveyId == b.SiteSurveyId;
 
     public static bool Enabled(SiteSettings site, string? e) => e switch
     {
@@ -155,6 +206,10 @@ public sealed class CustomerNotifier
         CustomerEvents.ShipDate => site.CustomerNotifyShipDate == "true",
         CustomerEvents.Installation => site.CustomerNotifyInstallation == "true",
         CustomerEvents.ServiceVisit => site.CustomerNotifyServiceVisit == "true",
+        CustomerEvents.SurveyVisit => site.CustomerNotifySurvey == "true",
+        CustomerEvents.PaymentDue => site.CustomerNotifyPayment == "true",
+        CustomerEvents.MaintenanceAnnual or CustomerEvents.MaintenanceWarranty => site.CustomerNotifyMaintenance == "true",
+        CustomerEvents.ReviewRequest => site.CustomerReviewRequestEnabled == "true",
         _ => false
     };
 
@@ -164,6 +219,10 @@ public sealed class CustomerNotifier
         CustomerEvents.ShipDate => site.WhatsAppTemplateShipDate,
         CustomerEvents.Installation => site.WhatsAppTemplateInstallation,
         CustomerEvents.ServiceVisit => site.WhatsAppTemplateServiceVisit,
+        CustomerEvents.SurveyVisit => site.WhatsAppTemplateSurvey,
+        CustomerEvents.PaymentDue => site.WhatsAppTemplatePayment,
+        CustomerEvents.MaintenanceAnnual or CustomerEvents.MaintenanceWarranty => site.WhatsAppTemplateMaintenance,
+        CustomerEvents.ReviewRequest => site.WhatsAppTemplateReview,
         _ => ""
     };
 
@@ -172,6 +231,7 @@ public sealed class CustomerNotifier
     {
         var today = Today(nowUtc);
         if (job.Event == CustomerEvents.ServiceRequested) return job.ServiceRequest is null ? "Servis talebi silindi." : null;
+        if (job.Event == CustomerEvents.QuoteAccepted && job.Channel == NotificationChannel.AdminEmail) return job.ProductionOrder is null ? "Sipariş silindi." : null;
         if (job.ServiceRequestId is not null)
         {
             var r = job.ServiceRequest;
@@ -179,6 +239,14 @@ public sealed class CustomerNotifier
             if (r.Customer?.NotificationsOptOut == true) return "Müşteri bildirim istemiyor.";
             if (r.Status != ServiceStatus.Scheduled || r.PlannedOn != job.EventDate || r.PlannedAt != job.EventTime) return "Servis ziyareti değişti; gönderilmedi.";
             return job.EventDate < today ? "Ziyaret günü geçti." : null;
+        }
+        if (job.SiteSurveyId is not null)
+        {
+            var sv = job.SiteSurvey;
+            if (sv is null) return "Keşif bulunamadı.";
+            if (sv.Customer?.NotificationsOptOut == true) return "Müşteri bildirim istemiyor.";
+            if (sv.Status != SurveyStatus.Planned || sv.PlannedOn != job.EventDate || sv.PlannedAt != job.EventTime) return "Keşif randevusu değişti; gönderilmedi.";
+            return job.EventDate < today ? "Randevu günü geçti." : null;
         }
         var o = job.ProductionOrder;
         if (o is null) return "Sipariş bulunamadı.";
@@ -199,9 +267,14 @@ public sealed class CustomerNotifier
     public static string DateText(DateOnly? date, TimeOnly? time = null)
         => date is DateOnly d ? d.ToString("d MMMM yyyy dddd", Tr) + (time is TimeOnly t ? $", saat {t:HH\\:mm}" : "") : "henüz belirlenmedi";
 
+    // Ödeme hatırlatmasında gönderim anında hesaplanan kalan tutar ve banka bilgisi.
+    public sealed record PaymentInfo(decimal Remaining, string Labels, string? BankInfo);
+    // Bakım hatırlatmasında teslimden bu yana yıl ve garanti bitişi (README 7.8).
+    public sealed record MaintenanceInfo(int Year, DateOnly WarrantyEnds);
+
     public sealed record CustomerMessage(string Subject, string Name, string Number, string Body, string DateText, string Extra);
 
-    public static CustomerMessage Compose(NotificationJob job, SiteSettings site)
+    public static CustomerMessage Compose(NotificationJob job, SiteSettings site, PaymentInfo? payment = null, MaintenanceInfo? maintenance = null)
     {
         if (job.ServiceRequest is { } r)
         {
@@ -211,17 +284,46 @@ public sealed class CustomerNotifier
             return new($"Servis ziyaretiniz planlandı | {site.SiteName}", name, r.Number,
                 $"{r.Number} numaralı servis talebiniz için ziyaretimiz {when} olarak planlandı. Adres: {address}.", when, address);
         }
+        if (job.SiteSurvey is { } sv)
+        {
+            var who = Name(sv.ContactName, sv.Customer);
+            var when = DateText(sv.PlannedOn, sv.PlannedAt);
+            var address = string.IsNullOrWhiteSpace(sv.Address) ? "belirttiğiniz adres" : sv.Address.Trim();
+            return new($"Keşif randevunuz: {when} | {site.SiteName}", who, sv.Number,
+                $"Ölçü ve keşif için {when} tarihinde {address} adresine geleceğiz. Uygun değilse lütfen bize haber verin.", when, address);
+        }
         var o = job.ProductionOrder!;
         var customer = Name(o.Customer?.ContactPerson, o.Customer);
         return job.Event switch
         {
             CustomerEvents.Production => new($"Siparişiniz üretime alındı | {site.SiteName}", customer, o.OrderNumber,
                 $"{o.OrderNumber} numaralı \"{o.Title}\" siparişiniz üretime alındı." + (o.PlannedShipDate is null ? "" : $" Planlanan sevk tarihi: {DateText(o.PlannedShipDate)}."), DateText(o.PlannedShipDate), o.Title),
+            CustomerEvents.PaymentDue when payment is not null => new($"Ödeme hatırlatması: {DateText(job.EventDate)} | {site.SiteName}", customer, o.OrderNumber,
+                $"{o.OrderNumber} numaralı \"{o.Title}\" siparişinizin {payment.Labels} ödemesinin vadesi {DateText(job.EventDate)}. Ödenecek tutar: {payment.Remaining.ToString("#,0.00", Tr)} ₺."
+                + (string.IsNullOrWhiteSpace(payment.BankInfo) ? "" : $" Banka bilgilerimiz: {payment.BankInfo.Trim()}") + " Ödemeyi yaptıysanız bu mesajı dikkate almayın.",
+                DateText(job.EventDate), payment.Remaining.ToString("#,0.00", Tr) + " ₺"),
+            CustomerEvents.MaintenanceAnnual when maintenance is not null => new($"Yıllık bakım zamanı | {site.SiteName}", customer, o.OrderNumber,
+                $"{o.OrderNumber} numaralı \"{o.Title}\" işinizin teslimden bu yana {maintenance.Year}. yılı doldu. Doğrama ve sistemlerinizin uzun ömürlü olması için yıllık bakım (ayar, conta kontrolü, yağlama, drenaj temizliği) öneriyoruz."
+                + (maintenance.WarrantyEnds >= Today(DateTime.UtcNow) ? $" Garantiniz {DateText(maintenance.WarrantyEnds)} tarihine kadar sürüyor." : "") + $" Bakım talebi için: {MaintenanceLink(o, site)}",
+                DateText(job.EventDate), MaintenanceLink(o, site)),
+            CustomerEvents.MaintenanceWarranty when maintenance is not null => new($"Garantiniz {DateText(maintenance.WarrantyEnds)} tarihinde bitiyor | {site.SiteName}", customer, o.OrderNumber,
+                $"{o.OrderNumber} numaralı \"{o.Title}\" işinizin garanti süresi {DateText(maintenance.WarrantyEnds)} tarihinde sona eriyor. Garanti kapsamında bakmamızı istediğiniz bir sorun varsa bu tarihten önce bildirin; bakım ve kontrol talebi için: {MaintenanceLink(o, site)}",
+                DateText(maintenance.WarrantyEnds), MaintenanceLink(o, site)),
+            CustomerEvents.ReviewRequest => new($"Memnun kaldınız mı? | {site.SiteName}", customer, o.Title,
+                $"\"{o.Title}\" işinizi teslim edeli birkaç gün oldu. Memnun kaldıysanız Google'da birkaç cümleyle değerlendirmeniz bizim için çok değerli: {site.GoogleReviewUrl.Trim()}"
+                + (o.TrackingToken is null ? "" : $" Bir sorun varsa bu mesajı yanıtlayın veya takip sayfasından servis talebi açın: {KarakusAluminyum.Web.Services.Documents.DocumentLinks.TrackingUrl(site.BaseUrl, o.TrackingToken)}"),
+                site.GoogleReviewUrl.Trim(), o.TrackingToken is null ? site.BaseUrl : KarakusAluminyum.Web.Services.Documents.DocumentLinks.TrackingUrl(site.BaseUrl, o.TrackingToken)),
+            CustomerEvents.QuoteAccepted => new($"Teklif onayınız alındı | {site.SiteName}", customer, o.OrderNumber,
+                $"{o.Quote?.QuoteNumber} numaralı \"{o.Title}\" teklifimizi onayladınız; {o.OrderNumber} numaralı siparişiniz oluşturuldu. Ekibimiz üretim ve montaj planı için sizinle iletişime geçecek." + (o.Quote?.AcceptedTotal is decimal total ? $" Onaylanan tutar: {total.ToString("#,0.00", Tr)} ₺." : ""), DateText(KarakusAluminyum.Web.Services.Documents.PrintDates.Today), o.Title),
             CustomerEvents.ShipDate => new($"Sevk tarihiniz: {DateText(o.PlannedShipDate)} | {site.SiteName}", customer, o.OrderNumber,
                 $"{o.OrderNumber} numaralı \"{o.Title}\" siparişinizin sevk tarihi {DateText(o.PlannedShipDate)} olarak planlandı.", DateText(o.PlannedShipDate), o.Title),
             _ => Installation(o, customer, site)
         };
     }
+
+    // Takip sayfasında bakım talebi formunu hazır açan bağlantı.
+    public static string MaintenanceLink(ProductionOrder order, SiteSettings site)
+        => order.TrackingToken is null ? site.BaseUrl : KarakusAluminyum.Web.Services.Documents.DocumentLinks.TrackingUrl(site.BaseUrl, order.TrackingToken) + "?bakim=1#servis";
 
     private static CustomerMessage Installation(ProductionOrder o, string customer, SiteSettings site)
     {
@@ -233,9 +335,9 @@ public sealed class CustomerNotifier
 
     private static string Name(string? contact, Customer? customer) => !string.IsNullOrWhiteSpace(contact) ? contact.Trim() : customer?.Name ?? "Değerli müşterimiz";
 
-    public static OutgoingEmail Email(NotificationJob job, SiteSettings site)
+    public static OutgoingEmail Email(NotificationJob job, SiteSettings site, PaymentInfo? payment = null, MaintenanceInfo? maintenance = null)
     {
-        var m = Compose(job, site);
+        var m = Compose(job, site, payment, maintenance);
         string H(string v) => WebUtility.HtmlEncode(v);
         var footer = $"Sorularınız için {site.PhoneText} numarasından veya {site.Email} adresinden bize ulaşabilirsiniz.";
         var token = job.ProductionOrder?.TrackingToken ?? job.ServiceRequest?.ProductionOrder?.TrackingToken;
@@ -254,9 +356,9 @@ public sealed class CustomerNotifier
         return new OutgoingEmail(job.Recipient, m.Subject.Length > 150 ? m.Subject[..150] : m.Subject, text, html, NotificationComposer.IsEmail(site.Email) ? site.Email : null);
     }
 
-    public static OutgoingWhatsApp WhatsApp(NotificationJob job, SiteSettings site)
+    public static OutgoingWhatsApp WhatsApp(NotificationJob job, SiteSettings site, PaymentInfo? payment = null, MaintenanceInfo? maintenance = null)
     {
-        var m = Compose(job, site);
+        var m = Compose(job, site, payment, maintenance);
         var template = TemplateFor(site, job.Event);
         if (string.IsNullOrWhiteSpace(template)) throw new PermanentNotificationException("Bu olay için WhatsApp şablon adı yazılmamış.");
         return new OutgoingWhatsApp(job.Recipient, template, string.IsNullOrWhiteSpace(site.WhatsAppTemplateLanguage) ? "tr" : site.WhatsAppTemplateLanguage,
@@ -277,6 +379,26 @@ public sealed class CustomerNotifier
               <p><strong>Müşteri:</strong> {H(r.Customer?.Name)}<br /><strong>Sipariş:</strong> {H(r.ProductionOrder?.OrderNumber)}<br /><strong>İlgili kişi:</strong> {H(r.ContactName)}<br /><strong>Telefon:</strong> {H(r.ContactPhone)}<br /><strong>Konu:</strong> {H(r.Category)}</p>
               <p style="white-space:pre-wrap">{H(r.Complaint)}</p>
               <p><a href="{H(panel)}" style="background:#2c5f7c;color:#fff;padding:10px 16px;border-radius:7px;text-decoration:none">Panelde görüntüle</a></p>
+            </div>
+            """;
+        return new OutgoingEmail(job.Recipient, subject.Length > 150 ? subject[..150] : subject, text, html, null);
+    }
+
+    // Ekibe: müşteri teklifi online onayladı, sipariş açıldı.
+    public static OutgoingEmail TeamQuoteAcceptedEmail(NotificationJob job, SiteSettings site)
+    {
+        var o = job.ProductionOrder!;
+        var q = o.Quote;
+        var panel = $"{site.BaseUrl.TrimEnd('/')}/yonetim/siparisler/detay/{o.Id}";
+        string H(string? v) => WebUtility.HtmlEncode(v ?? "-");
+        var total = q?.AcceptedTotal?.ToString("#,0.00", Tr) + " ₺";
+        var subject = $"Teklif onaylandı: {q?.QuoteNumber} - {o.Customer?.Name}";
+        var text = $"Müşteri teklifi online onayladı ve sipariş açıldı.\n\nTeklif: {q?.QuoteNumber}\nSipariş: {o.OrderNumber}\nMüşteri: {o.Customer?.Name}\nOnaylayan: {q?.AcceptedName}\nTutar: {total}\n\nPanelde görüntüle: {panel}\n";
+        var html = $"""
+            <div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;font-size:14px;color:#111">
+              <h2 style="font-size:17px">Teklif onaylandı: {H(q?.QuoteNumber)}</h2>
+              <p><strong>Müşteri:</strong> {H(o.Customer?.Name)}<br /><strong>Onaylayan:</strong> {H(q?.AcceptedName)}<br /><strong>Tutar:</strong> {H(total)}<br /><strong>Sipariş:</strong> {H(o.OrderNumber)}</p>
+              <p><a href="{H(panel)}" style="background:#2c5f7c;color:#fff;padding:10px 16px;border-radius:7px;text-decoration:none">Siparişi aç</a></p>
             </div>
             """;
         return new OutgoingEmail(job.Recipient, subject.Length > 150 ? subject[..150] : subject, text, html, null);

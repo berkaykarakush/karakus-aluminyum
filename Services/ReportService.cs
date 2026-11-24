@@ -49,7 +49,12 @@ public sealed record ContactReport(int MessageCount, int PreviousMessageCount, i
 
 public sealed record WebReport(int Sessions, int PreviousSessions, int PageViews, int Leads, int PreviousLeads, decimal? ConversionRate, IReadOnlyList<BarRow> TopPages, IReadOnlyList<BarRow> Sources, IReadOnlyList<BarRow> Devices, IReadOnlyList<BarRow> Events, IReadOnlyList<BarRow> LeadsBySource, TimeChart Chart);
 
-public sealed record FullReport(ReportRange Range, SalesReport Sales, ProductionReport Production, ContactReport Contact, WebReport Web);
+// README 7.15: talep → keşif → teklif → kabul → sipariş hunisi; müşteri kaynağına göre dönüşüm; kayıp nedenleri.
+public sealed record FunnelStep(string Label, int Count, decimal? RateFromPrevious);
+public sealed record SourceRow(string Source, int Quotes, int Accepted, decimal? Rate, decimal AcceptedTotal);
+public sealed record ConversionReport(IReadOnlyList<FunnelStep> Funnel, decimal OfferedTotal, decimal AcceptedTotal, decimal LostTotal, IReadOnlyList<SourceRow> BySource, IReadOnlyList<BarRow> LostReasons, IReadOnlyList<BarRow> Competitors);
+
+public sealed record FullReport(ReportRange Range, SalesReport Sales, ProductionReport Production, ContactReport Contact, WebReport Web, ConversionReport Conversion);
 
 // Panel raporları yalnızca veritabanındaki kayıtlardan üretilir.
 public sealed class ReportService
@@ -57,7 +62,32 @@ public sealed class ReportService
     private readonly AppDbContext _db;
     public ReportService(AppDbContext db) => _db = db;
 
-    public async Task<FullReport> BuildAsync(ReportRange range) => new(range, await SalesAsync(range), await ProductionAsync(range), await ContactAsync(range), await WebAsync(range));
+    public async Task<FullReport> BuildAsync(ReportRange range) => new(range, await SalesAsync(range), await ProductionAsync(range), await ContactAsync(range), await WebAsync(range), await ConversionAsync(range));
+
+    private async Task<ConversionReport> ConversionAsync(ReportRange range)
+    {
+        var requests = await _db.ContactMessages.CountAsync(m => m.CreatedUtc >= range.FromUtc && m.CreatedUtc < range.ToUtc);
+        var surveys = await _db.SiteSurveys.CountAsync(x => x.CreatedUtc >= range.FromUtc && x.CreatedUtc < range.ToUtc && x.Status != KarakusAluminyum.Web.Models.Production.SurveyStatus.Cancelled);
+        // Taslak teklif müşteriye gitmediği için huninin dışında.
+        var quotes = await _db.Quotes.AsNoTracking().Where(q => q.CreatedUtc >= range.FromUtc && q.CreatedUtc < range.ToUtc && q.Status != QuoteStatus.Draft)
+            .Select(q => new { q.Status, q.GrandTotal, q.LostReason, q.LostCompetitor, Source = q.Customer!.Source }).ToListAsync();
+        var orders = await _db.ProductionOrders.CountAsync(o => o.CreatedUtc >= range.FromUtc && o.CreatedUtc < range.ToUtc && o.Status != KarakusAluminyum.Web.Models.Production.OrderStatus.Cancelled);
+        static bool Won(QuoteStatus s) => s is QuoteStatus.Accepted or QuoteStatus.Converted;
+        static bool Lost(QuoteStatus s) => s is QuoteStatus.Rejected or QuoteStatus.Expired;
+        var accepted = quotes.Count(q => Won(q.Status));
+        static decimal? Rate(int part, int whole) => whole == 0 ? null : Math.Round(part * 100m / whole, 1, MidpointRounding.AwayFromZero);
+        var funnel = new List<FunnelStep> { new("Web talebi", requests, null), new("Keşif", surveys, Rate(surveys, requests)), new("Teklif", quotes.Count, null), new("Kabul", accepted, Rate(accepted, quotes.Count)), new("Sipariş", orders, null) };
+        var bySource = quotes.GroupBy(q => CustomerSources.Normalize(q.Source))
+            .Select(g => new SourceRow(g.Key, g.Count(), g.Count(q => Won(q.Status)), Rate(g.Count(q => Won(q.Status)), g.Count()), g.Where(q => Won(q.Status)).Sum(q => q.GrandTotal)))
+            .OrderByDescending(x => x.AcceptedTotal).ThenByDescending(x => x.Quotes).ToList();
+        var lost = quotes.Where(q => Lost(q.Status)).ToList();
+        var reasons = lost.GroupBy(q => q.Status == QuoteStatus.Expired && q.LostReason is null ? "Süresi doldu" : q.LostReason ?? "Belirtilmedi")
+            .Select(g => new { g.Key, Count = g.Count(), Total = g.Sum(q => q.GrandTotal) }).OrderByDescending(x => x.Count)
+            .Select(x => new BarRow(x.Key, x.Count, $"{Count(x.Count)} teklif · {TurkishNumbers.Money(x.Total)}")).ToList();
+        var competitors = lost.Where(q => !string.IsNullOrWhiteSpace(q.LostCompetitor)).GroupBy(q => q.LostCompetitor!.Trim(), StringComparer.CurrentCultureIgnoreCase)
+            .Select(g => new BarRow(g.Key, g.Count(), Count(g.Count()))).OrderByDescending(x => x.Value).Take(10).ToList();
+        return new ConversionReport(funnel, quotes.Sum(q => q.GrandTotal), quotes.Where(q => Won(q.Status)).Sum(q => q.GrandTotal), lost.Sum(q => q.GrandTotal), bySource, reasons, competitors);
+    }
 
     private static string Count(decimal value) => value.ToString("N0", TurkishNumbers.Culture);
 

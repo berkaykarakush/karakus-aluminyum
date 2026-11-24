@@ -78,6 +78,28 @@
       </div>
     }
 
+    @if (Model.Payment.HasPlan && !cancelled)
+    {
+      var money = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
+      <h2 style="margin-top:34px">Ödemeler</h2>
+      <div class="trk-grid" style="margin-top:10px">
+        <div class="trk-card"><span>Toplam</span><strong>@Model.Payment.Planned.ToString("#,0.00", money) ₺</strong></div>
+        <div class="trk-card"><span>Ödenen</span><strong>@Model.Payment.Collected.ToString("#,0.00", money) ₺</strong></div>
+        <div class="trk-card"><span>Kalan</span><strong>@Model.Payment.Remaining.ToString("#,0.00", money) ₺</strong></div>
+      </div>
+      <div style="overflow-x:auto;margin-top:12px">
+      <table class="trk-table">
+        <thead><tr><th>Ödeme</th><th>Vade</th><th>Tutar</th><th>Durum</th></tr></thead>
+        <tbody>
+        @foreach (var p in Model.Payment.Rows)
+        {
+          <tr><td>@p.Row.Label</td><td>@(p.Row.DueOn?.ToString("dd.MM.yyyy") ?? "-")</td><td>@p.Row.Amount.ToString("#,0.00", money) ₺</td><td>@KarakusAluminyum.Web.Models.Production.InstallmentLabels.Label(p.State)@if (p.State == KarakusAluminyum.Web.Models.Production.InstallmentState.Partial) { <div>kalan @p.Remaining.ToString("#,0.00", money) ₺</div> }</td></tr>
+        }
+        </tbody>
+      </table>
+      </div>
+    }
+
     @if (Model.Services.Count > 0)
     {
       <h2 style="margin-top:34px">Servis talepleriniz</h2>

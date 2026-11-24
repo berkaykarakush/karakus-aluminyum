@@ -14,9 +14,14 @@
     var openServices = User.IsInRole("Admin") || User.IsInRole("Editor") ? await Db.ServiceRequests.CountAsync(x => x.Status == KarakusAluminyum.Web.Models.Production.ServiceStatus.Open || x.Status == KarakusAluminyum.Web.Models.Production.ServiceStatus.Scheduled) : 0;
     // Giderilmemiş eksik ve kusurlar (cam kırık, kol eksik...).
     var openPunch = User.IsInRole("Admin") || User.IsInRole("Editor") ? await Db.PunchItems.CountAsync(x => x.Status == KarakusAluminyum.Web.Models.Production.PunchStatus.Open || x.Status == KarakusAluminyum.Web.Models.Production.PunchStatus.Waiting) : 0;
+    // Bugün veya geçmiş günü verilmiş, henüz ölçüsü alınmamış keşifler.
+    var dueSurveys = User.IsInRole("Admin") || User.IsInRole("Editor") ? await Db.SiteSurveys.CountAsync(x => x.Status == KarakusAluminyum.Web.Models.Production.SurveyStatus.Planned && x.PlannedOn != null && x.PlannedOn <= followUpDay) : 0;
+    // Ödeme planında vadesi geçmiş, ödenmemiş taksitler (README 7.19).
+    var lateCount = User.IsInRole("Admin") || User.IsInRole("Editor") || User.IsInRole("Accountant")
+        ? (await KarakusAluminyum.Web.Areas.Admin.Controllers.PaymentsController.DueAsync(Db, followUpDay)).Count(r => r.Status.State == KarakusAluminyum.Web.Models.Production.InstallmentState.Late) : 0;
     var groups = new List<(string Key, string Title, List<(string Text, string Url, string Match, int Count)> Links)>
     {
-        ("sales", "Satış", new() { ("Firma havuzu", "/yonetim/crm/firmalar", "/crm/firmalar", followUps), ("Teklifler", "/yonetim/crm/teklifler", "/crm/teklifler", 0), ("Kurumsal sunum", "/yonetim/sunum", "/sunum", 0), ("Sözleşmeler", "/yonetim/sozlesmeler", "/sozlesmeler", 0), ("Müşteriler", "/yonetim/crm/musteriler", "/crm/musteriler", 0), ("İletişim mesajları", "/yonetim/mesajlar", "/mesajlar", unread) }),
+        ("sales", "Satış", new() { ("Firma havuzu", "/yonetim/crm/firmalar", "/crm/firmalar", followUps), ("Keşifler", "/yonetim/kesif", "/kesif", dueSurveys), ("Teklifler", "/yonetim/crm/teklifler", "/crm/teklifler", 0), ("Kurumsal sunum", "/yonetim/sunum", "/sunum", 0), ("Sözleşmeler", "/yonetim/sozlesmeler", "/sozlesmeler", 0), ("Ödeme takibi", "/yonetim/odemeler", "/odemeler", lateCount), ("Müşteriler", "/yonetim/crm/musteriler", "/crm/musteriler", 0), ("İletişim mesajları", "/yonetim/mesajlar", "/mesajlar", unread) }),
         ("production", "Üretim", new() { ("Siparişler", "/yonetim/siparisler", "/siparisler", lateOrders), ("Üretim planı", "/yonetim/siparisler/planlama", "/siparisler/planlama", 0), ("Çizim listeleri", "/yonetim/cizim", "/cizim", 0), ("Cam listeleri", "/yonetim/camlar", "/camlar", 0), ("Eksikler", "/yonetim/eksikler", "/eksikler", openPunch), ("Malzeme ihtiyacı", "/yonetim/uretim/malzeme-ihtiyaci", "/uretim/malzeme-ihtiyaci", 0), ("Barkod okut", "/yonetim/uretim/okut", "/uretim/okut", 0) }),
         ("field", "Saha ve servis", new() { ("Servis", "/yonetim/servis", "/servis", openServices), ("Personel takvimi", "/yonetim/takvim", "/takvim", 0), ("Montajcılar", "/yonetim/siparisler/montajcilar", "/siparisler/montajcilar", 0) }),
         ("definitions", "Tanımlar", new() { ("Profil sistemleri", "/yonetim/cizim/sistemler", "/cizim/sistemler", 0), ("Fiyat listeleri", "/yonetim/fiyat-listeleri", "/fiyat-listeleri", 0), ("Markalar", "/yonetim/markalar", "/markalar", 0), ("Barkod yazıcıları", "/yonetim/uretim/yazicilar", "/uretim/yazicilar", 0), ("Kesim makineleri", "/yonetim/uretim/makineler", "/uretim/makineler", 0) }),
@@ -32,6 +37,7 @@
         ("Kasa ve banka", "/yonetim/muhasebe/kasa-banka", "/muhasebe/kasa-banka", 0), ("Çek ve senet", "/yonetim/muhasebe/cek-senet", "/muhasebe/cek-senet", 0), ("Giderler", "/yonetim/muhasebe/giderler", "/muhasebe/giderler", 0), ("Proje analizi", "/yonetim/muhasebe/projeler", "/muhasebe/projeler", 0),
         ("Ürün ve stok", "/yonetim/muhasebe/urunler", "/muhasebe/urunler", 0), ("Personel", "/yonetim/muhasebe/personel", "/muhasebe/personel", 0), ("Raporlar", "/yonetim/muhasebe/raporlar/kar-zarar", "/muhasebe/raporlar", 0), ("Veri aktarımı", "/yonetim/muhasebe/aktar", "/muhasebe/aktar", 0)
     }));
+    if (accountantOnly) groups[0].Links.Insert(1, ("Ödeme takibi", "/yonetim/odemeler", "/odemeler", lateCount));
     bool Matches(string match) => match.EndsWith('$') ? currentPath == "/yonetim" + match.TrimEnd('$') : currentPath == "/yonetim" + match || currentPath.StartsWith("/yonetim" + match + "/");
     // Aynı öneki paylaşan bağlantılardan (Siparişler / Üretim planı) yalnızca en özel olanı seçili görünür.
     var activeMatch = groups.SelectMany(g => g.Links).Select(l => l.Match).Where(Matches).OrderByDescending(m => m.Length).FirstOrDefault();
