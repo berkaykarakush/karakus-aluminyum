@@ -20,12 +20,14 @@ public sealed class ServiceDesk
     public Task<string> NextVisitNumberAsync(DateOnly date) => _orders.NextNumberAsync("SF", date.Year);
 
     // Garanti süresi (yıl) siparişin sözleşmesindeki değişkenden, yoksa sözleşme şablonundan gelir (varsayılan 2).
-    public async Task<int> WarrantyYearsAsync(ProductionOrder? order)
+    public Task<int> WarrantyYearsAsync(ProductionOrder? order) => WarrantyYearsAsync(_db, order);
+
+    public static async Task<int> WarrantyYearsAsync(AppDbContext db, ProductionOrder? order)
     {
         static int? Parse(string? value) => int.TryParse(value?.Trim(), out var years) && years is > 0 and < 100 ? years : null;
-        if (order?.ContractId is int contractId && await _db.Contracts.Where(x => x.Id == contractId).Select(x => x.DocumentJson).FirstOrDefaultAsync() is string json
+        if (order?.ContractId is int contractId && await db.Contracts.Where(x => x.Id == contractId).Select(x => x.DocumentJson).FirstOrDefaultAsync() is string json
             && Parse(DocumentJson.ParseContent(json).Variables.GetValueOrDefault("garanti_suresi")) is int fromContract) return fromContract;
-        var template = await DocumentViews.CurrentTemplateAsync(_db, DocumentKinds.Contract);
+        var template = await DocumentViews.CurrentTemplateAsync(db, DocumentKinds.Contract);
         return Parse(DocumentJson.ParseVariables(template.VariablesJson).GetValueOrDefault("garanti_suresi")) ?? 2;
     }
 

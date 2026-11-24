@@ -208,6 +208,7 @@ public sealed class CustomerNotifier
         CustomerEvents.ServiceVisit => site.CustomerNotifyServiceVisit == "true",
         CustomerEvents.SurveyVisit => site.CustomerNotifySurvey == "true",
         CustomerEvents.PaymentDue => site.CustomerNotifyPayment == "true",
+        CustomerEvents.MaintenanceAnnual or CustomerEvents.MaintenanceWarranty => site.CustomerNotifyMaintenance == "true",
         _ => false
     };
 
@@ -219,6 +220,7 @@ public sealed class CustomerNotifier
         CustomerEvents.ServiceVisit => site.WhatsAppTemplateServiceVisit,
         CustomerEvents.SurveyVisit => site.WhatsAppTemplateSurvey,
         CustomerEvents.PaymentDue => site.WhatsAppTemplatePayment,
+        CustomerEvents.MaintenanceAnnual or CustomerEvents.MaintenanceWarranty => site.WhatsAppTemplateMaintenance,
         _ => ""
     };
 
@@ -265,10 +267,12 @@ public sealed class CustomerNotifier
 
     // Ödeme hatırlatmasında gönderim anında hesaplanan kalan tutar ve banka bilgisi.
     public sealed record PaymentInfo(decimal Remaining, string Labels, string? BankInfo);
+    // Bakım hatırlatmasında teslimden bu yana yıl ve garanti bitişi (README 7.8).
+    public sealed record MaintenanceInfo(int Year, DateOnly WarrantyEnds);
 
     public sealed record CustomerMessage(string Subject, string Name, string Number, string Body, string DateText, string Extra);
 
-    public static CustomerMessage Compose(NotificationJob job, SiteSettings site, PaymentInfo? payment = null)
+    public static CustomerMessage Compose(NotificationJob job, SiteSettings site, PaymentInfo? payment = null, MaintenanceInfo? maintenance = null)
     {
         if (job.ServiceRequest is { } r)
         {
@@ -296,6 +300,13 @@ public sealed class CustomerNotifier
                 $"{o.OrderNumber} numaralı \"{o.Title}\" siparişinizin {payment.Labels} ödemesinin vadesi {DateText(job.EventDate)}. Ödenecek tutar: {payment.Remaining.ToString("#,0.00", Tr)} ₺."
                 + (string.IsNullOrWhiteSpace(payment.BankInfo) ? "" : $" Banka bilgilerimiz: {payment.BankInfo.Trim()}") + " Ödemeyi yaptıysanız bu mesajı dikkate almayın.",
                 DateText(job.EventDate), payment.Remaining.ToString("#,0.00", Tr) + " ₺"),
+            CustomerEvents.MaintenanceAnnual when maintenance is not null => new($"Yıllık bakım zamanı | {site.SiteName}", customer, o.OrderNumber,
+                $"{o.OrderNumber} numaralı \"{o.Title}\" işinizin teslimden bu yana {maintenance.Year}. yılı doldu. Doğrama ve sistemlerinizin uzun ömürlü olması için yıllık bakım (ayar, conta kontrolü, yağlama, drenaj temizliği) öneriyoruz."
+                + (maintenance.WarrantyEnds >= Today(DateTime.UtcNow) ? $" Garantiniz {DateText(maintenance.WarrantyEnds)} tarihine kadar sürüyor." : "") + $" Bakım talebi için: {MaintenanceLink(o, site)}",
+                DateText(job.EventDate), MaintenanceLink(o, site)),
+            CustomerEvents.MaintenanceWarranty when maintenance is not null => new($"Garantiniz {DateText(maintenance.WarrantyEnds)} tarihinde bitiyor | {site.SiteName}", customer, o.OrderNumber,
+                $"{o.OrderNumber} numaralı \"{o.Title}\" işinizin garanti süresi {DateText(maintenance.WarrantyEnds)} tarihinde sona eriyor. Garanti kapsamında bakmamızı istediğiniz bir sorun varsa bu tarihten önce bildirin; bakım ve kontrol talebi için: {MaintenanceLink(o, site)}",
+                DateText(maintenance.WarrantyEnds), MaintenanceLink(o, site)),
             CustomerEvents.QuoteAccepted => new($"Teklif onayınız alındı | {site.SiteName}", customer, o.OrderNumber,
                 $"{o.Quote?.QuoteNumber} numaralı \"{o.Title}\" teklifimizi onayladınız; {o.OrderNumber} numaralı siparişiniz oluşturuldu. Ekibimiz üretim ve montaj planı için sizinle iletişime geçecek." + (o.Quote?.AcceptedTotal is decimal total ? $" Onaylanan tutar: {total.ToString("#,0.00", Tr)} ₺." : ""), DateText(KarakusAluminyum.Web.Services.Documents.PrintDates.Today), o.Title),
             CustomerEvents.ShipDate => new($"Sevk tarihiniz: {DateText(o.PlannedShipDate)} | {site.SiteName}", customer, o.OrderNumber,
@@ -303,6 +314,10 @@ public sealed class CustomerNotifier
             _ => Installation(o, customer, site)
         };
     }
+
+    // Takip sayfasında bakım talebi formunu hazır açan bağlantı.
+    public static string MaintenanceLink(ProductionOrder order, SiteSettings site)
+        => order.TrackingToken is null ? site.BaseUrl : KarakusAluminyum.Web.Services.Documents.DocumentLinks.TrackingUrl(site.BaseUrl, order.TrackingToken) + "?bakim=1#servis";
 
     private static CustomerMessage Installation(ProductionOrder o, string customer, SiteSettings site)
     {
@@ -314,9 +329,9 @@ public sealed class CustomerNotifier
 
     private static string Name(string? contact, Customer? customer) => !string.IsNullOrWhiteSpace(contact) ? contact.Trim() : customer?.Name ?? "Değerli müşterimiz";
 
-    public static OutgoingEmail Email(NotificationJob job, SiteSettings site, PaymentInfo? payment = null)
+    public static OutgoingEmail Email(NotificationJob job, SiteSettings site, PaymentInfo? payment = null, MaintenanceInfo? maintenance = null)
     {
-        var m = Compose(job, site, payment);
+        var m = Compose(job, site, payment, maintenance);
         string H(string v) => WebUtility.HtmlEncode(v);
         var footer = $"Sorularınız için {site.PhoneText} numarasından veya {site.Email} adresinden bize ulaşabilirsiniz.";
         var token = job.ProductionOrder?.TrackingToken ?? job.ServiceRequest?.ProductionOrder?.TrackingToken;
@@ -335,9 +350,9 @@ public sealed class CustomerNotifier
         return new OutgoingEmail(job.Recipient, m.Subject.Length > 150 ? m.Subject[..150] : m.Subject, text, html, NotificationComposer.IsEmail(site.Email) ? site.Email : null);
     }
 
-    public static OutgoingWhatsApp WhatsApp(NotificationJob job, SiteSettings site, PaymentInfo? payment = null)
+    public static OutgoingWhatsApp WhatsApp(NotificationJob job, SiteSettings site, PaymentInfo? payment = null, MaintenanceInfo? maintenance = null)
     {
-        var m = Compose(job, site, payment);
+        var m = Compose(job, site, payment, maintenance);
         var template = TemplateFor(site, job.Event);
         if (string.IsNullOrWhiteSpace(template)) throw new PermanentNotificationException("Bu olay için WhatsApp şablon adı yazılmamış.");
         return new OutgoingWhatsApp(job.Recipient, template, string.IsNullOrWhiteSpace(site.WhatsAppTemplateLanguage) ? "tr" : site.WhatsAppTemplateLanguage,

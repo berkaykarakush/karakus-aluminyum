@@ -117,14 +117,15 @@ public sealed class NotificationDispatcher
                 if (customerEvent && CustomerNotifier.Obsolete(job, DateTime.UtcNow) is string reason) throw new SkipNotificationException(reason);
                 // Ödeme hatırlatması: o vadede ödenmemiş tutar gönderim anında hesaplanır; ödendiyse veya plan değiştiyse gitmez.
                 var payment = job.Event == CustomerEvents.PaymentDue ? await PaymentAsync(job, cancellationToken) : null;
+                var maintenance = job.Event is CustomerEvents.MaintenanceAnnual or CustomerEvents.MaintenanceWarranty ? await MaintenanceReminders.InfoAsync(_db, job) : null;
                 job.ProviderMessageId = job.Channel switch
                 {
                     NotificationChannel.AdminEmail when job.Event == CustomerEvents.QuoteAccepted => await _email.SendAsync(CustomerNotifier.TeamQuoteAcceptedEmail(job, site), cancellationToken),
                     NotificationChannel.AdminEmail when job.Event == CustomerEvents.ServiceRequested => await _email.SendAsync(CustomerNotifier.TeamServiceEmail(job, site), cancellationToken),
                     NotificationChannel.AdminEmail => await _email.SendAsync(NotificationComposer.AdminEmail(job.ContactMessage!, job.Recipient, site), cancellationToken),
-                    NotificationChannel.CustomerEmail when customerEvent => await _email.SendAsync(CustomerNotifier.Email(job, site, payment), cancellationToken),
+                    NotificationChannel.CustomerEmail when customerEvent => await _email.SendAsync(CustomerNotifier.Email(job, site, payment, maintenance), cancellationToken),
                     NotificationChannel.CustomerEmail => await _email.SendAsync(NotificationComposer.CustomerEmail(job.Recipient, site), cancellationToken),
-                    NotificationChannel.CustomerWhatsApp => await _whatsApp.SendAsync(CustomerNotifier.WhatsApp(job, site, payment), cancellationToken),
+                    NotificationChannel.CustomerWhatsApp => await _whatsApp.SendAsync(CustomerNotifier.WhatsApp(job, site, payment, maintenance), cancellationToken),
                     _ => await _whatsApp.SendAsync(NotificationComposer.AdminWhatsApp(job.ContactMessage!, job.Recipient, site), cancellationToken)
                 };
                 job.Status = NotificationStatus.Sent;
@@ -181,6 +182,7 @@ public sealed class NotificationDispatcher
 public sealed class NotificationWorker : BackgroundService
 {
     private static readonly TimeSpan Interval = TimeSpan.FromSeconds(30);
+    private DateTime _lastMaintenanceScan = DateTime.MinValue;
     private readonly IServiceScopeFactory _scopes;
     private readonly NotificationSignal _signal;
     private readonly ILogger<NotificationWorker> _logger;
@@ -193,6 +195,12 @@ public sealed class NotificationWorker : BackgroundService
             try
             {
                 await using var scope = _scopes.CreateAsyncScope();
+                // Bakım hatırlatmaları saatte bir taranır (README 7.8).
+                if (DateTime.UtcNow - _lastMaintenanceScan > TimeSpan.FromHours(1))
+                {
+                    _lastMaintenanceScan = DateTime.UtcNow;
+                    await scope.ServiceProvider.GetRequiredService<MaintenanceReminders>().RunAsync(DateTime.UtcNow, stoppingToken);
+                }
                 await scope.ServiceProvider.GetRequiredService<NotificationDispatcher>().RunOnceAsync(stoppingToken);
                 await _signal.WaitAsync(Interval, stoppingToken);
             }

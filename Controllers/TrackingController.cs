@@ -57,9 +57,10 @@ public sealed class TrackingController : Controller
     public static bool CanRequestService(OrderStatus status) => status is OrderStatus.Shipped or OrderStatus.Delivered;
 
     [HttpGet("{token}"), EnableRateLimiting(DocumentLinksController.RateLimitPolicy)]
-    public async Task<IActionResult> Index(string token)
+    public async Task<IActionResult> Index(string token, string? bakim = null)
     {
-        var vm = await LoadAsync(token, new ServiceInput());
+        // bakim=1: bakım hatırlatmasındaki bağlantı; talep formu "Bakım" konusuyla hazır açılır (README 7.8).
+        var vm = await LoadAsync(token, bakim is "1" or "true" ? new ServiceInput { Category = "Bakım", Complaint = "Yıllık bakım ve kontrol yaptırmak istiyorum." } : new ServiceInput());
         return vm is null ? NotFound() : Page(vm);
     }
 
