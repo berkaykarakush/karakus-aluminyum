@@ -464,7 +464,8 @@ public sealed class QuoteTests(PostgresFixture postgres)
         var id = await NewQuoteAsync(app, current);
         var (client, token) = await AdminAsync(app);
 
-        var response = await client.PostFormAsync($"/yonetim/crm/teklifler/durum/{id}", token, ("status", ((int)requested).ToString()));
+        // Reddetmede kayıp nedeni zorunludur (README 7.15).
+        var response = await client.PostFormAsync($"/yonetim/crm/teklifler/durum/{id}", token, ("status", ((int)requested).ToString()), ("lostReason", "Fiyat yüksek"));
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal(expected, await app.WithDbAsync(db => db.Quotes.Where(q => q.Id == id).Select(q => q.Status).SingleAsync()));

@@ -1021,6 +1021,10 @@ CREATE TABLE IF NOT EXISTS "OrderInstallments" (
 CREATE INDEX IF NOT EXISTS "IX_OrderInstallments_ProductionOrderId_SortOrder" ON "OrderInstallments" ("ProductionOrderId", "SortOrder");
 ALTER TABLE "CashTransactions" ADD COLUMN IF NOT EXISTS "ProductionOrderId" integer REFERENCES "ProductionOrders"("Id") ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS "IX_CashTransactions_ProductionOrderId" ON "CashTransactions" ("ProductionOrderId");
+-- Teklif kayıp nedeni (README 7.15)
+ALTER TABLE "Quotes" ADD COLUMN IF NOT EXISTS "LostReason" character varying(40);
+ALTER TABLE "Quotes" ADD COLUMN IF NOT EXISTS "LostCompetitor" character varying(120);
+ALTER TABLE "Quotes" ADD COLUMN IF NOT EXISTS "LostNote" character varying(300);
 CREATE UNIQUE INDEX IF NOT EXISTS "IX_ProductionScans_ProductionOrderId_WindowDesignId_Unit_Station" ON "ProductionScans" ("ProductionOrderId", "WindowDesignId", "Unit", "Station");
 
 """;

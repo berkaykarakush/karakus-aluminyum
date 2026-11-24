@@ -8,6 +8,11 @@ public enum QuoteStatus { Draft = 0, Sent = 1, Accepted = 2, Rejected = 3, Expir
 // Added: KDV toplama eklenir. Included: tutarlar KDV dahildir. None: belgede KDV belirtilmez.
 public enum VatMode { Added = 0, Included = 1, None = 2 }
 
+public static class QuoteLoss
+{
+    public static readonly string[] Reasons = { "Fiyat yüksek", "Teslim süresi uzun", "Rakip tercih edildi", "Vazgeçti / ertelendi", "Ulaşılamadı", "Ürün / sistem uymadı", "Diğer" };
+}
+
 public sealed class Quote
 {
     public int Id { get; set; }
@@ -31,6 +36,10 @@ public sealed class Quote
     [StringLength(300)] public string? AcceptedUserAgent { get; set; }
     [Column(TypeName = "numeric(18,2)")] public decimal? AcceptedTotal { get; set; }
     [StringLength(64)] public string? AcceptedHash { get; set; }
+    // Reddedilen teklifin kayıp nedeni (README 7.15): satış dönüşüm raporunda gruplanır.
+    [StringLength(40)] public string? LostReason { get; set; }
+    [StringLength(120)] public string? LostCompetitor { get; set; }
+    [StringLength(300)] public string? LostNote { get; set; }
     [Column(TypeName = "numeric(5,2)")] public decimal TaxRate { get; set; } = 20m;
     [Column(TypeName = "numeric(5,2)")] public decimal DiscountRate { get; set; }
     [Column(TypeName = "numeric(18,2)")] public decimal Subtotal { get; set; }

@@ -180,7 +180,7 @@ public sealed class QuotesController : Controller
     }
 
     [HttpPost("durum/{id:int}"), ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetStatus(int id, QuoteStatus status)
+    public async Task<IActionResult> SetStatus(int id, QuoteStatus status, string? lostReason = null, string? lostCompetitor = null, string? lostNote = null)
     {
         var quote = await _db.Quotes.FindAsync(id);
         if (quote is null) return NotFound();
@@ -203,6 +203,19 @@ public sealed class QuotesController : Controller
             return RedirectToAction(nameof(Details), new { id });
         }
 
+        // Reddedilen teklifte kayıp nedeni zorunlu (dönüşüm raporu); başka duruma geçince temizlenir.
+        if (status == QuoteStatus.Rejected)
+        {
+            if (string.IsNullOrWhiteSpace(lostReason) || !QuoteLoss.Reasons.Contains(lostReason))
+            {
+                TempData["Notice"] = "Reddedilen teklif için kayıp nedenini seçin.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+            quote.LostReason = lostReason;
+            quote.LostCompetitor = string.IsNullOrWhiteSpace(lostCompetitor) ? null : lostCompetitor.Trim()[..Math.Min(lostCompetitor.Trim().Length, 120)];
+            quote.LostNote = string.IsNullOrWhiteSpace(lostNote) ? null : lostNote.Trim()[..Math.Min(lostNote.Trim().Length, 300)];
+        }
+        else (quote.LostReason, quote.LostCompetitor, quote.LostNote) = (null, null, null);
         quote.Status = status;
         await _db.SaveChangesAsync();
         TempData["Notice"] = "Teklif durumu güncellendi.";
