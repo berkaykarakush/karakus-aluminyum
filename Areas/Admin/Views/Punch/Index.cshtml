@@ -1,0 +1,61 @@
+@model List<KarakusAluminyum.Web.Models.Production.PunchItem>
+@using KarakusAluminyum.Web.Models.Production
+@using KarakusAluminyum.Web.Areas.Admin.Controllers
+@{
+    ViewData["Title"] = "Eksikler ve kusurlar";
+    var counts = (Dictionary<PunchStatus, int>)ViewBag.Counts;
+    var status = ViewBag.Status as PunchStatus?;
+    var kind = ViewBag.Kind as string;
+    var party = ViewBag.Party as string;
+    var all = (bool)ViewBag.All;
+    var positions = (Dictionary<int, int>)ViewBag.Positions;
+    var today = KarakusAluminyum.Web.Services.Documents.PrintDates.Today;
+    string D(DateOnly? d) => d?.ToString("dd.MM.yyyy") ?? "-";
+}
+<link rel="stylesheet" href="~/css/orders.css" asp-append-version="true" />
+<div class="admin-actions">
+  <h1>Eksikler ve kusurlar</h1>
+</div>
+<p class="admin-muted">Cam kırığı, eksik kol veya aksesuar gibi kayıtlar siparişin sayfasından ("Eksikler ve kusurlar" bölümü) eklenir; burada tüm işlerdeki kayıtlar birlikte izlenir.</p>
+<div class="admin-panel admin-actions">
+  <a class="admin-btn @(status is null && !all ? "" : "admin-btn--secondary")" href="/yonetim/eksikler">Açık (@(counts.GetValueOrDefault(PunchStatus.Open) + counts.GetValueOrDefault(PunchStatus.Waiting)))</a>
+  @foreach (var s in Enum.GetValues<PunchStatus>())
+  {
+    <a class="admin-btn @(status == s ? "" : "admin-btn--secondary")" href="/yonetim/eksikler?durum=@s">@PunchLabels.Label(s) (@counts.GetValueOrDefault(s))</a>
+  }
+  <a class="admin-btn @(all ? "" : "admin-btn--secondary")" href="/yonetim/eksikler?tumu=true">Tümü</a>
+</div>
+<form method="get" class="admin-panel admin-actions">
+  @if (status is not null) { <input type="hidden" name="durum" value="@status" /> }
+  @if (all) { <input type="hidden" name="tumu" value="true" /> }
+  <select name="tur" aria-label="Tür" style="max-width:240px"><option value="">Tüm türler</option>@foreach (var k in PunchLabels.Kinds) { <option selected="@(k == kind)">@k</option> }</select>
+  <select name="sorumlu" aria-label="Sorumlu" style="max-width:200px"><option value="">Tüm sorumlular</option>@foreach (var p in PunchLabels.Parties) { <option selected="@(p == party)">@p</option> }</select>
+  <input name="q" value="@ViewBag.Query" placeholder="Sipariş, müşteri veya açıklama" aria-label="Ara" style="max-width:280px" />
+  <button class="admin-btn admin-btn--secondary">Süz</button>
+</form>
+<div class="admin-panel" style="overflow-x:auto">
+  @if (Model.Count == 0) { <p class="admin-muted">Kayıt yok.</p> }
+  else
+  {
+    <table class="admin-table">
+      <thead><tr><th>Sipariş</th><th>Poz / yer</th><th>Tür</th><th>Eksik / kusur</th><th>Adet</th><th>Sorumlu</th><th>Bildirim</th><th>Hedef</th><th>Durum</th><th></th></tr></thead>
+      <tbody>
+      @foreach (var x in Model)
+      {
+        <tr>
+          <td><a href="/yonetim/siparisler/detay/@x.ProductionOrderId#eksikler">@x.ProductionOrder?.OrderNumber</a><div class="admin-muted">@x.ProductionOrder?.Customer?.Name</div></td>
+          <td>@PunchController.Where(x, positions)</td>
+          <td>@x.Kind<div class="admin-muted">@x.Stage</div></td>
+          <td style="white-space:pre-wrap">@x.Description@if (!string.IsNullOrWhiteSpace(x.Resolution)) { <div class="admin-muted">İşlem: @x.Resolution</div> }</td>
+          <td>@x.Quantity</td>
+          <td>@x.Responsible</td>
+          <td>@D(x.ReportedOn)</td>
+          <td>@D(x.DueOn)@if (PunchController.IsLate(x, today)) { <div class="or-late">gecikti</div> }</td>
+          <td>@PunchLabels.Label(x.Status)@if (x.ResolvedOn is not null) { <div class="admin-muted">@D(x.ResolvedOn)</div> }</td>
+          <td><a class="admin-btn admin-btn--secondary" href="/yonetim/eksikler/duzenle/@x.Id">Düzenle</a></td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  }
+</div>

@@ -44,7 +44,18 @@
       <p>Yukarıda listelenen imalat ve montaj işleri, ekteki poz listesine uygun olarak <strong>____/____/______</strong> tarihinde teslim edilmiş ve iş sahibi tarafından yerinde görülerek teslim alınmıştır.</p>
       <p>İş sahibi, teslimden itibaren <strong>@days gün</strong> içinde işi gözden geçirerek açık ayıpları yazılı olarak bildirir; bu süre içinde bildirilmeyen açık ayıplar bakımından iş kabul edilmiş sayılır (TBK m. 474 ve 477). Gizli ayıplar ortaya çıktıklarında gecikmeksizin bildirilir. Garanti süresi teslim tarihinden başlar.</p>
       <p><strong>Teslimde tespit edilen eksik veya ayıplar:</strong></p>
-      <div style="height:28mm;border:1px solid #999;margin-bottom:4mm"></div>
+      @{ var openPunch = (List<KarakusAluminyum.Web.Models.Production.PunchItem>)ViewBag.OpenPunch; var punchPositions = (Dictionary<int, int>)ViewBag.PunchPositions; }
+      @if (openPunch.Count > 0)
+      {
+        <ol style="margin:0 0 2mm 5mm;padding:0">
+          @foreach (var x in openPunch) { <li>@KarakusAluminyum.Web.Areas.Admin.Controllers.PunchController.Where(x, punchPositions) – @x.Kind: @x.Description (@x.Quantity adet)@(x.DueOn is DateOnly due ? $", giderilecek tarih {due:dd.MM.yyyy}" : "")</li> }
+        </ol>
+        <div style="height:14mm;border:1px solid #999;margin-bottom:4mm"></div>
+      }
+      else
+      {
+        <div style="height:28mm;border:1px solid #999;margin-bottom:4mm"></div>
+      }
       <table class="pf-sign"><tbody><tr>
         <td><strong>Teslim eden (Satıcı)</strong><div>@(t.SellerLegalName ?? t.SellerName)</div><div class="pf-sign__field">Ad Soyad:</div><div class="pf-sign__line">Kaşe / İmza</div></td>
         <td><strong>Teslim alan (Alıcı)</strong><div>@Model.Customer?.Name</div><div class="pf-sign__field">Ad Soyad:</div><div class="pf-sign__line">İmza</div></td>

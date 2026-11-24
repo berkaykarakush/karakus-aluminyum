@@ -1,0 +1,77 @@
+@model KarakusAluminyum.Web.Models.Production.ProductionOrder
+@using KarakusAluminyum.Web.Models.Production
+@using KarakusAluminyum.Web.Areas.Admin.Controllers
+@{
+    // Eksik listesi: işteki açık eksik ve kusurlar; sorumluya (camcı, atölye, montaj ekibi) verilir, giderilince işaretlenir.
+    Layout = null;
+    var items = (List<PunchItem>)ViewBag.Items;
+    var positions = (Dictionary<int, int>)ViewBag.Positions;
+    var party = ViewBag.Party as string;
+    var all = (bool)ViewBag.All;
+    var printed = KarakusAluminyum.Web.Services.Documents.PrintDates.From(Context.Request);
+    var title = party is null ? "EKSİK LİSTESİ" : $"EKSİK LİSTESİ – {party.ToUpper(new System.Globalization.CultureInfo("tr-TR"))}";
+    var head = new KarakusAluminyum.Web.Services.Documents.BrandHeadVm(title, printed.ToString("dd.MM.yyyy"));
+    string D(DateOnly? d) => d?.ToString("dd.MM.yyyy") ?? "";
+}
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Eksik listesi - @Model.OrderNumber</title>
+  <link rel="stylesheet" href="~/css/document-print.css" asp-append-version="true" />
+  <link rel="stylesheet" href="~/css/brand.css" asp-append-version="true" />
+  <style>.pk-box{display:inline-block;width:4.5mm;height:4.5mm;border:1px solid #333;vertical-align:middle}.pf-lines td{vertical-align:top}</style>
+</head>
+<body class="doc doc--proforma">
+  <partial name="~/Areas/Admin/Views/Shared/_BrandLayer.cshtml" />
+  <div class="doc-toolbar">
+    <a class="doc-toolbar__link" href="/yonetim/siparisler/detay/@Model.Id#eksikler">Siparişe dön</a>
+    <form method="get" style="display:inline-flex;gap:6px;align-items:center;margin-right:12px">
+      <input type="hidden" name="tarih" value="@printed.ToString("yyyy-MM-dd")" />
+      <label for="party">Sorumlu</label>
+      <select id="party" name="sorumlu" onchange="this.form.submit()"><option value="">Hepsi</option>@foreach (var p in PunchLabels.Parties) { <option selected="@(p == party)">@p</option> }</select>
+      <label><input type="checkbox" name="tumu" value="true" checked="@all" onchange="this.form.submit()" /> Giderilenler de</label>
+    </form>
+    <partial name="~/Areas/Admin/Views/Shared/_PrintDate.cshtml" model='new KarakusAluminyum.Web.Services.Documents.PrintDateVm(printed)' />
+    <button type="button" onclick="window.print()">Yazdır / PDF kaydet</button>
+  </div>
+  <table class="doc-sheet">
+    <thead><tr><td><partial name="~/Areas/Admin/Views/Shared/_BrandHead.cshtml" model="head" /></td></tr></thead>
+    <tfoot><tr><td><partial name="~/Areas/Admin/Views/Shared/_BrandFoot.cshtml" /></td></tr></tfoot>
+    <tbody><tr><td class="doc-body">
+      <div class="pf-parties">
+        <section class="pf-party"><h3>Müşteri</h3><strong>@Model.Customer?.Name</strong>@if (!string.IsNullOrWhiteSpace(Model.InstallAddress)) { <div>@Model.InstallAddress</div> }@if (!string.IsNullOrWhiteSpace(Model.ContactPhone)) { <div>@Model.ContactPhone</div> }</section>
+        <dl class="pf-info"><dt>Sipariş</dt><dd>@Model.OrderNumber</dd><dt>İş</dt><dd>@Model.Title</dd>@if (Model.Installer is not null) { <dt>Montaj ekibi</dt><dd>@Model.Installer.Name</dd> }</dl>
+      </div>
+      @if (items.Count == 0) { <p>Bu iş için @(all ? "" : "açık ")eksik kaydı yok.</p> }
+      else
+      {
+        <table class="pf-lines">
+          <thead><tr><th class="pf-no">Sıra</th><th>Poz / yer</th><th>Tür</th><th>Eksik / kusur</th><th class="pf-num">Adet</th><th>Sorumlu</th><th>Hedef</th><th>Tamam</th></tr></thead>
+          <tbody>
+          @foreach (var (x, i) in items.Select((x, i) => (x, i + 1)))
+          {
+            <tr>
+              <td class="pf-no">@i</td>
+              <td>@PunchController.Where(x, positions)</td>
+              <td>@x.Kind</td>
+              <td style="white-space:pre-wrap">@x.Description@if (!string.IsNullOrWhiteSpace(x.Resolution)) { <div><em>İşlem: @x.Resolution</em></div> }</td>
+              <td class="pf-num">@x.Quantity</td>
+              <td>@x.Responsible</td>
+              <td>@D(x.DueOn)</td>
+              <td>@if (x.Status == PunchStatus.Resolved) { <span>@D(x.ResolvedOn)</span> } else { <span class="pk-box"></span> }</td>
+            </tr>
+          }
+          </tbody>
+        </table>
+        <p class="pf-words">Toplam @items.Count kalem, @items.Sum(x => x.Quantity) adet.</p>
+      }
+      <table class="pf-sign"><tbody><tr>
+        <td><strong>Teslim eden</strong><div class="pf-sign__field">Ad Soyad:</div><div class="pf-sign__line">İmza</div></td>
+        <td><strong>Teslim alan / gideren</strong><div class="pf-sign__field">Ad Soyad:</div><div class="pf-sign__line">İmza</div></td>
+      </tr></tbody></table>
+    </td></tr></tbody>
+  </table>
+  <div class="doc-print-foot"><partial name="~/Areas/Admin/Views/Shared/_BrandFoot.cshtml" /></div>
+</body>
+</html>

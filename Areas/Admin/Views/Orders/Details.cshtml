@@ -49,6 +49,8 @@
       </li>
     }
   </ol>
+  @{ var openPunch = ((List<PunchItem>)ViewBag.Punch).Count(x => PunchLabels.IsOpen(x.Status)); }
+  @if (openPunch > 0) { <p class="or-late" style="margin:8px 0 0">Bu işte @openPunch açık eksik var. <a href="#eksikler">Eksikler</a> giderilmeden teslim edilirse teslim tutanağına yazılır.</p> }
   @if (OrderStatuses.IsOpen(Model.Status))
   {
     <form method="post" action="/yonetim/siparisler/durum/@Model.Id" class="admin-actions" onsubmit="return confirm('Sipariş iptal edilsin mi?')">
@@ -80,6 +82,8 @@
     }
   </div>
 }
+
+<partial name="_Punch" model="Model" />
 
 @if (load.Units > 0)
 {
