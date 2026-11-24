@@ -118,6 +118,12 @@ public sealed class NotificationDispatcher
                 // Ödeme hatırlatması: o vadede ödenmemiş tutar gönderim anında hesaplanır; ödendiyse veya plan değiştiyse gitmez.
                 var payment = job.Event == CustomerEvents.PaymentDue ? await PaymentAsync(job, cancellationToken) : null;
                 var maintenance = job.Event is CustomerEvents.MaintenanceAnnual or CustomerEvents.MaintenanceWarranty ? await MaintenanceReminders.InfoAsync(_db, job) : null;
+                if (job.Event == CustomerEvents.ReviewRequest)
+                {
+                    if (job.ProductionOrder?.Status != KarakusAluminyum.Web.Models.Production.OrderStatus.Delivered) throw new SkipNotificationException("İş teslim edilmiş görünmüyor; yorum istenmedi.");
+                    if (string.IsNullOrWhiteSpace(site.GoogleReviewUrl)) throw new SkipNotificationException("Google yorum bağlantısı yazılmamış.");
+                    if (await ReviewRequests.OpenIssueAsync(_db, job.ProductionOrderId!.Value, cancellationToken) is string issue) throw new SkipNotificationException(issue);
+                }
                 job.ProviderMessageId = job.Channel switch
                 {
                     NotificationChannel.AdminEmail when job.Event == CustomerEvents.QuoteAccepted => await _email.SendAsync(CustomerNotifier.TeamQuoteAcceptedEmail(job, site), cancellationToken),
@@ -200,6 +206,7 @@ public sealed class NotificationWorker : BackgroundService
                 {
                     _lastMaintenanceScan = DateTime.UtcNow;
                     await scope.ServiceProvider.GetRequiredService<MaintenanceReminders>().RunAsync(DateTime.UtcNow, stoppingToken);
+                    await scope.ServiceProvider.GetRequiredService<ReviewRequests>().RunAsync(DateTime.UtcNow, stoppingToken);
                 }
                 await scope.ServiceProvider.GetRequiredService<NotificationDispatcher>().RunOnceAsync(stoppingToken);
                 await _signal.WaitAsync(Interval, stoppingToken);

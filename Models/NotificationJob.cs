@@ -51,6 +51,7 @@ public static class CustomerEvents
     public const string PaymentDue = "payment.due";        // ödeme planında vadesi yaklaşan taksit (README 7.19)
     public const string MaintenanceAnnual = "maintenance.annual";     // teslimin yıldönümünde bakım hatırlatması (README 7.8)
     public const string MaintenanceWarranty = "maintenance.warranty"; // garanti bitmeden 30 gün önce
+    public const string ReviewRequest = "review.request";             // teslimden birkaç gün sonra Google yorum isteği (README 7.20)
     public static readonly string[] All = { Production, ShipDate, Installation, ServiceVisit, SurveyVisit, PaymentDue };
     // Ekibe: müşteri takip sayfasından servis talebi açtı (README 7.7)
     public const string ServiceRequested = "service.request";
@@ -67,6 +68,7 @@ public static class CustomerEvents
         PaymentDue => "Ödeme hatırlatması",
         MaintenanceAnnual => "Yıllık bakım hatırlatması",
         MaintenanceWarranty => "Garanti bitiyor hatırlatması",
+        ReviewRequest => "Google yorum isteği",
         ServiceRequested => "Web servis talebi",
         QuoteAccepted => "Teklif onayı",
         _ => "Teklif talebi"

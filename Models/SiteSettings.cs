@@ -75,6 +75,9 @@ public sealed class SiteSettings
     public string CustomerNotifySurvey { get; set; } = "true";
     public string CustomerNotifyPayment { get; set; } = "true";
     public string CustomerNotifyMaintenance { get; set; } = "true";
+    public string CustomerReviewRequestEnabled { get; set; } = "true";
+    public string ReviewRequestDelayDays { get; set; } = "3";
+    public string GoogleReviewUrl { get; set; } = "";
     public string WhatsAppTemplateProduction { get; set; } = "";
     public string WhatsAppTemplateShipDate { get; set; } = "";
     public string WhatsAppTemplateInstallation { get; set; } = "";
@@ -82,6 +85,7 @@ public sealed class SiteSettings
     public string WhatsAppTemplateSurvey { get; set; } = "";
     public string WhatsAppTemplatePayment { get; set; } = "";
     public string WhatsAppTemplateMaintenance { get; set; } = "";
+    public string WhatsAppTemplateReview { get; set; } = "";
     public string ConsentText { get; set; } = "";
     public string HeroEyebrow { get; set; } = "";
     public string HeroTitle { get; set; } = "";

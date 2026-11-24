@@ -209,6 +209,7 @@ public sealed class CustomerNotifier
         CustomerEvents.SurveyVisit => site.CustomerNotifySurvey == "true",
         CustomerEvents.PaymentDue => site.CustomerNotifyPayment == "true",
         CustomerEvents.MaintenanceAnnual or CustomerEvents.MaintenanceWarranty => site.CustomerNotifyMaintenance == "true",
+        CustomerEvents.ReviewRequest => site.CustomerReviewRequestEnabled == "true",
         _ => false
     };
 
@@ -221,6 +222,7 @@ public sealed class CustomerNotifier
         CustomerEvents.SurveyVisit => site.WhatsAppTemplateSurvey,
         CustomerEvents.PaymentDue => site.WhatsAppTemplatePayment,
         CustomerEvents.MaintenanceAnnual or CustomerEvents.MaintenanceWarranty => site.WhatsAppTemplateMaintenance,
+        CustomerEvents.ReviewRequest => site.WhatsAppTemplateReview,
         _ => ""
     };
 
@@ -307,6 +309,10 @@ public sealed class CustomerNotifier
             CustomerEvents.MaintenanceWarranty when maintenance is not null => new($"Garantiniz {DateText(maintenance.WarrantyEnds)} tarihinde bitiyor | {site.SiteName}", customer, o.OrderNumber,
                 $"{o.OrderNumber} numaralı \"{o.Title}\" işinizin garanti süresi {DateText(maintenance.WarrantyEnds)} tarihinde sona eriyor. Garanti kapsamında bakmamızı istediğiniz bir sorun varsa bu tarihten önce bildirin; bakım ve kontrol talebi için: {MaintenanceLink(o, site)}",
                 DateText(maintenance.WarrantyEnds), MaintenanceLink(o, site)),
+            CustomerEvents.ReviewRequest => new($"Memnun kaldınız mı? | {site.SiteName}", customer, o.Title,
+                $"\"{o.Title}\" işinizi teslim edeli birkaç gün oldu. Memnun kaldıysanız Google'da birkaç cümleyle değerlendirmeniz bizim için çok değerli: {site.GoogleReviewUrl.Trim()}"
+                + (o.TrackingToken is null ? "" : $" Bir sorun varsa bu mesajı yanıtlayın veya takip sayfasından servis talebi açın: {KarakusAluminyum.Web.Services.Documents.DocumentLinks.TrackingUrl(site.BaseUrl, o.TrackingToken)}"),
+                site.GoogleReviewUrl.Trim(), o.TrackingToken is null ? site.BaseUrl : KarakusAluminyum.Web.Services.Documents.DocumentLinks.TrackingUrl(site.BaseUrl, o.TrackingToken)),
             CustomerEvents.QuoteAccepted => new($"Teklif onayınız alındı | {site.SiteName}", customer, o.OrderNumber,
                 $"{o.Quote?.QuoteNumber} numaralı \"{o.Title}\" teklifimizi onayladınız; {o.OrderNumber} numaralı siparişiniz oluşturuldu. Ekibimiz üretim ve montaj planı için sizinle iletişime geçecek." + (o.Quote?.AcceptedTotal is decimal total ? $" Onaylanan tutar: {total.ToString("#,0.00", Tr)} ₺." : ""), DateText(KarakusAluminyum.Web.Services.Documents.PrintDates.Today), o.Title),
             CustomerEvents.ShipDate => new($"Sevk tarihiniz: {DateText(o.PlannedShipDate)} | {site.SiteName}", customer, o.OrderNumber,
