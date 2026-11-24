@@ -103,6 +103,8 @@ public sealed class OrdersController : Controller
         ViewBag.PunchPositions = await PunchController.PositionsAsync(_db, new[] { order.DrawingListId });
         order.TrackingToken = await KarakusAluminyum.Web.Services.Documents.DocumentLinks.EnsureTrackingAsync(_db, id, order.TrackingToken);
         ViewBag.TrackingQr = KarakusAluminyum.Web.Services.Documents.DocumentLinks.QrFor(KarakusAluminyum.Web.Services.Documents.DocumentLinks.TrackingUrl(Request, order.TrackingToken));
+        ViewBag.Payment = await PaymentPlans.SummaryAsync(_db, id, KarakusAluminyum.Web.Services.Documents.PrintDates.Today);
+        ViewBag.PaymentRows = await _db.OrderInstallments.AsNoTracking().Where(x => x.ProductionOrderId == id).OrderBy(x => x.SortOrder).ThenBy(x => x.Id).ToListAsync();
         ViewBag.Notices = await _db.NotificationJobs.AsNoTracking().Where(x => x.ProductionOrderId == id).OrderByDescending(x => x.Id).Take(50).ToListAsync();
         ViewBag.Load = (await _orders.LoadsAsync(new[] { order.DrawingListId })).GetValueOrDefault(order.DrawingListId ?? 0, OrderLoad.Empty);
         ViewBag.SystemIds = order.DrawingListId is int listId ? await _db.WindowDesigns.Where(x => x.DrawingListId == listId && x.ProfileSystemId != null).Select(x => x.Id).ToListAsync() : new List<int>();
@@ -250,6 +252,53 @@ public sealed class OrdersController : Controller
         }
         TempData["Notice"] = "Montaj bilgileri kaydedildi.";
         return RedirectToAction(nameof(Details), new { id });
+    }
+
+    // ---- Ödeme planı (README 7.19) ----
+
+    // Planı baştan yazar: boş satırlar atlanır; vadesi gelecekteki taksitler için müşteriye hatırlatma sıraya alınır.
+    [HttpPost("odeme-plani/{id:int}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> SavePaymentPlan(int id, List<InstallmentInput> rows)
+    {
+        var order = await _db.ProductionOrders.Include(x => x.Events).Include(x => x.Customer).FirstOrDefaultAsync(x => x.Id == id);
+        if (order is null) return NotFound();
+        var kept = new List<OrderInstallment>();
+        foreach (var (row, i) in rows.Select((r, i) => (r, i + 1)))
+        {
+            if (row.Amount == 0 && string.IsNullOrWhiteSpace(row.Label)) continue;
+            if (row.Amount <= 0 || row.Amount > 1_000_000_000) { TempData["Notice"] = $"Satır {i}: tutar sıfırdan büyük olmalıdır."; return Redirect($"/yonetim/siparisler/detay/{id}#odeme"); }
+            var label = string.IsNullOrWhiteSpace(row.Label) ? "Ödeme" : row.Label.Trim();
+            kept.Add(new OrderInstallment { ProductionOrderId = id, SortOrder = kept.Count, Label = label.Length > 60 ? label[..60] : label, DueOn = row.DueOn, Amount = decimal.Round(row.Amount, 2), Note = string.IsNullOrWhiteSpace(row.Note) ? null : row.Note.Trim()[..Math.Min(row.Note.Trim().Length, 200)] });
+        }
+        await ReplacePlanAsync(order, kept);
+        TempData["Notice"] = kept.Count == 0 ? "Ödeme planı kaldırıldı." : "Ödeme planı kaydedildi.";
+        return Redirect($"/yonetim/siparisler/detay/{id}#odeme");
+    }
+
+    // Hızlı plan: toplam tutar ve kapora oranından "kapora bugün + kalan sevk tarihinde".
+    [HttpPost("odeme-plani-oner/{id:int}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> SuggestPaymentPlan(int id, decimal total, decimal depositPercent = 30)
+    {
+        var order = await _db.ProductionOrders.Include(x => x.Events).Include(x => x.Customer).FirstOrDefaultAsync(x => x.Id == id);
+        if (order is null) return NotFound();
+        if (await _db.OrderInstallments.AnyAsync(x => x.ProductionOrderId == id)) { TempData["Notice"] = "Bu siparişin ödeme planı var; satırları düzenleyin."; return Redirect($"/yonetim/siparisler/detay/{id}#odeme"); }
+        var rows = PaymentPlans.Suggest(total, depositPercent, KarakusAluminyum.Web.Services.Documents.PrintDates.Today, order.InstallationDate ?? order.PlannedShipDate);
+        if (rows.Count == 0) { TempData["Notice"] = "Toplam tutarı yazın."; return Redirect($"/yonetim/siparisler/detay/{id}#odeme"); }
+        foreach (var r in rows) r.ProductionOrderId = id;
+        await ReplacePlanAsync(order, rows);
+        TempData["Notice"] = "Ödeme planı oluşturuldu.";
+        return Redirect($"/yonetim/siparisler/detay/{id}#odeme");
+    }
+
+    private async Task ReplacePlanAsync(ProductionOrder order, List<OrderInstallment> rows)
+    {
+        _db.OrderInstallments.RemoveRange(await _db.OrderInstallments.Where(x => x.ProductionOrderId == order.Id).ToListAsync());
+        _db.OrderInstallments.AddRange(rows);
+        var culture = KarakusAluminyum.Web.Services.Documents.TurkishNumbers.Culture;
+        OrderService.Record(order, rows.Count == 0 ? "Ödeme planı kaldırıldı." : $"Ödeme planı: {string.Join(", ", rows.Select(r => $"{r.Label} {r.Amount.ToString("#,0.00", culture)} ₺{(r.DueOn is DateOnly d ? " " + d.ToString("dd.MM.yyyy") : "")}"))}.", UserName);
+        await _notifier.PaymentPlanChangedAsync(order, rows);
+        await _db.SaveChangesAsync();
+        await _audit.RecordAsync("payment-plan", "ProductionOrder", order.Id.ToString(), $"{rows.Count} taksit, {rows.Sum(r => r.Amount)} TL");
     }
 
     // Müşteri takip bağlantısını yeniler: eski bağlantı ve QR (teslim tutanağı, e-postalar) artık açılmaz.

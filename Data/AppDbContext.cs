@@ -61,6 +61,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ServicePart> ServiceParts => Set<ServicePart>();
     public DbSet<PunchItem> PunchItems => Set<PunchItem>();
     public DbSet<SiteSurvey> SiteSurveys => Set<SiteSurvey>();
+    public DbSet<OrderInstallment> OrderInstallments => Set<OrderInstallment>();
     public DbSet<SurveyLine> SurveyLines => Set<SurveyLine>();
     public DbSet<OrderEvent> OrderEvents => Set<OrderEvent>();
     public DbSet<Installer> Installers => Set<Installer>();
@@ -181,6 +182,9 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<ServicePart>().HasOne<KarakusAluminyum.Web.Models.Accounting.Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.SetNull);
         builder.Entity<ServicePart>().HasOne(x => x.ServiceVisit).WithMany(x => x.Parts).HasForeignKey(x => x.ServiceVisitId).OnDelete(DeleteBehavior.Cascade);
         builder.Entity<ProductionOrder>().HasIndex(x => x.TrackingToken).IsUnique();
+        builder.Entity<OrderInstallment>().HasOne(x => x.ProductionOrder).WithMany().HasForeignKey(x => x.ProductionOrderId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<OrderInstallment>().HasIndex(x => new { x.ProductionOrderId, x.SortOrder });
+        builder.Entity<CashTransaction>().HasOne<ProductionOrder>().WithMany().HasForeignKey(x => x.ProductionOrderId).OnDelete(DeleteBehavior.SetNull);
         builder.Entity<SiteSurvey>().HasIndex(x => x.Number).IsUnique();
         builder.Entity<SiteSurvey>().HasIndex(x => new { x.Status, x.PlannedOn });
         builder.Entity<SiteSurvey>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);

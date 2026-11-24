@@ -73,11 +73,13 @@ public sealed class SiteSettings
     public string CustomerNotifyInstallation { get; set; } = "true";
     public string CustomerNotifyServiceVisit { get; set; } = "true";
     public string CustomerNotifySurvey { get; set; } = "true";
+    public string CustomerNotifyPayment { get; set; } = "true";
     public string WhatsAppTemplateProduction { get; set; } = "";
     public string WhatsAppTemplateShipDate { get; set; } = "";
     public string WhatsAppTemplateInstallation { get; set; } = "";
     public string WhatsAppTemplateServiceVisit { get; set; } = "";
     public string WhatsAppTemplateSurvey { get; set; } = "";
+    public string WhatsAppTemplatePayment { get; set; } = "";
     public string ConsentText { get; set; } = "";
     public string HeroEyebrow { get; set; } = "";
     public string HeroTitle { get; set; } = "";

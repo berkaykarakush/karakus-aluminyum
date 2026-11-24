@@ -48,7 +48,8 @@ public static class CustomerEvents
     public const string Installation = "order.install";    // montajdan bir gün önce hatırlatma
     public const string ServiceVisit = "service.visit";    // servis ziyareti günü ve saati
     public const string SurveyVisit = "survey.visit";      // keşif (ölçü) randevusu günü ve saati
-    public static readonly string[] All = { Production, ShipDate, Installation, ServiceVisit, SurveyVisit };
+    public const string PaymentDue = "payment.due";        // ödeme planında vadesi yaklaşan taksit (README 7.19)
+    public static readonly string[] All = { Production, ShipDate, Installation, ServiceVisit, SurveyVisit, PaymentDue };
     // Ekibe: müşteri takip sayfasından servis talebi açtı (README 7.7)
     public const string ServiceRequested = "service.request";
     // Müşteri teklifi QR'lı sayfadan onayladı (README 7.18): ekibe ve müşteriye; iş siparişe bağlıdır.
@@ -61,6 +62,7 @@ public static class CustomerEvents
         Installation => "Montaj hatırlatması",
         ServiceVisit => "Servis ziyareti",
         SurveyVisit => "Keşif randevusu",
+        PaymentDue => "Ödeme hatırlatması",
         ServiceRequested => "Web servis talebi",
         QuoteAccepted => "Teklif onayı",
         _ => "Teklif talebi"

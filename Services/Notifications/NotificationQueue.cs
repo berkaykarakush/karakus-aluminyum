@@ -115,14 +115,16 @@ public sealed class NotificationDispatcher
                 // Müşteri bildirimi: sıraya alındıktan sonra tarih değiştiyse veya iş iptal edildiyse gönderilmez.
                 var customerEvent = job.Event is not null;
                 if (customerEvent && CustomerNotifier.Obsolete(job, DateTime.UtcNow) is string reason) throw new SkipNotificationException(reason);
+                // Ödeme hatırlatması: o vadede ödenmemiş tutar gönderim anında hesaplanır; ödendiyse veya plan değiştiyse gitmez.
+                var payment = job.Event == CustomerEvents.PaymentDue ? await PaymentAsync(job, cancellationToken) : null;
                 job.ProviderMessageId = job.Channel switch
                 {
                     NotificationChannel.AdminEmail when job.Event == CustomerEvents.QuoteAccepted => await _email.SendAsync(CustomerNotifier.TeamQuoteAcceptedEmail(job, site), cancellationToken),
                     NotificationChannel.AdminEmail when job.Event == CustomerEvents.ServiceRequested => await _email.SendAsync(CustomerNotifier.TeamServiceEmail(job, site), cancellationToken),
                     NotificationChannel.AdminEmail => await _email.SendAsync(NotificationComposer.AdminEmail(job.ContactMessage!, job.Recipient, site), cancellationToken),
-                    NotificationChannel.CustomerEmail when customerEvent => await _email.SendAsync(CustomerNotifier.Email(job, site), cancellationToken),
+                    NotificationChannel.CustomerEmail when customerEvent => await _email.SendAsync(CustomerNotifier.Email(job, site, payment), cancellationToken),
                     NotificationChannel.CustomerEmail => await _email.SendAsync(NotificationComposer.CustomerEmail(job.Recipient, site), cancellationToken),
-                    NotificationChannel.CustomerWhatsApp => await _whatsApp.SendAsync(CustomerNotifier.WhatsApp(job, site), cancellationToken),
+                    NotificationChannel.CustomerWhatsApp => await _whatsApp.SendAsync(CustomerNotifier.WhatsApp(job, site, payment), cancellationToken),
                     _ => await _whatsApp.SendAsync(NotificationComposer.AdminWhatsApp(job.ContactMessage!, job.Recipient, site), cancellationToken)
                 };
                 job.Status = NotificationStatus.Sent;
@@ -154,6 +156,16 @@ public sealed class NotificationDispatcher
             await _db.SaveChangesAsync(CancellationToken.None);
         }
         return sent;
+    }
+
+    private async Task<CustomerNotifier.PaymentInfo> PaymentAsync(NotificationJob job, CancellationToken cancellationToken)
+    {
+        var today = CustomerNotifier.Today(DateTime.UtcNow);
+        var summary = await KarakusAluminyum.Web.Services.Production.PaymentPlans.SummaryAsync(_db, job.ProductionOrderId!.Value, today);
+        var due = summary.Rows.Where(r => r.Row.DueOn == job.EventDate && r.Remaining > 0).ToList();
+        if (due.Count == 0) throw new SkipNotificationException("Taksit ödendi veya plan değişti; gönderilmedi.");
+        var template = await KarakusAluminyum.Web.Services.Documents.DocumentViews.CurrentTemplateAsync(_db, KarakusAluminyum.Web.Models.Documents.DocumentKinds.Quote);
+        return new CustomerNotifier.PaymentInfo(due.Sum(r => r.Remaining), string.Join(" ve ", due.Select(r => r.Row.Label.ToLower(new System.Globalization.CultureInfo("tr-TR")))), template.BankInfo);
     }
 
     private void Fail(NotificationJob job, string message)

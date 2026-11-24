@@ -961,7 +961,7 @@ public sealed class AccountingFlowTests(PostgresFixture postgres)
                 await db.SaveChangesAsync();
                 await db.Database.ExecuteSqlRawAsync("""
                     DROP TABLE "PaymentAllocations"; DROP TABLE "CashTransactions"; DROP TABLE "Cheques"; DROP TABLE "Expenses"; DROP TABLE "ExpenseCategories"; DROP TABLE "StockMovements";
-                    ALTER TABLE "NotificationJobs" DROP COLUMN IF EXISTS "SiteSurveyId"; DROP TABLE IF EXISTS "SurveyLines", "SiteSurveys"; ALTER TABLE "NotificationJobs" DROP COLUMN IF EXISTS "ProductionOrderId", DROP COLUMN IF EXISTS "ServiceRequestId"; DROP TABLE IF EXISTS "PunchItems", "WorkLogs", "ServiceParts", "ServiceVisits", "ServiceRequests"; -- servis tabloları fatura ve stok kartına bağlı
+                    DROP TABLE IF EXISTS "OrderInstallments"; ALTER TABLE IF EXISTS "CashTransactions" DROP COLUMN IF EXISTS "ProductionOrderId"; ALTER TABLE "NotificationJobs" DROP COLUMN IF EXISTS "SiteSurveyId"; DROP TABLE IF EXISTS "SurveyLines", "SiteSurveys"; ALTER TABLE "NotificationJobs" DROP COLUMN IF EXISTS "ProductionOrderId", DROP COLUMN IF EXISTS "ServiceRequestId"; DROP TABLE IF EXISTS "PunchItems", "WorkLogs", "ServiceParts", "ServiceVisits", "ServiceRequests"; -- servis tabloları fatura ve stok kartına bağlı
                     DROP TABLE "InvoiceLines"; DROP TABLE "Invoices";
                     DROP TABLE IF EXISTS "ProductionScans", "DeliveryNoteLines", "DeliveryNotes", "OrderEvents", "ProductionOrders", "Installers";
                     DROP TABLE "ProjectCostItems"; DROP TABLE "CostProjects";

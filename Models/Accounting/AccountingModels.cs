@@ -145,6 +145,7 @@ public sealed class CashTransaction
     public int? EmployeeId { get; set; }
     public Employee? Employee { get; set; }
     public Guid? TransferGroup { get; set; }
+    public int? ProductionOrderId { get; set; } // tahsilatın ait olduğu sipariş: ödeme planında düşülür (README 7.19)
     [StringLength(500)] public string? Description { get; set; }
     public bool IsCancelled { get; set; }
     [StringLength(500)] public string? CancelReason { get; set; }

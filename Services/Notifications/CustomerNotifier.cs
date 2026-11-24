@@ -95,6 +95,31 @@ public sealed class CustomerNotifier
         await AddAsync(planned, customer, survey.ContactPhone, job => job.SiteSurvey = survey, nowUtc);
     }
 
+    // Ödeme hatırlatması: vadesi gelecekte olan taksit için vadeden önceki gün 10:00 (TR); o saat geçtiyse kısa beklemeyle.
+    public static DateTime PaymentReminderUtc(DateOnly due, DateTime nowUtc)
+    {
+        var at = due.AddDays(-1).ToDateTime(new TimeOnly(10, 0), DateTimeKind.Utc) - TurkeyOffset;
+        return at < nowUtc + Delay ? nowUtc + Delay : at;
+    }
+
+    public static List<PlannedNotice> PlanPayments(IEnumerable<OrderInstallment> installments, DateTime nowUtc)
+    {
+        var today = Today(nowUtc);
+        return installments.Where(x => x.DueOn is DateOnly d && d > today && x.Amount > 0).Select(x => x.DueOn!.Value).Distinct()
+            .Select(d => new PlannedNotice(CustomerEvents.PaymentDue, d, null, PaymentReminderUtc(d, nowUtc))).ToList();
+    }
+
+    public async Task PaymentPlanChangedAsync(ProductionOrder order, IEnumerable<OrderInstallment> installments, DateTime? now = null)
+    {
+        var nowUtc = now ?? DateTime.UtcNow;
+        var planned = order.Status == OrderStatus.Cancelled ? new List<PlannedNotice>() : PlanPayments(installments, nowUtc);
+        await SupersedeAsync(x => x.ProductionOrderId == order.Id, new List<string> { CustomerEvents.PaymentDue }, planned);
+        if (planned.Count == 0) return;
+        var customer = order.Customer ?? await _db.Customers.FirstOrDefaultAsync(x => x.Id == order.CustomerId);
+        order.TrackingToken ??= KarakusAluminyum.Web.Services.Documents.DocumentLinks.NewToken();
+        await AddAsync(planned, customer, order.ContactPhone, job => job.ProductionOrderId = order.Id, nowUtc);
+    }
+
     public async Task OrderChangedAsync(ProductionOrder order, OrderSnapshot before, DateTime? now = null)
     {
         var nowUtc = now ?? DateTime.UtcNow;
@@ -182,6 +207,7 @@ public sealed class CustomerNotifier
         CustomerEvents.Installation => site.CustomerNotifyInstallation == "true",
         CustomerEvents.ServiceVisit => site.CustomerNotifyServiceVisit == "true",
         CustomerEvents.SurveyVisit => site.CustomerNotifySurvey == "true",
+        CustomerEvents.PaymentDue => site.CustomerNotifyPayment == "true",
         _ => false
     };
 
@@ -192,6 +218,7 @@ public sealed class CustomerNotifier
         CustomerEvents.Installation => site.WhatsAppTemplateInstallation,
         CustomerEvents.ServiceVisit => site.WhatsAppTemplateServiceVisit,
         CustomerEvents.SurveyVisit => site.WhatsAppTemplateSurvey,
+        CustomerEvents.PaymentDue => site.WhatsAppTemplatePayment,
         _ => ""
     };
 
@@ -236,9 +263,12 @@ public sealed class CustomerNotifier
     public static string DateText(DateOnly? date, TimeOnly? time = null)
         => date is DateOnly d ? d.ToString("d MMMM yyyy dddd", Tr) + (time is TimeOnly t ? $", saat {t:HH\\:mm}" : "") : "henüz belirlenmedi";
 
+    // Ödeme hatırlatmasında gönderim anında hesaplanan kalan tutar ve banka bilgisi.
+    public sealed record PaymentInfo(decimal Remaining, string Labels, string? BankInfo);
+
     public sealed record CustomerMessage(string Subject, string Name, string Number, string Body, string DateText, string Extra);
 
-    public static CustomerMessage Compose(NotificationJob job, SiteSettings site)
+    public static CustomerMessage Compose(NotificationJob job, SiteSettings site, PaymentInfo? payment = null)
     {
         if (job.ServiceRequest is { } r)
         {
@@ -262,6 +292,10 @@ public sealed class CustomerNotifier
         {
             CustomerEvents.Production => new($"Siparişiniz üretime alındı | {site.SiteName}", customer, o.OrderNumber,
                 $"{o.OrderNumber} numaralı \"{o.Title}\" siparişiniz üretime alındı." + (o.PlannedShipDate is null ? "" : $" Planlanan sevk tarihi: {DateText(o.PlannedShipDate)}."), DateText(o.PlannedShipDate), o.Title),
+            CustomerEvents.PaymentDue when payment is not null => new($"Ödeme hatırlatması: {DateText(job.EventDate)} | {site.SiteName}", customer, o.OrderNumber,
+                $"{o.OrderNumber} numaralı \"{o.Title}\" siparişinizin {payment.Labels} ödemesinin vadesi {DateText(job.EventDate)}. Ödenecek tutar: {payment.Remaining.ToString("#,0.00", Tr)} ₺."
+                + (string.IsNullOrWhiteSpace(payment.BankInfo) ? "" : $" Banka bilgilerimiz: {payment.BankInfo.Trim()}") + " Ödemeyi yaptıysanız bu mesajı dikkate almayın.",
+                DateText(job.EventDate), payment.Remaining.ToString("#,0.00", Tr) + " ₺"),
             CustomerEvents.QuoteAccepted => new($"Teklif onayınız alındı | {site.SiteName}", customer, o.OrderNumber,
                 $"{o.Quote?.QuoteNumber} numaralı \"{o.Title}\" teklifimizi onayladınız; {o.OrderNumber} numaralı siparişiniz oluşturuldu. Ekibimiz üretim ve montaj planı için sizinle iletişime geçecek." + (o.Quote?.AcceptedTotal is decimal total ? $" Onaylanan tutar: {total.ToString("#,0.00", Tr)} ₺." : ""), DateText(KarakusAluminyum.Web.Services.Documents.PrintDates.Today), o.Title),
             CustomerEvents.ShipDate => new($"Sevk tarihiniz: {DateText(o.PlannedShipDate)} | {site.SiteName}", customer, o.OrderNumber,
@@ -280,9 +314,9 @@ public sealed class CustomerNotifier
 
     private static string Name(string? contact, Customer? customer) => !string.IsNullOrWhiteSpace(contact) ? contact.Trim() : customer?.Name ?? "Değerli müşterimiz";
 
-    public static OutgoingEmail Email(NotificationJob job, SiteSettings site)
+    public static OutgoingEmail Email(NotificationJob job, SiteSettings site, PaymentInfo? payment = null)
     {
-        var m = Compose(job, site);
+        var m = Compose(job, site, payment);
         string H(string v) => WebUtility.HtmlEncode(v);
         var footer = $"Sorularınız için {site.PhoneText} numarasından veya {site.Email} adresinden bize ulaşabilirsiniz.";
         var token = job.ProductionOrder?.TrackingToken ?? job.ServiceRequest?.ProductionOrder?.TrackingToken;
@@ -301,9 +335,9 @@ public sealed class CustomerNotifier
         return new OutgoingEmail(job.Recipient, m.Subject.Length > 150 ? m.Subject[..150] : m.Subject, text, html, NotificationComposer.IsEmail(site.Email) ? site.Email : null);
     }
 
-    public static OutgoingWhatsApp WhatsApp(NotificationJob job, SiteSettings site)
+    public static OutgoingWhatsApp WhatsApp(NotificationJob job, SiteSettings site, PaymentInfo? payment = null)
     {
-        var m = Compose(job, site);
+        var m = Compose(job, site, payment);
         var template = TemplateFor(site, job.Event);
         if (string.IsNullOrWhiteSpace(template)) throw new PermanentNotificationException("Bu olay için WhatsApp şablon adı yazılmamış.");
         return new OutgoingWhatsApp(job.Recipient, template, string.IsNullOrWhiteSpace(site.WhatsAppTemplateLanguage) ? "tr" : site.WhatsAppTemplateLanguage,
