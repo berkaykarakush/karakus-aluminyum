@@ -22,9 +22,22 @@ public static class DocumentLinks
     // Adres, belgeyi açan isteğin alan adından kurulur (nginx arkasında iletilen başlıklarla doğru alan adı gelir).
     public static string Url(HttpRequest request, string kind, string token) => $"{request.Scheme}://{request.Host}{request.PathBase}/belge/{kind}/{token}";
 
-    public static DocumentQr Qr(HttpRequest request, string kind, string token)
+    public static DocumentQr Qr(HttpRequest request, string kind, string token) => QrFor(Url(request, kind, token));
+
+    // Müşteri takip sayfası (README 7.7): sipariş durumu ve servis talebi. Belge değil, siparişin canlı hâlidir.
+    public static string TrackingPath(string token) => $"/takip/{token}";
+    public static string TrackingUrl(HttpRequest request, string token) => $"{request.Scheme}://{request.Host}{request.PathBase}{TrackingPath(token)}";
+    public static string TrackingUrl(string baseUrl, string token) => baseUrl.TrimEnd('/') + TrackingPath(token);
+
+    public static async Task<string> EnsureTrackingAsync(AppDbContext db, int orderId, string? current)
     {
-        var url = Url(request, kind, token);
+        if (current is not null) return current;
+        await db.ProductionOrders.Where(x => x.Id == orderId && x.TrackingToken == null).ExecuteUpdateAsync(s => s.SetProperty(x => x.TrackingToken, NewToken()));
+        return await db.ProductionOrders.Where(x => x.Id == orderId).Select(x => x.TrackingToken!).SingleAsync();
+    }
+
+    public static DocumentQr QrFor(string url)
+    {
         using var generator = new QRCodeGenerator();
         using var data = generator.CreateQrCode(url, QRCodeGenerator.ECCLevel.M);
         var svg = new SvgQRCode(data).GetGraphic(1, "#000000", "#ffffff", drawQuietZones: true, sizingMode: SvgQRCode.SizingMode.ViewBoxAttribute);

@@ -52,6 +52,18 @@ public sealed class NotificationQueue
     }
 }
 
+// Müşteri takip sayfasından gelen servis talebi ekibe e-postayla bildirilir (teklif bildirimi alıcıları).
+public static class TeamNotices
+{
+    public static async Task AddServiceRequestAsync(AppDbContext db, SiteSettingsProvider settings, NotificationOptions options, KarakusAluminyum.Web.Models.Production.ServiceRequest request)
+    {
+        var site = await settings.GetAsync();
+        if (site.NotifyEmailEnabled != "true") return;
+        foreach (var to in NotificationComposer.Split(string.IsNullOrWhiteSpace(site.NotifyEmailTo) ? options.Smtp.To : site.NotifyEmailTo).Where(NotificationComposer.IsEmail))
+            db.NotificationJobs.Add(new NotificationJob { Channel = NotificationChannel.AdminEmail, Recipient = to, Event = CustomerEvents.ServiceRequested, ServiceRequest = request });
+    }
+}
+
 public sealed class NotificationDispatcher
 {
     public const int MaxAttempts = 6;
@@ -85,6 +97,7 @@ public sealed class NotificationDispatcher
             var job = await _db.NotificationJobs.Include(x => x.ContactMessage)
                 .Include(x => x.ProductionOrder).ThenInclude(x => x!.Customer)
                 .Include(x => x.ServiceRequest).ThenInclude(x => x!.Customer)
+                .Include(x => x.ServiceRequest).ThenInclude(x => x!.ProductionOrder)
                 .AsSplitQuery().SingleAsync(x => x.Id == id, cancellationToken);
             job.Attempts++;
             try
@@ -94,6 +107,7 @@ public sealed class NotificationDispatcher
                 if (customerEvent && CustomerNotifier.Obsolete(job, DateTime.UtcNow) is string reason) throw new SkipNotificationException(reason);
                 job.ProviderMessageId = job.Channel switch
                 {
+                    NotificationChannel.AdminEmail when job.Event == CustomerEvents.ServiceRequested => await _email.SendAsync(CustomerNotifier.TeamServiceEmail(job, site), cancellationToken),
                     NotificationChannel.AdminEmail => await _email.SendAsync(NotificationComposer.AdminEmail(job.ContactMessage!, job.Recipient, site), cancellationToken),
                     NotificationChannel.CustomerEmail when customerEvent => await _email.SendAsync(CustomerNotifier.Email(job, site), cancellationToken),
                     NotificationChannel.CustomerEmail => await _email.SendAsync(NotificationComposer.CustomerEmail(job.Recipient, site), cancellationToken),

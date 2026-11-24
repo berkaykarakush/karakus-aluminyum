@@ -83,6 +83,7 @@ public sealed class CustomerNotifier
         await SupersedeAsync(x => x.ProductionOrderId == order.Id, changed.Concat(planned.Select(p => p.Event)).Distinct().ToList(), planned);
         if (planned.Count == 0) return;
         var customer = order.Customer ?? await _db.Customers.FirstOrDefaultAsync(x => x.Id == order.CustomerId);
+        order.TrackingToken ??= KarakusAluminyum.Web.Services.Documents.DocumentLinks.NewToken(); // e-postadaki takip bağlantısı
         await AddAsync(planned, customer, order.ContactPhone, job => job.ProductionOrderId = order.Id, nowUtc);
     }
 
@@ -170,6 +171,7 @@ public sealed class CustomerNotifier
     public static string? Obsolete(NotificationJob job, DateTime nowUtc)
     {
         var today = Today(nowUtc);
+        if (job.Event == CustomerEvents.ServiceRequested) return job.ServiceRequest is null ? "Servis talebi silindi." : null;
         if (job.ServiceRequestId is not null)
         {
             var r = job.ServiceRequest;
@@ -236,11 +238,15 @@ public sealed class CustomerNotifier
         var m = Compose(job, site);
         string H(string v) => WebUtility.HtmlEncode(v);
         var footer = $"Sorularınız için {site.PhoneText} numarasından veya {site.Email} adresinden bize ulaşabilirsiniz.";
-        var text = $"Merhaba {m.Name},\n\n{m.Body}\n\n{footer}\n\n{site.SiteName}\n{site.BaseUrl}\n";
+        var token = job.ProductionOrder?.TrackingToken ?? job.ServiceRequest?.ProductionOrder?.TrackingToken;
+        var track = token is null ? null : KarakusAluminyum.Web.Services.Documents.DocumentLinks.TrackingUrl(site.BaseUrl, token);
+        var trackText = track is null ? "" : $"\n\nSiparişinizin durumunu görmek veya servis talebi açmak için: {track}";
+        var text = $"Merhaba {m.Name},\n\n{m.Body}{trackText}\n\n{footer}\n\n{site.SiteName}\n{site.BaseUrl}\n";
         var html = $"""
             <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#111;font-size:15px;line-height:1.6">
               <p>Merhaba {H(m.Name)},</p>
               <p>{H(m.Body)}</p>
+              {(track is null ? "" : $"<p><a href=\"{H(track)}\" style=\"background:#2c5f7c;color:#fff;padding:10px 16px;border-radius:7px;text-decoration:none\">Siparişimi takip et</a></p>")}
               <p>{H(footer)}</p>
               <p><strong>{H(site.SiteName)}</strong><br /><a href="{H(site.BaseUrl)}">{H(site.BaseUrl)}</a></p>
             </div>
@@ -255,5 +261,24 @@ public sealed class CustomerNotifier
         if (string.IsNullOrWhiteSpace(template)) throw new PermanentNotificationException("Bu olay için WhatsApp şablon adı yazılmamış.");
         return new OutgoingWhatsApp(job.Recipient, template, string.IsNullOrWhiteSpace(site.WhatsAppTemplateLanguage) ? "tr" : site.WhatsAppTemplateLanguage,
             new[] { m.Name, m.Number, m.DateText, m.Extra }, $"Merhaba {m.Name}, {m.Body}");
+    }
+
+    // Ekibe: müşteri takip sayfasından servis talebi geldi.
+    public static OutgoingEmail TeamServiceEmail(NotificationJob job, SiteSettings site)
+    {
+        var r = job.ServiceRequest!;
+        var panel = $"{site.BaseUrl.TrimEnd('/')}/yonetim/servis/detay/{r.Id}";
+        string H(string? v) => WebUtility.HtmlEncode(v ?? "-");
+        var subject = $"Web servis talebi: {r.Number} - {r.Customer?.Name}";
+        var text = $"Müşteri takip sayfasından servis talebi açıldı.\n\nNo: {r.Number}\nMüşteri: {r.Customer?.Name}\nSipariş: {r.ProductionOrder?.OrderNumber}\nİlgili kişi: {r.ContactName}\nTelefon: {r.ContactPhone}\nKonu: {r.Category}\n\n{r.Complaint}\n\nPanelde görüntüle: {panel}\n";
+        var html = $"""
+            <div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;font-size:14px;color:#111">
+              <h2 style="font-size:17px">Web servis talebi {H(r.Number)}</h2>
+              <p><strong>Müşteri:</strong> {H(r.Customer?.Name)}<br /><strong>Sipariş:</strong> {H(r.ProductionOrder?.OrderNumber)}<br /><strong>İlgili kişi:</strong> {H(r.ContactName)}<br /><strong>Telefon:</strong> {H(r.ContactPhone)}<br /><strong>Konu:</strong> {H(r.Category)}</p>
+              <p style="white-space:pre-wrap">{H(r.Complaint)}</p>
+              <p><a href="{H(panel)}" style="background:#2c5f7c;color:#fff;padding:10px 16px;border-radius:7px;text-decoration:none">Panelde görüntüle</a></p>
+            </div>
+            """;
+        return new OutgoingEmail(job.Recipient, subject.Length > 150 ? subject[..150] : subject, text, html, null);
     }
 }

@@ -1,0 +1,140 @@
+@model KarakusAluminyum.Web.Controllers.TrackingController.TrackingVm
+@using KarakusAluminyum.Web.Controllers
+@using KarakusAluminyum.Web.Models.Production
+@using KarakusAluminyum.Web.Models.Drawing
+@{
+    var o = Model.Order;
+    var step = TrackingController.StepOf(o.Status);
+    var cancelled = o.Status == OrderStatus.Cancelled;
+    var tr = new System.Globalization.CultureInfo("tr-TR");
+    string D(DateOnly? d) => d?.ToString("d MMMM yyyy, dddd", tr) ?? "";
+    var input = Model.Input;
+    var site = Model.Site;
+}
+<style>
+  .trk-steps{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;list-style:none;margin:22px 0 0;padding:0;counter-reset:trk}
+  .trk-steps li{position:relative;padding:12px 10px;border-radius:10px;background:#eef1f3;color:#5b6872;font-weight:600;font-size:14px;text-align:center}
+  .trk-steps li.is-done{background:#dceee3;color:#1f5d3a}
+  .trk-steps li.is-current{background:#2c5f7c;color:#fff}
+  .trk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:22px}
+  .trk-card{border:1px solid #e3e6e8;border-radius:12px;padding:14px 16px;background:#fff}
+  .trk-card span{display:block;color:#5b6872;font-size:13px}
+  .trk-card strong{font-size:16px}
+  .trk-table{width:100%;border-collapse:collapse;font-size:15px}
+  .trk-table th,.trk-table td{padding:10px 8px;border-bottom:1px solid #e3e6e8;text-align:left;vertical-align:top}
+  .trk-table th{font-size:13px;color:#5b6872;font-weight:600}
+  .trk-pozlar{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:6px 14px;margin:6px 0 0}
+  .trk-pozlar label{display:flex;gap:8px;align-items:flex-start;font-weight:400}
+  .trk-pozlar input{width:auto;margin-top:4px}
+  .trk-cancel{padding:14px 16px;border-radius:10px;background:#fbe9e7;color:#8a2b1d;font-weight:600;margin-top:18px}
+  @@media (max-width:700px){.trk-steps{grid-template-columns:1fr}.trk-steps li{text-align:left}}
+</style>
+<section class="page-hero">
+  <div class="container">
+    <span class="eyebrow">Sipariş takibi</span>
+    <h1>@o.Title</h1>
+    <p class="page-intro">Sipariş no <strong>@o.OrderNumber</strong> · @o.Customer?.Name</p>
+    @if (cancelled) { <p class="trk-cancel">Bu sipariş iptal edildi. Sorularınız için bize ulaşabilirsiniz.</p> }
+    else
+    {
+      <ol class="trk-steps" aria-label="Sipariş durumu">
+        @for (var i = 0; i < TrackingController.Steps.Length; i++)
+        {
+          var state = i == step ? "is-current" : i < step ? "is-done" : "";
+          <li class="@state" aria-current="@(i == step ? "step" : null)">@(i < step ? "✓ " : "")@TrackingController.Steps[i].Label</li>
+        }
+      </ol>
+    }
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    @if (TempData["TrackingNotice"] is string notice) { <p class="notice" id="servis-alindi">@notice</p> }
+    <div class="trk-grid">
+      <div class="trk-card"><span>Sipariş tarihi</span><strong>@D(o.OrderDate)</strong></div>
+      @if (o.DeliveredOn is not null) { <div class="trk-card"><span>Teslim tarihi</span><strong>@D(o.DeliveredOn)</strong></div> }
+      else
+      {
+        @if (o.PlannedShipDate is not null && o.Status < OrderStatus.Shipped) { <div class="trk-card"><span>Planlanan sevk tarihi</span><strong>@D(o.PlannedShipDate)</strong></div> }
+        @if (o.ShippedOn is not null) { <div class="trk-card"><span>Sevk tarihi</span><strong>@D(o.ShippedOn)</strong></div> }
+        @if (o.InstallationDate is not null && !o.InstallationExcluded) { <div class="trk-card"><span>Montaj günü</span><strong>@D(o.InstallationDate)</strong></div> }
+      }
+    </div>
+
+    @if (Model.Pozlar.Count > 0)
+    {
+      <h2 style="margin-top:34px">Ürünler</h2>
+      <div style="overflow-x:auto">
+      <table class="trk-table">
+        <thead><tr><th>Poz</th><th>Ürün</th><th>Ölçü (mm)</th><th>Adet</th></tr></thead>
+        <tbody>
+        @foreach (var (p, i) in Model.Pozlar.Select((p, i) => (p, i + 1)))
+        {
+          <tr><td>@i. @p.Name</td><td>@ProductCategories.Label(p.Category)</td><td>@p.WidthMm × @p.HeightMm</td><td>@p.Quantity</td></tr>
+        }
+        </tbody>
+      </table>
+      </div>
+    }
+
+    @if (Model.Services.Count > 0)
+    {
+      <h2 style="margin-top:34px">Servis talepleriniz</h2>
+      <div style="overflow-x:auto">
+      <table class="trk-table">
+        <thead><tr><th>No</th><th>Tarih</th><th>Konu</th><th>Durum</th></tr></thead>
+        <tbody>
+        @foreach (var s in Model.Services)
+        {
+          <tr>
+            <td>@s.Number</td><td>@s.ReceivedOn.ToString("dd.MM.yyyy")</td><td>@s.Category</td>
+            <td>@ServiceLabels.Label(s.Status)@if (s.Status == ServiceStatus.Scheduled && s.PlannedOn is not null) { <div>Ziyaret: @D(s.PlannedOn)@(s.PlannedAt is TimeOnly at ? ", saat " + at.ToString("HH:mm") : "")</div> }</td>
+          </tr>
+        }
+        </tbody>
+      </table>
+      </div>
+    }
+  </div>
+</section>
+
+<section class="section section--soft" id="servis">
+  <div class="container">
+    <h2>Servis talebi</h2>
+    <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+    @if (!Model.CanRequestService)
+    {
+      <p>Servis talebi, ürünler size teslim edildikten sonra bu sayfadan açılabilir. Sorularınız için <a href="tel:@site.PhoneE164">@site.PhoneDisplay</a> numarasından bize ulaşabilirsiniz.</p>
+    }
+    else
+    {
+      <p>Bir arıza, ayar ihtiyacı veya bakım isteğiniz varsa aşağıdan bize iletin; ekibimiz sizi arayıp ziyaret günü planlasın.</p>
+      <div class="contact-panel">
+      <form method="post" action="/takip/@o.TrackingToken/servis">
+        @Html.AntiForgeryToken()
+        <div class="form-grid">
+          <div class="form-field"><label for="ContactName">Adınız soyadınız</label><input id="ContactName" name="ContactName" value="@input.ContactName" autocomplete="name" required maxlength="120" /><span class="field-error">@Html.ValidationMessage("ContactName")</span></div>
+          <div class="form-field"><label for="ContactPhone">Telefon</label><input id="ContactPhone" name="ContactPhone" value="@input.ContactPhone" type="tel" autocomplete="tel" required maxlength="40" /><span class="field-error">@Html.ValidationMessage("ContactPhone")</span></div>
+          <div class="form-field form-field--full"><label for="Category">Konu</label><select id="Category" name="Category">@foreach (var c in ServiceLabels.Categories) { <option selected="@(c == input.Category)">@c</option> }</select></div>
+          @if (Model.Pozlar.Count > 0)
+          {
+            <div class="form-field form-field--full"><span style="font-weight:600">İlgili ürünler (isteğe bağlı)</span>
+              <div class="trk-pozlar">
+                @foreach (var (p, i) in Model.Pozlar.Select((p, i) => (p, i + 1)))
+                {
+                  <label><input type="checkbox" name="PozIds" value="@p.Id" checked="@input.PozIds.Contains(p.Id)" /> @i. @p.Name (@p.WidthMm × @p.HeightMm)</label>
+                }
+              </div>
+            </div>
+          }
+          <div class="form-field form-field--full"><label for="Complaint">Sorun</label><textarea id="Complaint" name="Complaint" required maxlength="2000" placeholder="Örn. salon penceresi tam kapanmıyor, yağmurda su alıyor.">@input.Complaint</textarea><span class="field-error">@Html.ValidationMessage("Complaint")</span></div>
+          <div class="honeypot" aria-hidden="true"><label for="Website">Web sitesi</label><input id="Website" name="Website" tabindex="-1" autocomplete="off" /></div>
+          <div class="form-field form-field--full consent"><label><input type="checkbox" name="PrivacyAccepted" value="true" checked="@input.PrivacyAccepted" /> <a href="/kvkk-aydinlatma-metni" target="_blank" rel="noopener">KVKK aydınlatma metnini</a> okudum.</label><span class="field-error">@Html.ValidationMessage("PrivacyAccepted")</span></div>
+          <div class="form-field form-field--full"><button class="button button--dark" type="submit">Servis talebi gönder</button></div>
+        </div>
+      </form>
+      </div>
+    }
+  </div>
+</section>

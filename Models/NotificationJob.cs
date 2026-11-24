@@ -46,6 +46,8 @@ public static class CustomerEvents
     public const string Installation = "order.install";    // montajdan bir gün önce hatırlatma
     public const string ServiceVisit = "service.visit";    // servis ziyareti günü ve saati
     public static readonly string[] All = { Production, ShipDate, Installation, ServiceVisit };
+    // Ekibe: müşteri takip sayfasından servis talebi açtı (README 7.7)
+    public const string ServiceRequested = "service.request";
 
     public static string Label(string? e) => e switch
     {
@@ -53,6 +55,7 @@ public static class CustomerEvents
         ShipDate => "Sevk tarihi",
         Installation => "Montaj hatırlatması",
         ServiceVisit => "Servis ziyareti",
+        ServiceRequested => "Web servis talebi",
         _ => "Teklif talebi"
     };
 }

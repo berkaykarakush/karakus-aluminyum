@@ -70,6 +70,7 @@ public sealed class ProductionOrder
     public DateOnly? ShippedOn { get; set; }
     public DateOnly? DeliveredOn { get; set; }
     [StringLength(2000)] public string? Notes { get; set; }
+    [StringLength(40)] public string? TrackingToken { get; set; } // müşteri takip sayfası: /takip/{anahtar}; panelden yenilenebilir
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
     public List<OrderEvent> Events { get; set; } = new();
