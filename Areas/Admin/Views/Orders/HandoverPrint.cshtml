@@ -56,6 +56,8 @@
       {
         <div style="height:28mm;border:1px solid #999;margin-bottom:4mm"></div>
       }
+      @{ var trackingQr = (KarakusAluminyum.Web.Services.Documents.DocumentQr)ViewBag.TrackingQr; }
+      <div style="display:flex;gap:4mm;align-items:center;margin:0 0 4mm;page-break-inside:avoid"><div style="width:22mm;flex:none">@Html.Raw(trackingQr.Svg)</div><div style="font-size:9pt">Siparişinizin durumunu görmek ve <strong>servis talebi açmak</strong> için QR kodu okutun veya şu adrese gidin:<br /><span style="word-break:break-all">@trackingQr.Url</span></div></div>
       <table class="pf-sign"><tbody><tr>
         <td><strong>Teslim eden (Satıcı)</strong><div>@(t.SellerLegalName ?? t.SellerName)</div><div class="pf-sign__field">Ad Soyad:</div><div class="pf-sign__line">Kaşe / İmza</div></td>
         <td><strong>Teslim alan (Alıcı)</strong><div>@Model.Customer?.Name</div><div class="pf-sign__field">Ad Soyad:</div><div class="pf-sign__line">İmza</div></td>

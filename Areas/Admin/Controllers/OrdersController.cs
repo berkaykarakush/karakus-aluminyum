@@ -101,6 +101,8 @@ public sealed class OrdersController : Controller
         ViewBag.Services = await _db.ServiceRequests.AsNoTracking().Where(x => x.ProductionOrderId == id).OrderByDescending(x => x.Id).ToListAsync();
         ViewBag.Punch = await _db.PunchItems.AsNoTracking().Include(x => x.WindowDesign).Where(x => x.ProductionOrderId == id).OrderBy(x => x.Status == PunchStatus.Resolved || x.Status == PunchStatus.Cancelled).ThenBy(x => x.ReportedOn).ThenBy(x => x.Id).ToListAsync();
         ViewBag.PunchPositions = await PunchController.PositionsAsync(_db, new[] { order.DrawingListId });
+        order.TrackingToken = await KarakusAluminyum.Web.Services.Documents.DocumentLinks.EnsureTrackingAsync(_db, id, order.TrackingToken);
+        ViewBag.TrackingQr = KarakusAluminyum.Web.Services.Documents.DocumentLinks.QrFor(KarakusAluminyum.Web.Services.Documents.DocumentLinks.TrackingUrl(Request, order.TrackingToken));
         ViewBag.Notices = await _db.NotificationJobs.AsNoTracking().Where(x => x.ProductionOrderId == id).OrderByDescending(x => x.Id).Take(50).ToListAsync();
         ViewBag.Load = (await _orders.LoadsAsync(new[] { order.DrawingListId })).GetValueOrDefault(order.DrawingListId ?? 0, OrderLoad.Empty);
         ViewBag.SystemIds = order.DrawingListId is int listId ? await _db.WindowDesigns.Where(x => x.DrawingListId == listId && x.ProfileSystemId != null).Select(x => x.Id).ToListAsync() : new List<int>();
@@ -248,6 +250,16 @@ public sealed class OrdersController : Controller
         }
         TempData["Notice"] = "Montaj bilgileri kaydedildi.";
         return RedirectToAction(nameof(Details), new { id });
+    }
+
+    // Müşteri takip bağlantısını yeniler: eski bağlantı ve QR (teslim tutanağı, e-postalar) artık açılmaz.
+    [HttpPost("takip-yenile/{id:int}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> RenewTracking(int id)
+    {
+        if (await _db.ProductionOrders.Where(x => x.Id == id).ExecuteUpdateAsync(s => s.SetProperty(x => x.TrackingToken, KarakusAluminyum.Web.Services.Documents.DocumentLinks.NewToken())) == 0) return NotFound();
+        await _audit.RecordAsync("renew-link", "ProductionOrder", id.ToString(), "Takip bağlantısı yenilendi");
+        TempData["Notice"] = "Takip bağlantısı yenilendi. Önceki bağlantı ve QR kodu artık açılmaz.";
+        return Redirect($"/yonetim/siparisler/detay/{id}#takip");
     }
 
     [HttpPost("not/{id:int}"), ValidateAntiForgeryToken]
@@ -503,6 +515,8 @@ public sealed class OrdersController : Controller
         ViewBag.Pozlar = KarakusAluminyum.Web.Services.Drawing.PozSheet.Build(designs);
         ViewBag.Template = await KarakusAluminyum.Web.Services.Documents.DocumentViews.CurrentTemplateAsync(_db, KarakusAluminyum.Web.Models.Documents.DocumentKinds.Contract);
         ViewBag.InspectionDays = await InspectionDaysAsync(order);
+        order.TrackingToken = await KarakusAluminyum.Web.Services.Documents.DocumentLinks.EnsureTrackingAsync(_db, id, order.TrackingToken);
+        ViewBag.TrackingQr = KarakusAluminyum.Web.Services.Documents.DocumentLinks.QrFor(KarakusAluminyum.Web.Services.Documents.DocumentLinks.TrackingUrl(Request, order.TrackingToken));
         ViewBag.OpenPunch = await _db.PunchItems.AsNoTracking().Include(x => x.WindowDesign).Where(x => x.ProductionOrderId == id && (x.Status == PunchStatus.Open || x.Status == PunchStatus.Waiting)).OrderBy(x => x.ReportedOn).ThenBy(x => x.Id).ToListAsync();
         ViewBag.PunchPositions = await PunchController.PositionsAsync(_db, new[] { order.DrawingListId });
         return View(view, order);

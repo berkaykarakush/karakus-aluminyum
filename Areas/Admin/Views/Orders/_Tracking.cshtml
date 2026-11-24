@@ -1,0 +1,24 @@
+@model KarakusAluminyum.Web.Models.Production.ProductionOrder
+@{
+    // README 7.7: müşteri takip sayfası bağlantısı. Müşteri sipariş durumunu görür, teslimden sonra servis talebi açar.
+    var qr = (KarakusAluminyum.Web.Services.Documents.DocumentQr)ViewBag.TrackingQr;
+    var phone = KarakusAluminyum.Web.Services.Notifications.NotificationComposer.PhoneDigits(Model.ContactPhone ?? Model.Customer?.Phone);
+    var share = $"Merhaba, {Model.OrderNumber} numaralı siparişinizin durumunu bu bağlantıdan izleyebilir, gerekirse servis talebi açabilirsiniz: {qr.Url}";
+    var wa = (phone is null ? "https://wa.me/" : $"https://wa.me/{phone}") + "?text=" + Uri.EscapeDataString(share);
+}
+<div class="admin-panel" id="takip">
+  <div class="admin-actions"><h3 style="margin:0">Müşteri takip sayfası</h3></div>
+  <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-top:10px">
+    <div style="width:110px;flex:none" aria-label="Takip sayfası QR kodu">@Html.Raw(qr.Svg)</div>
+    <div style="flex:1;min-width:240px">
+      <p class="admin-muted" style="margin-top:0">Müşteri bu bağlantıdan sipariş durumunu, tarihleri ve pozları görür; ürünler teslim edildikten sonra doğrudan servis talebi açar. Fiyat ve iç notlar görünmez. Bağlantı müşteri e-postalarında ve teslim tutanağındaki QR kodunda yer alır.</p>
+      <input readonly value="@qr.Url" aria-label="Takip bağlantısı" onclick="this.select()" style="margin-bottom:8px" id="tracking-url" />
+      <div class="admin-actions">
+        <button type="button" class="admin-btn admin-btn--secondary" onclick="navigator.clipboard.writeText(document.getElementById('tracking-url').value).then(()=>{this.textContent='Kopyalandı'})">Bağlantıyı kopyala</button>
+        <a class="admin-btn admin-btn--secondary" href="@wa" target="_blank" rel="noopener noreferrer">WhatsApp ile gönder</a>
+        <a class="admin-btn admin-btn--secondary" href="@qr.Url" target="_blank" rel="noopener noreferrer">Sayfayı aç</a>
+        <form method="post" action="/yonetim/siparisler/takip-yenile/@Model.Id" onsubmit="return confirm('Takip bağlantısı yenilensin mi? Müşteriye verilen eski bağlantı ve QR kodu açılmaz.')">@Html.AntiForgeryToken()<button class="admin-btn admin-btn--secondary">Bağlantıyı yenile</button></form>
+      </div>
+    </div>
+  </div>
+</div>

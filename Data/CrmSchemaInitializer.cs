@@ -960,6 +960,9 @@ CREATE INDEX IF NOT EXISTS "IX_NotificationJobs_ProductionOrderId" ON "Notificat
 CREATE INDEX IF NOT EXISTS "IX_NotificationJobs_ServiceRequestId" ON "NotificationJobs" ("ServiceRequestId");
 ALTER TABLE "ServiceRequests" ADD COLUMN IF NOT EXISTS "PlannedAt" time without time zone;
 ALTER TABLE "Customers" ADD COLUMN IF NOT EXISTS "NotificationsOptOut" boolean NOT NULL DEFAULT false;
+-- Müşteri takip sayfası
+ALTER TABLE "ProductionOrders" ADD COLUMN IF NOT EXISTS "TrackingToken" character varying(40);
+CREATE UNIQUE INDEX IF NOT EXISTS "IX_ProductionOrders_TrackingToken" ON "ProductionOrders" ("TrackingToken");
 CREATE UNIQUE INDEX IF NOT EXISTS "IX_ProductionScans_ProductionOrderId_WindowDesignId_Unit_Station" ON "ProductionScans" ("ProductionOrderId", "WindowDesignId", "Unit", "Station");
 
 """;

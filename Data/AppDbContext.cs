@@ -178,6 +178,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<ServiceVisit>().HasOne<KarakusAluminyum.Web.Models.Accounting.Invoice>().WithMany().HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.SetNull);
         builder.Entity<ServicePart>().HasOne<KarakusAluminyum.Web.Models.Accounting.Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.SetNull);
         builder.Entity<ServicePart>().HasOne(x => x.ServiceVisit).WithMany(x => x.Parts).HasForeignKey(x => x.ServiceVisitId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<ProductionOrder>().HasIndex(x => x.TrackingToken).IsUnique();
         builder.Entity<PunchItem>().HasIndex(x => new { x.ProductionOrderId, x.Status });
         builder.Entity<PunchItem>().HasIndex(x => x.Status);
         builder.Entity<PunchItem>().HasOne(x => x.ProductionOrder).WithMany().HasForeignKey(x => x.ProductionOrderId).OnDelete(DeleteBehavior.Cascade);
