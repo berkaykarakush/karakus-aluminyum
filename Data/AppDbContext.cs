@@ -60,6 +60,8 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ServiceVisit> ServiceVisits => Set<ServiceVisit>();
     public DbSet<ServicePart> ServiceParts => Set<ServicePart>();
     public DbSet<PunchItem> PunchItems => Set<PunchItem>();
+    public DbSet<SiteSurvey> SiteSurveys => Set<SiteSurvey>();
+    public DbSet<SurveyLine> SurveyLines => Set<SurveyLine>();
     public DbSet<OrderEvent> OrderEvents => Set<OrderEvent>();
     public DbSet<Installer> Installers => Set<Installer>();
     public DbSet<DeliveryNote> DeliveryNotes => Set<DeliveryNote>();
@@ -179,6 +181,13 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<ServicePart>().HasOne<KarakusAluminyum.Web.Models.Accounting.Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.SetNull);
         builder.Entity<ServicePart>().HasOne(x => x.ServiceVisit).WithMany(x => x.Parts).HasForeignKey(x => x.ServiceVisitId).OnDelete(DeleteBehavior.Cascade);
         builder.Entity<ProductionOrder>().HasIndex(x => x.TrackingToken).IsUnique();
+        builder.Entity<SiteSurvey>().HasIndex(x => x.Number).IsUnique();
+        builder.Entity<SiteSurvey>().HasIndex(x => new { x.Status, x.PlannedOn });
+        builder.Entity<SiteSurvey>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<SiteSurvey>().HasOne(x => x.DrawingList).WithMany().HasForeignKey(x => x.DrawingListId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<SiteSurvey>().HasOne<ContactMessage>().WithMany().HasForeignKey(x => x.ContactMessageId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<SurveyLine>().HasOne(x => x.SiteSurvey).WithMany(x => x.Lines).HasForeignKey(x => x.SiteSurveyId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<NotificationJob>().HasOne(x => x.SiteSurvey).WithMany().HasForeignKey(x => x.SiteSurveyId).OnDelete(DeleteBehavior.Cascade);
         builder.Entity<PunchItem>().HasIndex(x => new { x.ProductionOrderId, x.Status });
         builder.Entity<PunchItem>().HasIndex(x => x.Status);
         builder.Entity<PunchItem>().HasOne(x => x.ProductionOrder).WithMany().HasForeignKey(x => x.ProductionOrderId).OnDelete(DeleteBehavior.Cascade);

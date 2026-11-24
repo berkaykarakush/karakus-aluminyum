@@ -17,6 +17,8 @@ public sealed class NotificationJob
     public KarakusAluminyum.Web.Models.Production.ProductionOrder? ProductionOrder { get; set; }
     public int? ServiceRequestId { get; set; }
     public KarakusAluminyum.Web.Models.Production.ServiceRequest? ServiceRequest { get; set; }
+    public int? SiteSurveyId { get; set; }
+    public KarakusAluminyum.Web.Models.Production.SiteSurvey? SiteSurvey { get; set; }
     [StringLength(30)] public string? Event { get; set; } // CustomerEvents
     public DateOnly? EventDate { get; set; } // bildirilen tarih; gönderirken kayıttaki tarihle aynı değilse atlanır
     public TimeOnly? EventTime { get; set; }
@@ -45,7 +47,8 @@ public static class CustomerEvents
     public const string ShipDate = "order.shipDate";       // sevk tarihi belirlendi / değişti
     public const string Installation = "order.install";    // montajdan bir gün önce hatırlatma
     public const string ServiceVisit = "service.visit";    // servis ziyareti günü ve saati
-    public static readonly string[] All = { Production, ShipDate, Installation, ServiceVisit };
+    public const string SurveyVisit = "survey.visit";      // keşif (ölçü) randevusu günü ve saati
+    public static readonly string[] All = { Production, ShipDate, Installation, ServiceVisit, SurveyVisit };
     // Ekibe: müşteri takip sayfasından servis talebi açtı (README 7.7)
     public const string ServiceRequested = "service.request";
 
@@ -55,6 +58,7 @@ public static class CustomerEvents
         ShipDate => "Sevk tarihi",
         Installation => "Montaj hatırlatması",
         ServiceVisit => "Servis ziyareti",
+        SurveyVisit => "Keşif randevusu",
         ServiceRequested => "Web servis talebi",
         _ => "Teklif talebi"
     };

@@ -98,6 +98,7 @@ public sealed class NotificationDispatcher
                 .Include(x => x.ProductionOrder).ThenInclude(x => x!.Customer)
                 .Include(x => x.ServiceRequest).ThenInclude(x => x!.Customer)
                 .Include(x => x.ServiceRequest).ThenInclude(x => x!.ProductionOrder)
+                .Include(x => x.SiteSurvey).ThenInclude(x => x!.Customer)
                 .AsSplitQuery().SingleAsync(x => x.Id == id, cancellationToken);
             job.Attempts++;
             try

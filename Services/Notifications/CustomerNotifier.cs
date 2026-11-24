@@ -21,6 +21,12 @@ public sealed record ServiceSnapshot(ServiceStatus Status, DateOnly? Date, TimeO
     public static readonly ServiceSnapshot None = new(ServiceStatus.Open, null, null);
 }
 
+public sealed record SurveySnapshot(SurveyStatus Status, DateOnly? Date, TimeOnly? Time)
+{
+    public static SurveySnapshot Of(SiteSurvey survey) => new(survey.Status, survey.PlannedOn, survey.PlannedAt);
+    public static readonly SurveySnapshot None = new(SurveyStatus.Cancelled, null, null);
+}
+
 // Sıraya alınacak bir olay: ne zaman ve hangi tarih için.
 public sealed record PlannedNotice(string Event, DateOnly? Date, TimeOnly? Time, DateTime SendAtUtc);
 
@@ -68,6 +74,25 @@ public sealed class CustomerNotifier
         if (request.Status != ServiceStatus.Scheduled || request.PlannedOn is not DateOnly date || date < Today(nowUtc)) return new();
         if (before.Status == ServiceStatus.Scheduled && before.Date == date && before.Time == request.PlannedAt) return new();
         return new() { new(CustomerEvents.ServiceVisit, date, request.PlannedAt, nowUtc + Delay) };
+    }
+
+    public static List<PlannedNotice> PlanSurvey(SurveySnapshot before, SiteSurvey survey, DateTime nowUtc)
+    {
+        if (survey.Status != SurveyStatus.Planned || survey.PlannedOn is not DateOnly date || date < Today(nowUtc)) return new();
+        if (before.Status == SurveyStatus.Planned && before.Date == date && before.Time == survey.PlannedAt) return new();
+        return new() { new(CustomerEvents.SurveyVisit, date, survey.PlannedAt, nowUtc + Delay) };
+    }
+
+    public async Task SurveyChangedAsync(SiteSurvey survey, SurveySnapshot before, DateTime? now = null)
+    {
+        var nowUtc = now ?? DateTime.UtcNow;
+        var planned = PlanSurvey(before, survey, nowUtc);
+        var changed = before.Date != survey.PlannedOn || before.Time != survey.PlannedAt || survey.Status != SurveyStatus.Planned;
+        if (!changed && planned.Count == 0) return;
+        if (survey.Id != 0) await SupersedeAsync(x => x.SiteSurveyId == survey.Id, new List<string> { CustomerEvents.SurveyVisit }, planned);
+        if (planned.Count == 0) return;
+        var customer = survey.Customer ?? await _db.Customers.FirstOrDefaultAsync(x => x.Id == survey.CustomerId);
+        await AddAsync(planned, customer, survey.ContactPhone, job => job.SiteSurvey = survey, nowUtc);
     }
 
     public async Task OrderChangedAsync(ProductionOrder order, OrderSnapshot before, DateTime? now = null)
@@ -138,16 +163,17 @@ public sealed class CustomerNotifier
         var tracked = _db.ChangeTracker.Entries<NotificationJob>().Select(e => e.Entity)
             .Any(x => x != job && Same(x, job) && x.Status is NotificationStatus.Pending or NotificationStatus.Sent);
         if (tracked) return Task.FromResult(true);
-        int? orderId = job.ProductionOrderId, serviceId = job.ServiceRequest?.Id is int id && id != 0 ? id : null;
-        if (orderId is null && serviceId is null) return Task.FromResult(false); // yeni kayıt: veritabanında eşi olamaz
+        int? orderId = job.ProductionOrderId, serviceId = job.ServiceRequest?.Id is int id && id != 0 ? id : null, surveyId = job.SiteSurvey?.Id is int sid && sid != 0 ? sid : null;
+        if (orderId is null && serviceId is null && surveyId is null) return Task.FromResult(false); // yeni kayıt: veritabanında eşi olamaz
         var (e, channel, recipient, date, time) = (job.Event, job.Channel, job.Recipient, job.EventDate, job.EventTime);
         return _db.NotificationJobs.AnyAsync(x => x.Event == e && x.Channel == channel && x.Recipient == recipient && x.EventDate == date && x.EventTime == time
-            && (orderId != null ? x.ProductionOrderId == orderId : x.ServiceRequestId == serviceId)
+            && (orderId != null ? x.ProductionOrderId == orderId : serviceId != null ? x.ServiceRequestId == serviceId : x.SiteSurveyId == surveyId)
             && (x.Status == NotificationStatus.Pending || x.Status == NotificationStatus.Sent || x.Status == NotificationStatus.Processing));
     }
 
     private static bool Same(NotificationJob a, NotificationJob b) => a.Event == b.Event && a.Channel == b.Channel && a.Recipient == b.Recipient && a.EventDate == b.EventDate && a.EventTime == b.EventTime
-        && a.ProductionOrderId == b.ProductionOrderId && ReferenceEquals(a.ServiceRequest, b.ServiceRequest) && a.ServiceRequestId == b.ServiceRequestId;
+        && a.ProductionOrderId == b.ProductionOrderId && ReferenceEquals(a.ServiceRequest, b.ServiceRequest) && a.ServiceRequestId == b.ServiceRequestId
+        && ReferenceEquals(a.SiteSurvey, b.SiteSurvey) && a.SiteSurveyId == b.SiteSurveyId;
 
     public static bool Enabled(SiteSettings site, string? e) => e switch
     {
@@ -155,6 +181,7 @@ public sealed class CustomerNotifier
         CustomerEvents.ShipDate => site.CustomerNotifyShipDate == "true",
         CustomerEvents.Installation => site.CustomerNotifyInstallation == "true",
         CustomerEvents.ServiceVisit => site.CustomerNotifyServiceVisit == "true",
+        CustomerEvents.SurveyVisit => site.CustomerNotifySurvey == "true",
         _ => false
     };
 
@@ -164,6 +191,7 @@ public sealed class CustomerNotifier
         CustomerEvents.ShipDate => site.WhatsAppTemplateShipDate,
         CustomerEvents.Installation => site.WhatsAppTemplateInstallation,
         CustomerEvents.ServiceVisit => site.WhatsAppTemplateServiceVisit,
+        CustomerEvents.SurveyVisit => site.WhatsAppTemplateSurvey,
         _ => ""
     };
 
@@ -179,6 +207,14 @@ public sealed class CustomerNotifier
             if (r.Customer?.NotificationsOptOut == true) return "Müşteri bildirim istemiyor.";
             if (r.Status != ServiceStatus.Scheduled || r.PlannedOn != job.EventDate || r.PlannedAt != job.EventTime) return "Servis ziyareti değişti; gönderilmedi.";
             return job.EventDate < today ? "Ziyaret günü geçti." : null;
+        }
+        if (job.SiteSurveyId is not null)
+        {
+            var sv = job.SiteSurvey;
+            if (sv is null) return "Keşif bulunamadı.";
+            if (sv.Customer?.NotificationsOptOut == true) return "Müşteri bildirim istemiyor.";
+            if (sv.Status != SurveyStatus.Planned || sv.PlannedOn != job.EventDate || sv.PlannedAt != job.EventTime) return "Keşif randevusu değişti; gönderilmedi.";
+            return job.EventDate < today ? "Randevu günü geçti." : null;
         }
         var o = job.ProductionOrder;
         if (o is null) return "Sipariş bulunamadı.";
@@ -210,6 +246,14 @@ public sealed class CustomerNotifier
             var address = string.IsNullOrWhiteSpace(r.Address) ? "kayıtlı adresiniz" : r.Address.Trim();
             return new($"Servis ziyaretiniz planlandı | {site.SiteName}", name, r.Number,
                 $"{r.Number} numaralı servis talebiniz için ziyaretimiz {when} olarak planlandı. Adres: {address}.", when, address);
+        }
+        if (job.SiteSurvey is { } sv)
+        {
+            var who = Name(sv.ContactName, sv.Customer);
+            var when = DateText(sv.PlannedOn, sv.PlannedAt);
+            var address = string.IsNullOrWhiteSpace(sv.Address) ? "belirttiğiniz adres" : sv.Address.Trim();
+            return new($"Keşif randevunuz: {when} | {site.SiteName}", who, sv.Number,
+                $"Ölçü ve keşif için {when} tarihinde {address} adresine geleceğiz. Uygun değilse lütfen bize haber verin.", when, address);
         }
         var o = job.ProductionOrder!;
         var customer = Name(o.Customer?.ContactPerson, o.Customer);
