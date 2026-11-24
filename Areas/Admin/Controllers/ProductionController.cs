@@ -17,7 +17,8 @@ public sealed class ProductionController : Controller
     private readonly AppDbContext _db;
     private readonly OrderService _orders;
     private readonly IAuditService _audit;
-    public ProductionController(AppDbContext db, OrderService orders, IAuditService audit) { _db = db; _orders = orders; _audit = audit; }
+    private readonly KarakusAluminyum.Web.Services.Notifications.CustomerNotifier _notifier;
+    public ProductionController(AppDbContext db, OrderService orders, IAuditService audit, KarakusAluminyum.Web.Services.Notifications.CustomerNotifier notifier) { _db = db; _orders = orders; _audit = audit; _notifier = notifier; }
 
     private string? UserName => User.Identity?.Name;
 
@@ -214,7 +215,9 @@ public sealed class ProductionController : Controller
         // Ercom akışı: onaylı siparişte ilk okutma üretime alır; son adet paketlenince depoya geçer.
         if (order.Status is OrderStatus.Approved)
         {
+            var before = KarakusAluminyum.Web.Services.Notifications.OrderSnapshot.Of(order);
             _orders.ChangeStatus(order, OrderStatus.InProduction, "İlk barkod okutması.", UserName);
+            await _notifier.OrderChangedAsync(order, before);
             extra = " Sipariş üretime alındı.";
         }
         await _db.SaveChangesAsync();

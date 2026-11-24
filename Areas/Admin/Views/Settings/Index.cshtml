@@ -21,6 +21,10 @@
       {
         <p class="admin-muted" id="bildirimler">Alıcı yazılmazsa sunucu ayarındaki adres kullanılır. SMTP parolası ve WhatsApp anahtarı güvenlik için sunucu ortam değişkenlerinde tutulur. Gönderim durumunu <a href="/yonetim/bildirimler">Bildirimler</a> sayfasından izleyebilirsiniz.</p>
       }
+      @if (group == SiteSettingCatalog.CustomerNotificationGroup)
+      {
+        <p class="admin-muted" id="musteri-bildirimleri">Siparişte üretime alma, sevk tarihi ve montaj tarihi; serviste ziyaret günü girildiğinde müşteriye kendiliğinden bildirilir. Bildirim istemeyen müşteri cari kartında işaretlenir. Şablon önerileri <a href="/yonetim/bildirimler">Bildirimler</a> sayfasındadır.</p>
+      }
       @foreach (var definition in SiteSettingCatalog.All.Where(d => d.Group == group && values.ContainsKey(d.Key)))
       {
         var id = "setting-" + definition.Key;

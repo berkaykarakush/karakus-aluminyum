@@ -23,6 +23,7 @@ public sealed class Customer
     [StringLength(100)] public string? District { get; set; }
     [StringLength(80)] public string? Source { get; set; }
     [StringLength(2000)] public string? Notes { get; set; }
+    public bool NotificationsOptOut { get; set; } // sipariş ve servis bildirimlerini (e-posta, WhatsApp) istemiyor
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
     public ICollection<Quote> Quotes { get; set; } = new List<Quote>();

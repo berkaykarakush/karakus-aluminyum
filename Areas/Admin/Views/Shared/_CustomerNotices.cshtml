@@ -1,0 +1,33 @@
+@model List<KarakusAluminyum.Web.Models.NotificationJob>
+@using KarakusAluminyum.Web.Models
+@{
+    // README 7.6: siparişe / servis talebine ait müşteri bildirimleri (e-posta, WhatsApp) ve durumları.
+    var customer = ViewData["NoticeCustomer"] as KarakusAluminyum.Web.Models.Crm.Customer;
+    string When(NotificationJob x) => (x.SentUtc ?? x.NextAttemptUtc).AddHours(3).ToString("dd.MM.yyyy HH:mm");
+}
+<div class="admin-panel" id="musteri-bildirimleri">
+  <div class="admin-actions"><h3 style="margin:0">Müşteri bildirimleri</h3>@if (User.IsInRole("Admin")) { <a class="admin-btn admin-btn--secondary" href="/yonetim/ayarlar#musteri-bildirimleri">Ayarlar</a> }</div>
+  @if (customer?.NotificationsOptOut == true) { <p class="admin-muted">Müşteri bildirim istemiyor (cari kartında işaretli); e-posta ve WhatsApp gönderilmez.</p> }
+  else if (customer is not null && string.IsNullOrWhiteSpace(customer.Email) && string.IsNullOrWhiteSpace(customer.Phone)) { <p class="admin-muted">Cari kartında e-posta veya telefon yok; bildirim gönderilemez.</p> }
+  @if (Model.Count == 0) { <p class="admin-muted">Henüz bildirim yok. Üretime alma, sevk tarihi, montaj tarihi ve servis ziyareti girildiğinde müşteriye kendiliğinden bildirilir.</p> }
+  else
+  {
+    <div style="overflow-x:auto">
+    <table class="admin-table">
+      <thead><tr><th>Olay</th><th>Kanal</th><th>Alıcı</th><th>Zaman</th><th>Durum</th></tr></thead>
+      <tbody>
+      @foreach (var x in Model)
+      {
+        <tr>
+          <td>@CustomerEvents.Label(x.Event)</td>
+          <td>@NotificationLabels.Label(x.Channel)</td>
+          <td>@x.Recipient</td>
+          <td>@When(x)@if (x.Status == NotificationStatus.Pending) { <div class="admin-muted">gönderilecek</div> }</td>
+          <td><strong>@NotificationLabels.Label(x.Status)</strong>@if (!string.IsNullOrWhiteSpace(x.LastError)) { <div class="admin-muted">@x.LastError</div> }</td>
+        </tr>
+      }
+      </tbody>
+    </table>
+    </div>
+  }
+</div>

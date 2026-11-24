@@ -37,7 +37,7 @@
           <td>@r.Customer?.Name@if (r.ProductionOrder is not null) { <div class="admin-muted">@r.ProductionOrder.OrderNumber</div> }</td>
           <td>@r.Category<div class="admin-muted">@(r.Complaint.Length > 80 ? r.Complaint[..80] + "…" : r.Complaint)</div></td>
           <td>@ServiceLabels.Label(r.Warranty)</td>
-          <td>@D(r.PlannedOn)</td>
+          <td>@D(r.PlannedOn)@(r.PlannedAt is TimeOnly at ? " " + at.ToString("HH:mm") : "")</td>
           <td>@(r.Installer?.Name ?? "-")</td>
           <td>@ServiceLabels.Label(r.Status)</td>
         </tr>

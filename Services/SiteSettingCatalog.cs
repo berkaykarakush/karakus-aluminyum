@@ -17,8 +17,9 @@ public static class SiteSettingCatalog
     public const string AboutGroup = "Kurumsal sayfa metinleri";
     public const string FooterGroup = "Alt bilgi";
     public const string NotificationGroup = "Teklif bildirimleri";
+    public const string CustomerNotificationGroup = "Müşteri bildirimleri";
 
-    public static readonly string[] Groups = { ContactGroup, SeoGroup, AnalyticsGroup, HomeGroup, AboutGroup, FooterGroup, NotificationGroup };
+    public static readonly string[] Groups = { ContactGroup, SeoGroup, AnalyticsGroup, HomeGroup, AboutGroup, FooterGroup, NotificationGroup, CustomerNotificationGroup };
 
     private const string UrlPattern = "^https?://[^\\s\"'<>]+$";
     private const string UrlError = "http:// veya https:// ile başlayan geçerli bir adres yazın.";
@@ -64,6 +65,17 @@ public static class SiteSettingCatalog
         new("NotifyWhatsAppTo", NotificationGroup, "WhatsApp bildirim numaraları", "", Help: "Ülke koduyla, örn. 905xxxxxxxxx. Virgülle ayırarak birden çok numara yazabilirsiniz.", Pattern: "^\\+?[0-9]{10,15}(\\s*,\\s*\\+?[0-9]{10,15})*$", PatternError: "Numaraları ülke koduyla, virgülle ayırarak yazın."),
         new("WhatsAppTemplateName", NotificationGroup, "WhatsApp şablon adı", "", Help: "Meta'da onaylanan şablonun adı. Kurulum için Bildirimler sayfasına bakın.", Pattern: "^[a-z0-9_]{1,512}$", PatternError: "Yalnızca küçük harf, rakam ve alt çizgi kullanın."),
         new("WhatsAppTemplateLanguage", NotificationGroup, "WhatsApp şablon dili", "tr", Pattern: "^[a-z]{2}(_[A-Z]{2})?$", PatternError: "Örn. tr"),
+
+        new("CustomerNotifyEmailEnabled", CustomerNotificationGroup, "Müşteriye e-posta ile bildir", "true", SettingKind.Toggle, "Cari kartında e-posta adresi olan müşterilere gönderilir."),
+        new("CustomerNotifyWhatsAppEnabled", CustomerNotificationGroup, "Müşteriye WhatsApp ile bildir", "false", SettingKind.Toggle, "Meta, işletmenin başlattığı mesajlarda onaylı şablon ister; aşağıda şablon adı yazılmayan olay WhatsApp ile gönderilmez."),
+        new("CustomerNotifyProduction", CustomerNotificationGroup, "Sipariş üretime girince bildir", "true", SettingKind.Toggle),
+        new("CustomerNotifyShipDate", CustomerNotificationGroup, "Sevk tarihi belirlenince veya değişince bildir", "true", SettingKind.Toggle, "Onaylanmış ve henüz sevk edilmemiş siparişlerde."),
+        new("CustomerNotifyInstallation", CustomerNotificationGroup, "Montajdan bir gün önce hatırlat", "true", SettingKind.Toggle, "Montaj gününden önceki akşam 18:00'de gönderilir."),
+        new("CustomerNotifyServiceVisit", CustomerNotificationGroup, "Servis ziyareti planlanınca bildir", "true", SettingKind.Toggle, "Servis talebine ziyaret günü (ve saati) yazılınca gönderilir."),
+        new("WhatsAppTemplateProduction", CustomerNotificationGroup, "WhatsApp şablonu: üretime girdi", "", Help: "Değişkenler: {{1}} müşteri adı, {{2}} sipariş no, {{3}} planlanan sevk tarihi, {{4}} iş adı.", Pattern: "^[a-z0-9_]{1,512}$", PatternError: "Yalnızca küçük harf, rakam ve alt çizgi kullanın."),
+        new("WhatsAppTemplateShipDate", CustomerNotificationGroup, "WhatsApp şablonu: sevk tarihi", "", Help: "Değişkenler: {{1}} müşteri adı, {{2}} sipariş no, {{3}} sevk tarihi, {{4}} iş adı.", Pattern: "^[a-z0-9_]{1,512}$", PatternError: "Yalnızca küçük harf, rakam ve alt çizgi kullanın."),
+        new("WhatsAppTemplateInstallation", CustomerNotificationGroup, "WhatsApp şablonu: montaj hatırlatması", "", Help: "Değişkenler: {{1}} müşteri adı, {{2}} sipariş no, {{3}} montaj tarihi, {{4}} montaj adresi.", Pattern: "^[a-z0-9_]{1,512}$", PatternError: "Yalnızca küçük harf, rakam ve alt çizgi kullanın."),
+        new("WhatsAppTemplateServiceVisit", CustomerNotificationGroup, "WhatsApp şablonu: servis ziyareti", "", Help: "Değişkenler: {{1}} müşteri adı, {{2}} servis no, {{3}} ziyaret günü ve saati, {{4}} adres.", Pattern: "^[a-z0-9_]{1,512}$", PatternError: "Yalnızca küçük harf, rakam ve alt çizgi kullanın."),
 
         new("HeroEyebrow", HomeGroup, "Üst başlık", "İzmir Alüminyum ve Cam Sistemleri"),
         new("HeroTitle", HomeGroup, "Büyük başlık", "İzmir’de mimariye değer katan"),

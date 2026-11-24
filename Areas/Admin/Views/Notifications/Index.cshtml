@@ -25,17 +25,23 @@
   </form>
 </div>
 <form class="admin-panel admin-actions" method="get"><select name="durum" aria-label="Durum"><option value="">Tüm durumlar</option>@foreach (var s in Enum.GetValues<NotificationStatus>()) { <option value="@s" selected="@(s == status)">@NotificationLabels.Label(s)</option> }</select><button class="admin-btn">Filtrele</button></form>
-<div class="admin-panel" style="overflow-x:auto"><table class="admin-table"><thead><tr><th>Tarih</th><th>Talep</th><th>Kanal</th><th>Alıcı</th><th>Durum</th><th>Deneme</th><th>Ayrıntı</th><th></th></tr></thead><tbody>
+<div class="admin-panel" style="overflow-x:auto"><table class="admin-table"><thead><tr><th>Tarih</th><th>Kaynak</th><th>Kanal</th><th>Alıcı</th><th>Durum</th><th>Deneme</th><th>Ayrıntı</th><th></th></tr></thead><tbody>
 @foreach (var x in Model)
 {
   <tr>
     <td>@x.CreatedUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
-    <td><a href="/yonetim/mesajlar/@x.ContactMessageId">@x.ContactMessage?.Name</a></td>
+    <td>
+      @if (x.ProductionOrderId is not null) { <a href="/yonetim/siparisler/detay/@x.ProductionOrderId">@x.ProductionOrder?.OrderNumber</a> }
+      else if (x.ServiceRequestId is not null) { <a href="/yonetim/servis/detay/@x.ServiceRequestId">@x.ServiceRequest?.Number</a> }
+      else { <a href="/yonetim/mesajlar/@x.ContactMessageId">@x.ContactMessage?.Name</a> }
+      <div class="admin-muted">@CustomerEvents.Label(x.Event)</div>
+    </td>
     <td>@NotificationLabels.Label(x.Channel)</td>
     <td>@x.Recipient</td>
     <td><strong>@NotificationLabels.Label(x.Status)</strong></td>
     <td>@x.Attempts</td>
-    <td>@x.LastError @if (x.Status == NotificationStatus.Pending && x.Attempts > 0) { <span class="admin-muted">Sonraki deneme: @x.NextAttemptUtc.ToLocalTime().ToString("HH:mm")</span> }</td>
+    <td>@x.LastError @if (x.Status == NotificationStatus.Pending && x.Attempts > 0) { <span class="admin-muted">Sonraki deneme: @x.NextAttemptUtc.ToLocalTime().ToString("HH:mm")</span> }
+      else if (x.Status == NotificationStatus.Pending && x.NextAttemptUtc > DateTime.UtcNow.AddMinutes(10)) { <span class="admin-muted">Gönderilecek: @x.NextAttemptUtc.AddHours(3).ToString("dd.MM.yyyy HH:mm")</span> }</td>
     <td>@if (x.Status is NotificationStatus.Failed or NotificationStatus.Skipped) { <form method="post" action="/yonetim/bildirimler/yeniden/@x.Id">@Html.AntiForgeryToken()<button class="admin-btn">Yeniden dene</button></form> }</td>
   </tr>
 }
@@ -48,4 +54,12 @@ Ad Soyad: {{1}}
 İletişim: {{2}}
 Hizmet: {{3}}
 Konum: {{4}}</pre>
+</div>
+<div class="admin-panel">
+  <h2>Müşteri bildirimi şablonları</h2>
+  <p class="admin-muted">Sipariş ve servis bildirimleri müşteriye e-postayla gider. WhatsApp için her olayın ayrı onaylı şablonu gerekir ("Yardımcı" kategorisi); şablon adlarını Site ayarları &gt; Müşteri bildirimleri bölümüne yazın. Değişkenler her şablonda aynı sıradadır.</p>
+  <pre style="white-space:pre-wrap;background:#f3f5f6;padding:12px;border-radius:8px">Üretime girdi:  Merhaba {{1}}, {{2}} numaralı siparişiniz ({{4}}) üretime alındı. Planlanan sevk tarihi: {{3}}.
+Sevk tarihi:    Merhaba {{1}}, {{2}} numaralı siparişinizin ({{4}}) sevk tarihi {{3}} olarak planlandı.
+Montaj:         Merhaba {{1}}, {{2}} numaralı siparişinizin montajı {{3}} günü {{4}} adresinde yapılacaktır.
+Servis ziyareti: Merhaba {{1}}, {{2}} numaralı servis talebiniz için ziyaretimiz {{3}} olarak planlandı. Adres: {{4}}.</pre>
 </div>

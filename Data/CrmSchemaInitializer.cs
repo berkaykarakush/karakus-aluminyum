@@ -949,6 +949,17 @@ CREATE TABLE IF NOT EXISTS "PunchItems" (
 CREATE INDEX IF NOT EXISTS "IX_PunchItems_ProductionOrderId_Status" ON "PunchItems" ("ProductionOrderId", "Status");
 CREATE INDEX IF NOT EXISTS "IX_PunchItems_Status" ON "PunchItems" ("Status");
 CREATE INDEX IF NOT EXISTS "IX_PunchItems_WindowDesignId" ON "PunchItems" ("WindowDesignId");
+-- Müşteri bildirimleri (sipariş ve servis olayları)
+ALTER TABLE "NotificationJobs" ALTER COLUMN "ContactMessageId" DROP NOT NULL;
+ALTER TABLE "NotificationJobs" ADD COLUMN IF NOT EXISTS "ProductionOrderId" integer REFERENCES "ProductionOrders"("Id") ON DELETE CASCADE;
+ALTER TABLE "NotificationJobs" ADD COLUMN IF NOT EXISTS "ServiceRequestId" integer REFERENCES "ServiceRequests"("Id") ON DELETE CASCADE;
+ALTER TABLE "NotificationJobs" ADD COLUMN IF NOT EXISTS "Event" character varying(30);
+ALTER TABLE "NotificationJobs" ADD COLUMN IF NOT EXISTS "EventDate" date;
+ALTER TABLE "NotificationJobs" ADD COLUMN IF NOT EXISTS "EventTime" time without time zone;
+CREATE INDEX IF NOT EXISTS "IX_NotificationJobs_ProductionOrderId" ON "NotificationJobs" ("ProductionOrderId");
+CREATE INDEX IF NOT EXISTS "IX_NotificationJobs_ServiceRequestId" ON "NotificationJobs" ("ServiceRequestId");
+ALTER TABLE "ServiceRequests" ADD COLUMN IF NOT EXISTS "PlannedAt" time without time zone;
+ALTER TABLE "Customers" ADD COLUMN IF NOT EXISTS "NotificationsOptOut" boolean NOT NULL DEFAULT false;
 CREATE UNIQUE INDEX IF NOT EXISTS "IX_ProductionScans_ProductionOrderId_WindowDesignId_Unit_Station" ON "ProductionScans" ("ProductionOrderId", "WindowDesignId", "Unit", "Station");
 
 """;

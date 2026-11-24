@@ -59,6 +59,7 @@ public sealed class ServiceRequest
     public ServiceWarranty Warranty { get; set; }
     public ServiceStatus Status { get; set; } = ServiceStatus.Open;
     public DateOnly? PlannedOn { get; set; }
+    public TimeOnly? PlannedAt { get; set; } // ziyaret saati: müşteriye bildirilir
     public int? InstallerId { get; set; }
     public Installer? Installer { get; set; }
     public DateOnly? CompletedOn { get; set; }
@@ -118,6 +119,7 @@ public sealed class ServiceRequestInputVm
     [Required(ErrorMessage = "Müşterinin bildirdiği sorunu yazın."), StringLength(2000)] public string Complaint { get; set; } = "";
     public ServiceWarranty Warranty { get; set; }
     public DateOnly? PlannedOn { get; set; }
+    public TimeOnly? PlannedAt { get; set; }
     public int? InstallerId { get; set; }
     [StringLength(2000)] public string? Notes { get; set; }
 }
