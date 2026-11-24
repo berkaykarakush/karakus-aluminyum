@@ -55,13 +55,21 @@ public sealed class NotificationQueue
 // Müşteri takip sayfasından gelen servis talebi ekibe e-postayla bildirilir (teklif bildirimi alıcıları).
 public static class TeamNotices
 {
-    public static async Task AddServiceRequestAsync(AppDbContext db, SiteSettingsProvider settings, NotificationOptions options, KarakusAluminyum.Web.Models.Production.ServiceRequest request)
+    // Ekibe e-posta (teklif bildirimi alıcıları): web servis talebi, online teklif onayı.
+    public static async Task AddAsync(AppDbContext db, SiteSettingsProvider settings, NotificationOptions options, string e, Action<NotificationJob> link)
     {
         var site = await settings.GetAsync();
         if (site.NotifyEmailEnabled != "true") return;
         foreach (var to in NotificationComposer.Split(string.IsNullOrWhiteSpace(site.NotifyEmailTo) ? options.Smtp.To : site.NotifyEmailTo).Where(NotificationComposer.IsEmail))
-            db.NotificationJobs.Add(new NotificationJob { Channel = NotificationChannel.AdminEmail, Recipient = to, Event = CustomerEvents.ServiceRequested, ServiceRequest = request });
+        {
+            var job = new NotificationJob { Channel = NotificationChannel.AdminEmail, Recipient = to, Event = e };
+            link(job);
+            db.NotificationJobs.Add(job);
+        }
     }
+
+    public static Task AddServiceRequestAsync(AppDbContext db, SiteSettingsProvider settings, NotificationOptions options, KarakusAluminyum.Web.Models.Production.ServiceRequest request)
+        => AddAsync(db, settings, options, CustomerEvents.ServiceRequested, job => job.ServiceRequest = request);
 }
 
 public sealed class NotificationDispatcher
@@ -96,6 +104,7 @@ public sealed class NotificationDispatcher
 
             var job = await _db.NotificationJobs.Include(x => x.ContactMessage)
                 .Include(x => x.ProductionOrder).ThenInclude(x => x!.Customer)
+                .Include(x => x.ProductionOrder).ThenInclude(x => x!.Quote)
                 .Include(x => x.ServiceRequest).ThenInclude(x => x!.Customer)
                 .Include(x => x.ServiceRequest).ThenInclude(x => x!.ProductionOrder)
                 .Include(x => x.SiteSurvey).ThenInclude(x => x!.Customer)
@@ -108,6 +117,7 @@ public sealed class NotificationDispatcher
                 if (customerEvent && CustomerNotifier.Obsolete(job, DateTime.UtcNow) is string reason) throw new SkipNotificationException(reason);
                 job.ProviderMessageId = job.Channel switch
                 {
+                    NotificationChannel.AdminEmail when job.Event == CustomerEvents.QuoteAccepted => await _email.SendAsync(CustomerNotifier.TeamQuoteAcceptedEmail(job, site), cancellationToken),
                     NotificationChannel.AdminEmail when job.Event == CustomerEvents.ServiceRequested => await _email.SendAsync(CustomerNotifier.TeamServiceEmail(job, site), cancellationToken),
                     NotificationChannel.AdminEmail => await _email.SendAsync(NotificationComposer.AdminEmail(job.ContactMessage!, job.Recipient, site), cancellationToken),
                     NotificationChannel.CustomerEmail when customerEvent => await _email.SendAsync(CustomerNotifier.Email(job, site), cancellationToken),

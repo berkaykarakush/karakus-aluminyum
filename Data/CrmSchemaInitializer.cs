@@ -1001,6 +1001,13 @@ CREATE TABLE IF NOT EXISTS "SurveyLines" (
 CREATE INDEX IF NOT EXISTS "IX_SurveyLines_SiteSurveyId" ON "SurveyLines" ("SiteSurveyId");
 ALTER TABLE "NotificationJobs" ADD COLUMN IF NOT EXISTS "SiteSurveyId" integer REFERENCES "SiteSurveys"("Id") ON DELETE CASCADE;
 CREATE INDEX IF NOT EXISTS "IX_NotificationJobs_SiteSurveyId" ON "NotificationJobs" ("SiteSurveyId");
+-- Teklifin online onayı (README 7.18)
+ALTER TABLE "Quotes" ADD COLUMN IF NOT EXISTS "AcceptedUtc" timestamp with time zone;
+ALTER TABLE "Quotes" ADD COLUMN IF NOT EXISTS "AcceptedName" character varying(120);
+ALTER TABLE "Quotes" ADD COLUMN IF NOT EXISTS "AcceptedIp" character varying(64);
+ALTER TABLE "Quotes" ADD COLUMN IF NOT EXISTS "AcceptedUserAgent" character varying(300);
+ALTER TABLE "Quotes" ADD COLUMN IF NOT EXISTS "AcceptedTotal" numeric(18,2);
+ALTER TABLE "Quotes" ADD COLUMN IF NOT EXISTS "AcceptedHash" character varying(64);
 CREATE UNIQUE INDEX IF NOT EXISTS "IX_ProductionScans_ProductionOrderId_WindowDesignId_Unit_Station" ON "ProductionScans" ("ProductionOrderId", "WindowDesignId", "Unit", "Station");
 
 """;

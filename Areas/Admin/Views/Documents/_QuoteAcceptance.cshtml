@@ -1,0 +1,39 @@
+@model KarakusAluminyum.Web.Services.Documents.QuoteAcceptanceVm
+@{
+    // README 7.18: QR'lı teklif sayfasında müşteri onayı. Basılmaz.
+    var tr = new System.Globalization.CultureInfo("tr-TR");
+}
+<style>
+  .qa{max-width:210mm;margin:16px auto 24px;padding:16px 18px;font:15px/1.5 Arial,Helvetica,sans-serif;background:#fff;border:2px solid #2c5f7c;border-radius:10px;box-sizing:border-box}
+  .qa h2{margin:0 0 8px;font-size:18px}.qa p{margin:6px 0}
+  .qa input[type=text]{width:100%;max-width:360px;padding:9px 10px;font:inherit;border:1px solid #b8bec7;border-radius:6px;box-sizing:border-box}
+  .qa label{display:block;margin:10px 0 4px;font-weight:600}.qa .qa-check{font-weight:400;display:flex;gap:8px;align-items:flex-start}
+  .qa button{margin-top:12px;padding:11px 18px;font:600 15px Arial,sans-serif;color:#fff;background:#2c5f7c;border:0;border-radius:8px;cursor:pointer}
+  .qa-notice{padding:10px 12px;border-radius:8px;background:#e8f6ee;color:#0b5c2e;border:1px solid #9fd5b4}
+  .qa-done{border-color:#9fd5b4;background:#f3fbf6}
+  @@media print{.qa{display:none}}
+</style>
+<section class="qa @(Model.AcceptedUtc is null ? "" : "qa-done")" id="onay">
+  @if (TempData["AcceptNotice"] is string notice) { <p class="qa-notice" role="status">@notice</p> }
+  @if (Model.AcceptedUtc is DateTime accepted)
+  {
+    <h2>Teklif onaylandı</h2>
+    <p>Bu teklif @accepted.AddHours(3).ToString("d MMMM yyyy HH:mm", tr) tarihinde <strong>@Model.AcceptedName</strong> tarafından @(Model.AcceptedTotal is decimal total ? total.ToString("#,0.00", tr) + " ₺ tutarla " : "")onaylandı.</p>
+  }
+  else if (Model.Blocked is string blocked)
+  {
+    <p>@blocked</p>
+  }
+  else
+  {
+    <h2>Teklifi onaylıyorum</h2>
+    <p>Teklifi inceledikten sonra onaylayabilirsiniz. Onayınızla siparişiniz oluşturulur ve ekibimiz üretim ve montaj planı için sizi arar. Onay anındaki tutar ve teklif içeriği kayıt altına alınır.</p>
+    <form method="post" action="/belge/teklif/@Model.Token/kabul">
+      @Html.AntiForgeryToken()
+      <label for="qa-name">Adınız soyadınız</label>
+      <input type="text" id="qa-name" name="name" required minlength="3" maxlength="120" autocomplete="name" />
+      <label class="qa-check"><input type="checkbox" name="agree" value="true" required /> Teklifi, tutarı ve içindeki koşulları okudum, onaylıyorum.</label>
+      <button type="submit">Teklifi onayla</button>
+    </form>
+  }
+</section>

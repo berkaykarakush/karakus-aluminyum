@@ -24,6 +24,13 @@ public sealed class Quote
     public string SnapshotJson { get; set; } = "{}";
     [StringLength(40)] public string? PublicToken { get; set; } // QR koddaki doğrulama bağlantısı: /belge/teklif/{token}
     [StringLength(2000)] public string? Notes { get; set; }
+    // Müşterinin QR'lı teklif sayfasından onayı (README 7.18): kanıt olarak ad, zaman, IP, tarayıcı, tutar ve belge özeti saklanır.
+    public DateTime? AcceptedUtc { get; set; }
+    [StringLength(120)] public string? AcceptedName { get; set; }
+    [StringLength(64)] public string? AcceptedIp { get; set; }
+    [StringLength(300)] public string? AcceptedUserAgent { get; set; }
+    [Column(TypeName = "numeric(18,2)")] public decimal? AcceptedTotal { get; set; }
+    [StringLength(64)] public string? AcceptedHash { get; set; }
     [Column(TypeName = "numeric(5,2)")] public decimal TaxRate { get; set; } = 20m;
     [Column(TypeName = "numeric(5,2)")] public decimal DiscountRate { get; set; }
     [Column(TypeName = "numeric(18,2)")] public decimal Subtotal { get; set; }

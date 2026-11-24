@@ -51,6 +51,8 @@ public static class CustomerEvents
     public static readonly string[] All = { Production, ShipDate, Installation, ServiceVisit, SurveyVisit };
     // Ekibe: müşteri takip sayfasından servis talebi açtı (README 7.7)
     public const string ServiceRequested = "service.request";
+    // Müşteri teklifi QR'lı sayfadan onayladı (README 7.18): ekibe ve müşteriye; iş siparişe bağlıdır.
+    public const string QuoteAccepted = "quote.accepted";
 
     public static string Label(string? e) => e switch
     {
@@ -60,6 +62,7 @@ public static class CustomerEvents
         ServiceVisit => "Servis ziyareti",
         SurveyVisit => "Keşif randevusu",
         ServiceRequested => "Web servis talebi",
+        QuoteAccepted => "Teklif onayı",
         _ => "Teklif talebi"
     };
 }

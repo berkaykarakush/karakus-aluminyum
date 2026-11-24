@@ -200,6 +200,7 @@ public sealed class CustomerNotifier
     {
         var today = Today(nowUtc);
         if (job.Event == CustomerEvents.ServiceRequested) return job.ServiceRequest is null ? "Servis talebi silindi." : null;
+        if (job.Event == CustomerEvents.QuoteAccepted && job.Channel == NotificationChannel.AdminEmail) return job.ProductionOrder is null ? "Sipariş silindi." : null;
         if (job.ServiceRequestId is not null)
         {
             var r = job.ServiceRequest;
@@ -261,6 +262,8 @@ public sealed class CustomerNotifier
         {
             CustomerEvents.Production => new($"Siparişiniz üretime alındı | {site.SiteName}", customer, o.OrderNumber,
                 $"{o.OrderNumber} numaralı \"{o.Title}\" siparişiniz üretime alındı." + (o.PlannedShipDate is null ? "" : $" Planlanan sevk tarihi: {DateText(o.PlannedShipDate)}."), DateText(o.PlannedShipDate), o.Title),
+            CustomerEvents.QuoteAccepted => new($"Teklif onayınız alındı | {site.SiteName}", customer, o.OrderNumber,
+                $"{o.Quote?.QuoteNumber} numaralı \"{o.Title}\" teklifimizi onayladınız; {o.OrderNumber} numaralı siparişiniz oluşturuldu. Ekibimiz üretim ve montaj planı için sizinle iletişime geçecek." + (o.Quote?.AcceptedTotal is decimal total ? $" Onaylanan tutar: {total.ToString("#,0.00", Tr)} ₺." : ""), DateText(KarakusAluminyum.Web.Services.Documents.PrintDates.Today), o.Title),
             CustomerEvents.ShipDate => new($"Sevk tarihiniz: {DateText(o.PlannedShipDate)} | {site.SiteName}", customer, o.OrderNumber,
                 $"{o.OrderNumber} numaralı \"{o.Title}\" siparişinizin sevk tarihi {DateText(o.PlannedShipDate)} olarak planlandı.", DateText(o.PlannedShipDate), o.Title),
             _ => Installation(o, customer, site)
@@ -321,6 +324,26 @@ public sealed class CustomerNotifier
               <p><strong>Müşteri:</strong> {H(r.Customer?.Name)}<br /><strong>Sipariş:</strong> {H(r.ProductionOrder?.OrderNumber)}<br /><strong>İlgili kişi:</strong> {H(r.ContactName)}<br /><strong>Telefon:</strong> {H(r.ContactPhone)}<br /><strong>Konu:</strong> {H(r.Category)}</p>
               <p style="white-space:pre-wrap">{H(r.Complaint)}</p>
               <p><a href="{H(panel)}" style="background:#2c5f7c;color:#fff;padding:10px 16px;border-radius:7px;text-decoration:none">Panelde görüntüle</a></p>
+            </div>
+            """;
+        return new OutgoingEmail(job.Recipient, subject.Length > 150 ? subject[..150] : subject, text, html, null);
+    }
+
+    // Ekibe: müşteri teklifi online onayladı, sipariş açıldı.
+    public static OutgoingEmail TeamQuoteAcceptedEmail(NotificationJob job, SiteSettings site)
+    {
+        var o = job.ProductionOrder!;
+        var q = o.Quote;
+        var panel = $"{site.BaseUrl.TrimEnd('/')}/yonetim/siparisler/detay/{o.Id}";
+        string H(string? v) => WebUtility.HtmlEncode(v ?? "-");
+        var total = q?.AcceptedTotal?.ToString("#,0.00", Tr) + " ₺";
+        var subject = $"Teklif onaylandı: {q?.QuoteNumber} - {o.Customer?.Name}";
+        var text = $"Müşteri teklifi online onayladı ve sipariş açıldı.\n\nTeklif: {q?.QuoteNumber}\nSipariş: {o.OrderNumber}\nMüşteri: {o.Customer?.Name}\nOnaylayan: {q?.AcceptedName}\nTutar: {total}\n\nPanelde görüntüle: {panel}\n";
+        var html = $"""
+            <div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;font-size:14px;color:#111">
+              <h2 style="font-size:17px">Teklif onaylandı: {H(q?.QuoteNumber)}</h2>
+              <p><strong>Müşteri:</strong> {H(o.Customer?.Name)}<br /><strong>Onaylayan:</strong> {H(q?.AcceptedName)}<br /><strong>Tutar:</strong> {H(total)}<br /><strong>Sipariş:</strong> {H(o.OrderNumber)}</p>
+              <p><a href="{H(panel)}" style="background:#2c5f7c;color:#fff;padding:10px 16px;border-radius:7px;text-decoration:none">Siparişi aç</a></p>
             </div>
             """;
         return new OutgoingEmail(job.Recipient, subject.Length > 150 ? subject[..150] : subject, text, html, null);
