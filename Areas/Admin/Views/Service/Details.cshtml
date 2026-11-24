@@ -40,7 +40,7 @@
   <div class="admin-panel">
     <h3 style="margin-top:0">Planlama ve durum</h3>
     <dl class="or-dl">
-      <dt>Ziyaret tarihi</dt><dd>@D(Model.PlannedOn)</dd>
+      <dt>Ziyaret tarihi</dt><dd>@D(Model.PlannedOn)@(Model.PlannedAt is TimeOnly at ? " " + at.ToString("HH:mm") : "")</dd>
       <dt>Servis ekibi</dt><dd>@(Model.Installer?.Name ?? "-")</dd>
       <dt>Tamamlandı</dt><dd>@D(Model.CompletedOn)</dd>
     </dl>
@@ -57,6 +57,8 @@
     </div>
   </div>
 </div>
+
+<partial name="~/Areas/Admin/Views/Shared/_CustomerNotices.cshtml" model='(List<KarakusAluminyum.Web.Models.NotificationJob>)ViewBag.Notices' view-data='new ViewDataDictionary(ViewData) { ["NoticeCustomer"] = Model.Customer }' />
 
 <div class="admin-panel" style="overflow-x:auto">
   <h3 style="margin-top:0">Servis formları (@Model.Visits.Count)</h3>

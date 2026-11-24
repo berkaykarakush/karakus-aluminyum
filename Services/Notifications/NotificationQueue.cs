@@ -82,14 +82,22 @@ public sealed class NotificationDispatcher
                 .ExecuteUpdateAsync(x => x.SetProperty(j => j.Status, NotificationStatus.Processing).SetProperty(j => j.ClaimedUtc, now), cancellationToken);
             if (claimed == 0) continue;
 
-            var job = await _db.NotificationJobs.Include(x => x.ContactMessage).SingleAsync(x => x.Id == id, cancellationToken);
+            var job = await _db.NotificationJobs.Include(x => x.ContactMessage)
+                .Include(x => x.ProductionOrder).ThenInclude(x => x!.Customer)
+                .Include(x => x.ServiceRequest).ThenInclude(x => x!.Customer)
+                .AsSplitQuery().SingleAsync(x => x.Id == id, cancellationToken);
             job.Attempts++;
             try
             {
+                // Müşteri bildirimi: sıraya alındıktan sonra tarih değiştiyse veya iş iptal edildiyse gönderilmez.
+                var customerEvent = job.Event is not null;
+                if (customerEvent && CustomerNotifier.Obsolete(job, DateTime.UtcNow) is string reason) throw new SkipNotificationException(reason);
                 job.ProviderMessageId = job.Channel switch
                 {
                     NotificationChannel.AdminEmail => await _email.SendAsync(NotificationComposer.AdminEmail(job.ContactMessage!, job.Recipient, site), cancellationToken),
+                    NotificationChannel.CustomerEmail when customerEvent => await _email.SendAsync(CustomerNotifier.Email(job, site), cancellationToken),
                     NotificationChannel.CustomerEmail => await _email.SendAsync(NotificationComposer.CustomerEmail(job.Recipient, site), cancellationToken),
+                    NotificationChannel.CustomerWhatsApp => await _whatsApp.SendAsync(CustomerNotifier.WhatsApp(job, site), cancellationToken),
                     _ => await _whatsApp.SendAsync(NotificationComposer.AdminWhatsApp(job.ContactMessage!, job.Recipient, site), cancellationToken)
                 };
                 job.Status = NotificationStatus.Sent;
@@ -97,6 +105,7 @@ public sealed class NotificationDispatcher
                 job.LastError = null;
                 sent++;
             }
+            catch (SkipNotificationException skip) { (job.Status, job.LastError) = (NotificationStatus.Skipped, skip.Message); }
             catch (PermanentNotificationException error) { Fail(job, error.Message); }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {

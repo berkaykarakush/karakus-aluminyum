@@ -22,7 +22,8 @@ public sealed class OrdersController : Controller
     private readonly OrderService _orders;
     private readonly IAuditService _audit;
     private readonly MaterialPlanning _planning;
-    public OrdersController(AppDbContext db, OrderService orders, IAuditService audit, MaterialPlanning planning) { _db = db; _orders = orders; _audit = audit; _planning = planning; }
+    private readonly KarakusAluminyum.Web.Services.Notifications.CustomerNotifier _notifier;
+    public OrdersController(AppDbContext db, OrderService orders, IAuditService audit, MaterialPlanning planning, KarakusAluminyum.Web.Services.Notifications.CustomerNotifier notifier) { _db = db; _orders = orders; _audit = audit; _planning = planning; _notifier = notifier; }
 
     private string? UserName => User.Identity?.Name;
     private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
@@ -100,6 +101,7 @@ public sealed class OrdersController : Controller
         ViewBag.Services = await _db.ServiceRequests.AsNoTracking().Where(x => x.ProductionOrderId == id).OrderByDescending(x => x.Id).ToListAsync();
         ViewBag.Punch = await _db.PunchItems.AsNoTracking().Include(x => x.WindowDesign).Where(x => x.ProductionOrderId == id).OrderBy(x => x.Status == PunchStatus.Resolved || x.Status == PunchStatus.Cancelled).ThenBy(x => x.ReportedOn).ThenBy(x => x.Id).ToListAsync();
         ViewBag.PunchPositions = await PunchController.PositionsAsync(_db, new[] { order.DrawingListId });
+        ViewBag.Notices = await _db.NotificationJobs.AsNoTracking().Where(x => x.ProductionOrderId == id).OrderByDescending(x => x.Id).Take(50).ToListAsync();
         ViewBag.Load = (await _orders.LoadsAsync(new[] { order.DrawingListId })).GetValueOrDefault(order.DrawingListId ?? 0, OrderLoad.Empty);
         ViewBag.SystemIds = order.DrawingListId is int listId ? await _db.WindowDesigns.Where(x => x.DrawingListId == listId && x.ProfileSystemId != null).Select(x => x.Id).ToListAsync() : new List<int>();
         await LoadOptions();
@@ -128,8 +130,10 @@ public sealed class OrdersController : Controller
         await Validate(input);
         if (!ModelState.IsValid) { await LoadOptions(); return View("Editor", input); }
         var oldShip = order.PlannedShipDate;
+        var before = KarakusAluminyum.Web.Services.Notifications.OrderSnapshot.Of(order);
         Apply(order, input);
         OrderService.Record(order, oldShip != order.PlannedShipDate ? $"Sipariş bilgileri güncellendi. Sevk tarihi: {Date(oldShip)} → {Date(order.PlannedShipDate)}." : "Sipariş bilgileri güncellendi.", UserName);
+        await _notifier.OrderChangedAsync(order, before);
         await _db.SaveChangesAsync();
         await _audit.RecordAsync("update", "ProductionOrder", id.ToString(), order.OrderNumber);
         TempData["Notice"] = "Sipariş güncellendi.";
@@ -143,7 +147,9 @@ public sealed class OrdersController : Controller
         if (order is null) return NotFound();
         try
         {
+            var before = KarakusAluminyum.Web.Services.Notifications.OrderSnapshot.Of(order);
             _orders.ChangeStatus(order, status, note, UserName);
+            await _notifier.OrderChangedAsync(order, before);
             await _db.SaveChangesAsync();
             await _audit.RecordAsync("status", "ProductionOrder", id.ToString(), $"{order.OrderNumber}: {status}");
             TempData["Notice"] = $"Sipariş durumu: {OrderStatuses.Label(status)}.";
@@ -233,9 +239,11 @@ public sealed class OrdersController : Controller
         }
         if (order.InstallerId != installerId || order.InstallationDate != installationDate)
         {
+            var before = KarakusAluminyum.Web.Services.Notifications.OrderSnapshot.Of(order);
             (order.InstallerId, order.InstallationDate) = (installerId, installationDate);
             var name = installerId is int i ? await _db.Installers.Where(x => x.Id == i).Select(x => x.Name).FirstAsync() : "-";
             OrderService.Record(order, $"Montaj: ekip {name}, tarih {Date(installationDate)}.", UserName);
+            await _notifier.OrderChangedAsync(order, before);
             await _db.SaveChangesAsync();
         }
         TempData["Notice"] = "Montaj bilgileri kaydedildi.";

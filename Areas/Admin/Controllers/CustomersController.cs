@@ -55,7 +55,7 @@ public sealed class CustomersController : Controller
         model.Name = input.Name; model.Kind = input.Kind; model.Status = input.Status; model.PartyType = input.PartyType;
         model.ContactPerson = input.ContactPerson; model.Email = input.Email; model.Phone = input.Phone;
         model.TaxNumber = input.TaxNumber; model.TaxOffice = input.TaxOffice; model.Address = input.Address;
-        model.City = input.City; model.District = input.District; model.Source = input.Source; model.Notes = input.Notes;
+        model.City = input.City; model.District = input.District; model.Source = input.Source; model.Notes = input.Notes; model.NotificationsOptOut = input.NotificationsOptOut;
         model.UpdatedUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         await _audit.RecordAsync("update", "Customer", model.Id.ToString(), model.Name);

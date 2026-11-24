@@ -49,6 +49,7 @@
     <h2>Planlama</h2>
     <div class="admin-grid">
       <div><label asp-for="PlannedOn">Ziyaret tarihi</label><input asp-for="PlannedOn" type="date" /></div>
+      <div><label asp-for="PlannedAt">Ziyaret saati</label><input asp-for="PlannedAt" type="time" /></div>
       <div><label asp-for="InstallerId">Servis ekibi</label><select asp-for="InstallerId" asp-items="installers"><option value="">Seçilmedi</option></select></div>
     </div>
     <label asp-for="Notes">İç not</label><textarea asp-for="Notes" rows="2"></textarea>

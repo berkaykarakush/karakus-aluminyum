@@ -22,7 +22,7 @@ public sealed class NotificationsController : Controller
     [HttpGet("")]
     public async Task<IActionResult> Index(NotificationStatus? durum)
     {
-        var query = _db.NotificationJobs.AsNoTracking().Include(x => x.ContactMessage).AsQueryable();
+        var query = _db.NotificationJobs.AsNoTracking().Include(x => x.ContactMessage).Include(x => x.ProductionOrder).Include(x => x.ServiceRequest).AsQueryable();
         if (durum is not null) query = query.Where(x => x.Status == durum);
         ViewBag.Status = durum;
         ViewBag.Settings = await _settings.GetAsync();

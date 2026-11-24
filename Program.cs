@@ -94,6 +94,7 @@ builder.Services.AddScoped<KarakusAluminyum.Web.Services.Notifications.IEmailSen
 builder.Services.AddScoped<KarakusAluminyum.Web.Services.Notifications.IWhatsAppSender, KarakusAluminyum.Web.Services.Notifications.WhatsAppCloudSender>();
 builder.Services.AddScoped<KarakusAluminyum.Web.Services.Notifications.NotificationQueue>();
 builder.Services.AddScoped<KarakusAluminyum.Web.Services.Notifications.NotificationDispatcher>();
+builder.Services.AddScoped<KarakusAluminyum.Web.Services.Notifications.CustomerNotifier>();
 if (builder.Configuration.GetValue("Notifications:WorkerEnabled", true)) builder.Services.AddHostedService<KarakusAluminyum.Web.Services.Notifications.NotificationWorker>();
 builder.Services.AddSingleton<KarakusAluminyum.Web.Services.Production.ExchangeRateCache>();
 builder.Services.AddDbContext<AppDbContext>(options =>

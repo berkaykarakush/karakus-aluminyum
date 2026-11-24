@@ -214,6 +214,8 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<NotificationJob>().HasOne(x => x.ContactMessage).WithMany().HasForeignKey(x => x.ContactMessageId).OnDelete(DeleteBehavior.Cascade);
         builder.Entity<NotificationJob>().HasIndex(x => new { x.Status, x.NextAttemptUtc });
         builder.Entity<NotificationJob>().HasIndex(x => x.CreatedUtc);
+        builder.Entity<NotificationJob>().HasOne(x => x.ProductionOrder).WithMany().HasForeignKey(x => x.ProductionOrderId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<NotificationJob>().HasOne(x => x.ServiceRequest).WithMany().HasForeignKey(x => x.ServiceRequestId).OnDelete(DeleteBehavior.Cascade);
         builder.Entity<WindowDesign>().HasOne(x => x.DrawingList).WithMany(x => x.Items).HasForeignKey(x => x.DrawingListId).OnDelete(DeleteBehavior.Cascade);
         builder.Entity<WindowDesign>().HasOne(x => x.Brand).WithMany().HasForeignKey(x => x.BrandId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<DrawingList>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.SetNull);

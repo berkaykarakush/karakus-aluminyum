@@ -18,7 +18,8 @@ public sealed class ServiceController : Controller
     private readonly AppDbContext _db;
     private readonly ServiceDesk _desk;
     private readonly IAuditService _audit;
-    public ServiceController(AppDbContext db, ServiceDesk desk, IAuditService audit) { _db = db; _desk = desk; _audit = audit; }
+    private readonly KarakusAluminyum.Web.Services.Notifications.CustomerNotifier _notifier;
+    public ServiceController(AppDbContext db, ServiceDesk desk, IAuditService audit, KarakusAluminyum.Web.Services.Notifications.CustomerNotifier notifier) { _db = db; _desk = desk; _audit = audit; _notifier = notifier; }
 
     private string? UserName => User.Identity?.Name;
 
@@ -67,6 +68,7 @@ public sealed class ServiceController : Controller
         var request = new ServiceRequest { Number = await _desk.NextRequestNumberAsync(input.ReceivedOn) };
         Apply(request, input);
         _db.ServiceRequests.Add(request);
+        await _notifier.ServiceChangedAsync(request, KarakusAluminyum.Web.Services.Notifications.ServiceSnapshot.None);
         await _desk.RecordOnOrderAsync(request.ProductionOrderId, $"Servis talebi açıldı: {request.Number} ({request.Category}).", UserName);
         await _db.SaveChangesAsync();
         await _audit.RecordAsync("create", "ServiceRequest", request.Id.ToString(), request.Number);
@@ -84,7 +86,7 @@ public sealed class ServiceController : Controller
         {
             Id = id, CustomerId = r.CustomerId, ProductionOrderId = r.ProductionOrderId, ReceivedOn = r.ReceivedOn, Channel = r.Channel, Category = r.Category, Urgent = r.Urgent,
             ContactName = r.ContactName, ContactPhone = r.ContactPhone, Address = r.Address, PozIds = ServiceDesk.ParsePozIds(r.PozIds), Complaint = r.Complaint,
-            Warranty = r.Warranty, PlannedOn = r.PlannedOn, InstallerId = r.InstallerId, Notes = r.Notes
+            Warranty = r.Warranty, PlannedOn = r.PlannedOn, PlannedAt = r.PlannedAt, InstallerId = r.InstallerId, Notes = r.Notes
         });
     }
 
@@ -96,7 +98,9 @@ public sealed class ServiceController : Controller
         input.Id = id;
         await Validate(input);
         if (!ModelState.IsValid) { await LoadOptions(input.ProductionOrderId); return View("Editor", input); }
+        var before = KarakusAluminyum.Web.Services.Notifications.ServiceSnapshot.Of(request);
         Apply(request, input);
+        await _notifier.ServiceChangedAsync(request, before);
         await _db.SaveChangesAsync();
         await _audit.RecordAsync("update", "ServiceRequest", id.ToString(), request.Number);
         TempData["Notice"] = "Servis talebi güncellendi.";
@@ -110,6 +114,7 @@ public sealed class ServiceController : Controller
         if (request is null) return NotFound();
         ViewBag.Pozlar = (await _desk.OrderPozlarAsync(request.ProductionOrderId)).Where(x => ServiceDesk.ParsePozIds(request.PozIds).Contains(x.Id)).ToList();
         ViewBag.WarrantyEnds = ServiceDesk.WarrantyEnds(request.ProductionOrder?.DeliveredOn, await _desk.WarrantyYearsAsync(request.ProductionOrder));
+        ViewBag.Notices = await _db.NotificationJobs.AsNoTracking().Where(x => x.ServiceRequestId == id).OrderByDescending(x => x.Id).Take(50).ToListAsync();
         return View(request);
     }
 
@@ -119,9 +124,11 @@ public sealed class ServiceController : Controller
         var request = await _db.ServiceRequests.FirstOrDefaultAsync(x => x.Id == id);
         if (request is null) return NotFound();
         if (!Enum.IsDefined(status) || status == request.Status) return RedirectToAction(nameof(Details), new { id });
+        var before = KarakusAluminyum.Web.Services.Notifications.ServiceSnapshot.Of(request);
         request.Status = status;
         request.CompletedOn = status == ServiceStatus.Completed ? request.CompletedOn ?? KarakusAluminyum.Web.Services.Documents.PrintDates.Today : null;
         request.UpdatedUtc = DateTime.UtcNow;
+        await _notifier.ServiceChangedAsync(request, before);
         await _desk.RecordOnOrderAsync(request.ProductionOrderId, $"Servis talebi {request.Number}: {ServiceLabels.Label(status)}.", UserName);
         await _db.SaveChangesAsync();
         await _audit.RecordAsync("status", "ServiceRequest", id.ToString(), $"{request.Number}: {status}");
@@ -336,6 +343,7 @@ public sealed class ServiceController : Controller
         request.Complaint = input.Complaint.Trim();
         request.Warranty = input.Warranty;
         request.PlannedOn = input.PlannedOn;
+        request.PlannedAt = input.PlannedOn is null ? null : input.PlannedAt;
         request.InstallerId = input.InstallerId;
         request.Notes = input.Notes?.Trim();
         // Ziyaret tarihi verilen açık talep "planlandı" olur; tarih kaldırılırsa tekrar açılır.

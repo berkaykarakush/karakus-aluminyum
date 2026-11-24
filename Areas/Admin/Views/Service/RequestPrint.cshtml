@@ -23,7 +23,7 @@
     <tbody><tr><td class="doc-body">
       <partial name="_ServiceHead" model="Model" />
       <div class="sv-row">
-        <div class="sv-field"><span>Planlanan ziyaret</span>@(Model.PlannedOn?.ToString("dd.MM.yyyy") ?? "")&nbsp;</div>
+        <div class="sv-field"><span>Planlanan ziyaret</span>@(Model.PlannedOn?.ToString("dd.MM.yyyy") ?? "")@(Model.PlannedAt is TimeOnly at ? " " + at.ToString("HH:mm") : "")&nbsp;</div>
         <div class="sv-field"><span>Servis ekibi</span>@(Model.Installer?.Name ?? "")&nbsp;</div>
         <div class="sv-field"><span>Varış saati</span>&nbsp;</div>
         <div class="sv-field"><span>Çıkış saati</span>&nbsp;</div>
