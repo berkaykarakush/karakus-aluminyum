@@ -59,6 +59,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<WorkLog> WorkLogs => Set<WorkLog>();
     public DbSet<ServiceVisit> ServiceVisits => Set<ServiceVisit>();
     public DbSet<ServicePart> ServiceParts => Set<ServicePart>();
+    public DbSet<PunchItem> PunchItems => Set<PunchItem>();
     public DbSet<OrderEvent> OrderEvents => Set<OrderEvent>();
     public DbSet<Installer> Installers => Set<Installer>();
     public DbSet<DeliveryNote> DeliveryNotes => Set<DeliveryNote>();
@@ -177,6 +178,10 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<ServiceVisit>().HasOne<KarakusAluminyum.Web.Models.Accounting.Invoice>().WithMany().HasForeignKey(x => x.InvoiceId).OnDelete(DeleteBehavior.SetNull);
         builder.Entity<ServicePart>().HasOne<KarakusAluminyum.Web.Models.Accounting.Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.SetNull);
         builder.Entity<ServicePart>().HasOne(x => x.ServiceVisit).WithMany(x => x.Parts).HasForeignKey(x => x.ServiceVisitId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<PunchItem>().HasIndex(x => new { x.ProductionOrderId, x.Status });
+        builder.Entity<PunchItem>().HasIndex(x => x.Status);
+        builder.Entity<PunchItem>().HasOne(x => x.ProductionOrder).WithMany().HasForeignKey(x => x.ProductionOrderId).OnDelete(DeleteBehavior.Cascade);
+        builder.Entity<PunchItem>().HasOne(x => x.WindowDesign).WithMany().HasForeignKey(x => x.WindowDesignId).OnDelete(DeleteBehavior.SetNull);
         builder.Entity<LabelPrinter>().Property(x => x.GapMm).HasColumnType("numeric(5,2)");
         builder.Entity<ExchangeRate>().HasIndex(x => new { x.Currency, x.Date }).IsUnique();
         builder.Entity<StockMovement>().HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);

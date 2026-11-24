@@ -98,6 +98,8 @@ public sealed class OrdersController : Controller
         if (User.IsInRole("Admin") || User.IsInRole("Accountant")) workRows = WorkStats.WithCost(workRows, workLogs, KarakusAluminyum.Web.Services.Documents.PrintDates.Today); // maliyet maaştan gelir
         ViewBag.Work = workRows.FirstOrDefault();
         ViewBag.Services = await _db.ServiceRequests.AsNoTracking().Where(x => x.ProductionOrderId == id).OrderByDescending(x => x.Id).ToListAsync();
+        ViewBag.Punch = await _db.PunchItems.AsNoTracking().Include(x => x.WindowDesign).Where(x => x.ProductionOrderId == id).OrderBy(x => x.Status == PunchStatus.Resolved || x.Status == PunchStatus.Cancelled).ThenBy(x => x.ReportedOn).ThenBy(x => x.Id).ToListAsync();
+        ViewBag.PunchPositions = await PunchController.PositionsAsync(_db, new[] { order.DrawingListId });
         ViewBag.Load = (await _orders.LoadsAsync(new[] { order.DrawingListId })).GetValueOrDefault(order.DrawingListId ?? 0, OrderLoad.Empty);
         ViewBag.SystemIds = order.DrawingListId is int listId ? await _db.WindowDesigns.Where(x => x.DrawingListId == listId && x.ProfileSystemId != null).Select(x => x.Id).ToListAsync() : new List<int>();
         await LoadOptions();
@@ -493,6 +495,8 @@ public sealed class OrdersController : Controller
         ViewBag.Pozlar = KarakusAluminyum.Web.Services.Drawing.PozSheet.Build(designs);
         ViewBag.Template = await KarakusAluminyum.Web.Services.Documents.DocumentViews.CurrentTemplateAsync(_db, KarakusAluminyum.Web.Models.Documents.DocumentKinds.Contract);
         ViewBag.InspectionDays = await InspectionDaysAsync(order);
+        ViewBag.OpenPunch = await _db.PunchItems.AsNoTracking().Include(x => x.WindowDesign).Where(x => x.ProductionOrderId == id && (x.Status == PunchStatus.Open || x.Status == PunchStatus.Waiting)).OrderBy(x => x.ReportedOn).ThenBy(x => x.Id).ToListAsync();
+        ViewBag.PunchPositions = await PunchController.PositionsAsync(_db, new[] { order.DrawingListId });
         return View(view, order);
     }
 

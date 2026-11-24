@@ -1,0 +1,54 @@
+@model KarakusAluminyum.Web.Models.Production.PunchInputVm
+@using KarakusAluminyum.Web.Models.Production
+@{
+    var editing = Model.Id != 0;
+    var order = (ProductionOrder)ViewBag.Order;
+    var pozlar = (List<KarakusAluminyum.Web.Models.Drawing.WindowDesign>)ViewBag.Pozlar;
+    ViewData["Title"] = editing ? "Eksiği düzenle" : "Eksik / kusur kaydet";
+    var action = editing ? $"/yonetim/eksikler/duzenle/{Model.Id}" : $"/yonetim/eksikler/ekle/{order.Id}";
+}
+<h1>@ViewData["Title"]</h1>
+<p class="admin-muted"><a href="/yonetim/siparisler/detay/@order.Id">Sipariş @order.OrderNumber</a> · @order.Title · @order.Customer?.Name</p>
+<div class="admin-panel">
+  <form class="admin-form" method="post" action="@action">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="All"></div>
+    <div class="admin-grid">
+      <div>
+        <label asp-for="WindowDesignId">Poz (cam, korkuluk, doğrama listesi)</label>
+        <select asp-for="WindowDesignId">
+          <option value="">Poz seçilmedi</option>
+          @foreach (var (p, i) in pozlar.Select((p, i) => (p, i + 1)))
+          {
+            <option value="@p.Id" selected="@(Model.WindowDesignId == p.Id)">Poz @i: @p.Name · @KarakusAluminyum.Web.Models.Drawing.ProductCategories.Label(p.Category) (@p.WidthMm × @p.HeightMm mm)</option>
+          }
+        </select>
+        @if (pozlar.Count == 0) { <small class="admin-muted">Siparişe çizim listesi bağlı değil; yeri aşağıya yazın.</small> }
+      </div>
+      <div><label asp-for="Location">Yer / konum</label><input asp-for="Location" placeholder="ör. Salon, sol kanat; 3. kat balkon" /></div>
+      <div><label asp-for="Kind">Tür</label><select asp-for="Kind">@foreach (var k in PunchLabels.Kinds) { <option>@k</option> }</select></div>
+      <div><label asp-for="Quantity">Adet</label><input asp-for="Quantity" type="number" min="1" /></div>
+    </div>
+    <label asp-for="Description">Eksik / kusur</label>
+    <textarea asp-for="Description" rows="3" required placeholder="ör. Salon sabit camı köşeden çatlak, 4+16+4 cam yeniden sipariş edilecek"></textarea>
+    <div class="admin-grid">
+      <div><label asp-for="Stage">Fark edildiği yer</label><select asp-for="Stage">@foreach (var s in PunchLabels.Stages) { <option>@s</option> }</select></div>
+      <div><label asp-for="Responsible">Sorumlu</label><select asp-for="Responsible">@foreach (var r in PunchLabels.Parties) { <option>@r</option> }</select></div>
+      <div><label asp-for="ReportedOn">Bildirim tarihi</label><input asp-for="ReportedOn" type="date" /></div>
+      <div><label asp-for="DueOn">Giderilecek tarih</label><input asp-for="DueOn" type="date" /></div>
+    </div>
+    <h2>Durum</h2>
+    <div class="admin-grid">
+      <div><label asp-for="Status">Durum</label><select asp-for="Status">@foreach (var s in Enum.GetValues<PunchStatus>()) { <option value="@s">@PunchLabels.Label(s)</option> }</select></div>
+      <div><label asp-for="ResolvedOn">Giderildiği tarih</label><input asp-for="ResolvedOn" type="date" /><small class="admin-muted">Boş bırakılırsa bugün yazılır.</small></div>
+    </div>
+    <label asp-for="Resolution">Yapılan işlem</label><textarea asp-for="Resolution" rows="2" placeholder="ör. Cam değiştirildi, kol takıldı"></textarea>
+    <div class="admin-actions"><button class="admin-btn">Kaydet</button><a href="/yonetim/siparisler/detay/@order.Id#eksikler">İptal</a></div>
+  </form>
+</div>
+@if (editing)
+{
+  <form method="post" action="/yonetim/eksikler/sil/@Model.Id" onsubmit="return confirm('Eksik kaydı silinsin mi? Giderildiyse silmek yerine Giderildi olarak işaretleyin.')">
+    @Html.AntiForgeryToken()<button class="admin-btn admin-btn--danger">Sil</button>
+  </form>
+}

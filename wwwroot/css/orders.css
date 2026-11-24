@@ -63,3 +63,6 @@
 .wc-entry span{min-width:0}
 .wc-entry a{display:block;overflow:hidden;font-size:12px;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:700px){.or-tabs{flex-wrap:nowrap;overflow-x:auto;margin-inline:-16px;padding:0 16px 4px;scrollbar-width:none}.or-tabs a{flex:0 0 auto}}
+/* Eksik hızlı ekleme: açıklama alanı geniş, düğme dar */
+.or-punch-add{grid-template-columns:minmax(150px,1fr) minmax(150px,1fr) minmax(200px,2fr) 80px minmax(130px,1fr) auto;align-items:end;margin:10px 0}
+@media (max-width:900px){.or-punch-add{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}}

@@ -1,0 +1,74 @@
+@model KarakusAluminyum.Web.Models.Production.ProductionOrder
+@using KarakusAluminyum.Web.Models.Production
+@using KarakusAluminyum.Web.Areas.Admin.Controllers
+@{
+    // README madde 8: işin eksik ve kusurları (cam kırık, kol eksik...). Hızlı ekleme, durum düğmeleri ve eksik listesi çıktısı.
+    var items = (List<PunchItem>)ViewBag.Punch;
+    var positions = (Dictionary<int, int>)ViewBag.PunchPositions;
+    var pozlar = (List<KarakusAluminyum.Web.Services.Production.DeliveryProgress>)ViewBag.Progress;
+    var open = items.Count(x => PunchLabels.IsOpen(x.Status));
+    var today = KarakusAluminyum.Web.Services.Documents.PrintDates.Today;
+    string D(DateOnly? d) => d?.ToString("dd.MM.yyyy") ?? "-";
+}
+<div class="admin-panel" id="eksikler">
+  <div class="admin-actions">
+    <h3 style="margin:0">Eksikler ve kusurlar@(open > 0 ? $" ({open} açık)" : "")</h3>
+    <a class="admin-btn admin-btn--secondary" href="/yonetim/eksikler/ekle/@Model.Id">Ayrıntılı ekle</a>
+    @if (items.Count > 0) { <a class="admin-btn admin-btn--secondary" href="/yonetim/eksikler/yazdir/@Model.Id" target="_blank" rel="noopener">Eksik listesi yazdır</a> }
+  </div>
+  <form method="post" action="/yonetim/eksikler/ekle/@Model.Id" class="or-form-row or-punch-add">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="Stage" value="@PunchController.DefaultStage(Model.Status)" />
+    <input type="hidden" name="ReportedOn" value="@today.ToString("yyyy-MM-dd")" />
+    <div><label for="punch-poz">Poz</label>
+      <select id="punch-poz" name="WindowDesignId"><option value="">Poz seçilmedi</option>
+        @foreach (var p in pozlar) { <option value="@p.Design.Id">Poz @(positions.GetValueOrDefault(p.Design.Id)): @p.Design.Name</option> }
+      </select></div>
+    <div><label for="punch-kind">Tür</label><select id="punch-kind" name="Kind">@foreach (var k in PunchLabels.Kinds) { <option>@k</option> }</select></div>
+    <div><label for="punch-desc">Eksik / kusur</label><input id="punch-desc" name="Description" required maxlength="1000" placeholder="ör. Salon sabit camı çatlak" /></div>
+    <div><label for="punch-qty">Adet</label><input id="punch-qty" name="Quantity" type="number" min="1" value="1" /></div>
+    <div><label for="punch-party">Sorumlu</label><select id="punch-party" name="Responsible">@foreach (var r in PunchLabels.Parties) { <option selected="@(r == "Belirsiz")">@r</option> }</select></div>
+    <div><button class="admin-btn">Ekle</button></div>
+  </form>
+  @if (items.Count == 0) { <p class="admin-muted">Bu işte kayıtlı eksik veya kusur yok.</p> }
+  else
+  {
+    <div style="overflow-x:auto">
+    <table class="admin-table">
+      <thead><tr><th>Poz / yer</th><th>Tür</th><th>Eksik / kusur</th><th>Adet</th><th>Sorumlu</th><th>Bildirim</th><th>Durum</th><th></th></tr></thead>
+      <tbody>
+      @foreach (var x in items)
+      {
+        var isOpen = PunchLabels.IsOpen(x.Status);
+        <tr style="@(isOpen ? "" : "opacity:.65")">
+          <td>@PunchController.Where(x, positions)</td>
+          <td>@x.Kind<div class="admin-muted">@x.Stage</div></td>
+          <td style="white-space:pre-wrap">@x.Description@if (!string.IsNullOrWhiteSpace(x.Resolution)) { <div class="admin-muted">İşlem: @x.Resolution</div> }</td>
+          <td>@x.Quantity</td>
+          <td>@x.Responsible</td>
+          <td>@D(x.ReportedOn)@if (x.DueOn is not null) { <div class="@(PunchController.IsLate(x, today) ? "or-late" : "admin-muted")">hedef @D(x.DueOn)</div> }</td>
+          <td>@PunchLabels.Label(x.Status)@if (x.ResolvedOn is not null) { <div class="admin-muted">@D(x.ResolvedOn)</div> }</td>
+          <td>
+            <div class="admin-actions" style="flex-wrap:nowrap">
+            @if (isOpen)
+            {
+              if (x.Status == PunchStatus.Open)
+              {
+                <form method="post" action="/yonetim/eksikler/durum/@x.Id">@Html.AntiForgeryToken()<input type="hidden" name="status" value="@PunchStatus.Waiting" /><button class="admin-btn admin-btn--secondary" title="Parça veya cam sipariş edildi">Bekleniyor</button></form>
+              }
+              <form method="post" action="/yonetim/eksikler/durum/@x.Id" onsubmit="var r=prompt('Yapılan işlem (ör. cam değiştirildi):', ''); if (r === null) return false; this.resolution.value=r;">@Html.AntiForgeryToken()<input type="hidden" name="status" value="@PunchStatus.Resolved" /><input type="hidden" name="resolution" /><button class="admin-btn">Giderildi</button></form>
+            }
+            else
+            {
+              <form method="post" action="/yonetim/eksikler/durum/@x.Id">@Html.AntiForgeryToken()<input type="hidden" name="status" value="@PunchStatus.Open" /><button class="admin-btn admin-btn--secondary">Yeniden aç</button></form>
+            }
+            <a class="admin-btn admin-btn--secondary" href="/yonetim/eksikler/duzenle/@x.Id">Düzenle</a>
+            </div>
+          </td>
+        </tr>
+      }
+      </tbody>
+    </table>
+    </div>
+  }
+</div>
