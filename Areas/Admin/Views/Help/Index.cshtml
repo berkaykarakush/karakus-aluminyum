@@ -1,0 +1,362 @@
+@{
+    // Yardım: panelin tüm bölümleri ve uçtan uca örnek bir iş. Yeni bir özellik eklenince ilgili kart da güncellenmeli.
+    ViewData["Title"] = "Yardım";
+}
+<link rel="stylesheet" href="~/css/help.css" asp-append-version="true" />
+<div class="admin-actions"><h1>Yardım</h1></div>
+<p class="admin-muted">Panelin her bölümünün ne işe yaradığı ve gerçek bir işin baştan sona nasıl yürütüldüğü. Kalın yazılı adlar ekrandaki düğme ve başlıklardır; gri kutular sol menüdeki yolu gösterir.</p>
+
+<nav class="admin-panel help-toc" aria-label="Yardım içindekiler">
+  <a href="#baslarken">Başlarken</a>
+  <a href="#senaryo">Örnek senaryo</a>
+  <a href="#satis">Satış</a>
+  <a href="#uretim">Üretim</a>
+  <a href="#saha">Saha ve servis</a>
+  <a href="#muhasebe">Ön muhasebe</a>
+  <a href="#tanimlar">Tanımlar</a>
+  <a href="#icerik">Site içeriği</a>
+  <a href="#yonetim">Yönetim ve raporlar</a>
+  <a href="#kurulum">İlk kurulum</a>
+  <a href="#sss">Sık sorulanlar</a>
+</nav>
+
+<section class="admin-panel help-section" id="baslarken">
+  <h2>Başlarken</h2>
+  <h3>İşin genel akışı</h3>
+  <ol class="help-flow">
+    <li>Talep</li><li>Keşif</li><li>Çizim listesi</li><li>Teklif</li><li>Onay</li><li>Sipariş</li><li>Üretim</li><li>Sevk ve montaj</li><li>Teslim</li><li>Servis ve bakım</li>
+  </ol>
+  <p>Her adım bir öncekinin verisini devralır: keşifte alınan ölçüler çizim listesine, çizimler maliyetleriyle teklife, onaylanan teklif siparişe, sipariş de irsaliye, teslim tutanağı ve servis kayıtlarına geçer. Aynı bilgiyi ikinci kez yazmanız gerekmez.</p>
+  <h3>Roller</h3>
+  <ul>
+    <li><strong>Admin</strong>: her şeyi görür; site ayarları, belge şablonları, kullanıcılar, denetim kaydı ve ön muhasebe yalnızca ondadır.</li>
+    <li><strong>Editor</strong>: satış, üretim, saha ve servis, tanımlar ve site içeriği. Muhasebe ve maliyet raporlarını görmez.</li>
+    <li><strong>Muhasebe</strong>: ön muhasebe ve ödeme takibi.</li>
+  </ul>
+  <h3>Her ekranda geçerli kurallar</h3>
+  <ul>
+    <li><strong>Ölçüler her yerde mm'dir</strong>: çizim, keşif, cam listesi, teklif ve belgeler.</li>
+    <li><strong>Arama</strong>: üst çubuktaki kutuya müşteri adı, telefon, teklif, sözleşme veya çizim adı yazın.</li>
+    <li><strong>Belge tarihi</strong>: her çıktı bugünün tarihiyle basılır. Çıktının üstündeki <strong>Belge tarihi</strong> alanından başka bir tarih seçebilir veya kayıtlı tarihe dönebilirsiniz; kayıt değişmez.</li>
+    <li><strong>Yazdır / PDF kaydet</strong>: tüm çıktılar tarayıcıdan basılır. PDF için yazıcı olarak "PDF olarak kaydet"i seçin.</li>
+    <li><strong>QR kod</strong>: teklif, sözleşme ve çizimlerin sağ üstündeki QR, belgenin asıl halini giriş gerektirmeden açar. Belge yanlış kişiye gittiyse belgenin sayfasından <strong>Bağlantıyı yenile</strong> ile eski QR'ı kapatın.</li>
+    <li>Sol menüdeki kırmızı sayılar bekleyen işleri gösterir: takip günü gelen firmalar, yaklaşan keşifler, geciken ödemeler, sevki geçen siparişler, açık eksikler ve servisler.</li>
+  </ul>
+</section>
+
+<section class="admin-panel help-section" id="senaryo">
+  <h2>Örnek senaryo: Bornova'da bir dairenin doğrama ve panjur işi</h2>
+  <p>Ayşe Yılmaz web sitesindeki iletişim formundan yazıyor: Bornova'daki dairesinin salon sürme kapısı, iki odanın penceresi ve banyo penceresi değişecek; salonla odalara motorlu panjur istiyor. İşi baştan sona şöyle yürütürsünüz:</p>
+  <ol class="help-steps">
+    <li>
+      <strong class="help-step-title">Talebi görün ve keşif randevusu açın</strong>
+      <span class="help-path">Satış › İletişim mesajları</span> ekranında mesajı açın ve <strong>Keşif randevusu oluştur</strong>'a basın. Mesajdaki bilgilerle müşteri kartı açılır ve keşif kaydı oluşur. Randevu gününü yazdığınızda Ayşe Hanım'a e-posta veya WhatsApp ile bildirim gider (bildirimler açıksa).
+      <p class="help-tip">Telefonla gelen işte aynı şeyi <span class="help-path">Satış › Keşifler</span> › yeni keşif ile yapın. Müşteri kartında <strong>Müşteri kaynağı</strong> alanını (Instagram, Google, tavsiye…) doldurun; satış dönüşüm raporu bu alana göre çıkar.</p>
+    </li>
+    <li>
+      <strong class="help-step-title">Keşifte ölçüleri telefondan girin</strong>
+      Keşif sayfasını telefonda açın; her boşluk için genişlik, yükseklik (mm), adet ve açılım yazıp <strong>Ölçüleri kaydet</strong>'e basın. Kâğıtla gidecekseniz <strong>boş keşif formu</strong>nu yazdırabilirsiniz. Ölçüler bitince <strong>Çizim listesine aktar</strong>: her satır bir poz olur.
+    </li>
+    <li>
+      <strong class="help-step-title">Çizimleri ayrıntılandırın</strong>
+      <span class="help-path">Üretim › Çizim listeleri</span> içinde açılan listede her pozu düzenleyin: <strong>Yan yana böl</strong> / <strong>Üst üste böl</strong> / <strong>Sürme 2</strong> gibi hazır bölmeler, açılım yönü, profil sistemi, renk, marka ve cam. Salon kapısını 4'lü sürme, odaları açılır-vasistas, banyoyu vasistas yapın. Aynı tip pozları <strong>Çoğalt</strong> ile kopyalayın.
+      <p class="help-tip">Profil sistemi seçilen pozun kesim listesi, malzeme listesi, cam ölçüleri ve maliyeti kendiliğinden hesaplanır. Sistemi olmayan poz da kaydedilir ama maliyete katılmaz.</p>
+    </li>
+    <li>
+      <strong class="help-step-title">Teklifi hazırlayın</strong>
+      Çizim listesinde <strong>Teklif hazırla</strong>'ya basın. Her poz maliyetiyle birlikte kalem olarak gelir. <strong>Fiyatlandırma</strong> bölümünde cam tipini ve kâr marjını seçin; fiyatlar marja göre hesaplanır, isterseniz kalem fiyatını elle yazın. Blok adı tablodaki <strong>Ürün Adı</strong>'dır: pencereleri "PVC Doğrama", panjurları "Motorlu Panjur" bloğuna koyun. Blokların maddelerinden marka, renk, cam ve panjur cümlelerini seçin. Teslim süresi, ödeme ve garanti şartları şablondan gelir, bu teklife özel değiştirebilirsiniz.
+      <p class="help-tip">Maliyet ve marj yalnızca panelde görünür, müşteri çıktısına hiç basılmaz. Ayşe Hanım bireysel müşteri olduğu için KDV'yi "dahil" seçmek genellikle daha anlaşılırdır.</p>
+    </li>
+    <li>
+      <strong class="help-step-title">Teklifi gönderin</strong>
+      Teklif sayfasında <strong>Görüntüle / PDF</strong> ile çıktıyı kontrol edin: "TEKLİFTİR" başlığı, ürün tablosu, genel toplam ve altında poz çizimleri. Firmayı tanıtmak isterseniz <strong>Sunumla PDF</strong> kurumsal sunumu teklifin önüne ekler. Durumu <strong>Gönderildi</strong> yapıp <strong>Onay bağlantısını WhatsApp ile gönder</strong>'e basın.
+    </li>
+    <li>
+      <strong class="help-step-title">Müşteri teklifi online onaylar</strong>
+      Ayşe Hanım bağlantıyı (veya çıktıdaki QR'ı) açar, adını yazar, kutuyu işaretler ve onaylar. Teklif <strong>Kabul edildi</strong> olur ve <strong>sipariş kendiliğinden açılır</strong>. Kanıt olarak ad, zaman, IP, tarayıcı, tutar ve belge özeti saklanır.
+      <p class="help-tip">Müşteri telefonda veya yüz yüze onay verdiyse durumu elle <strong>Kabul edildi</strong> yapıp <strong>Sipariş oluştur</strong>'a basın. Teklif reddedilirse <strong>Reddedildi</strong> seçip kayıp nedenini (fiyat yüksek, teslim süresi uzun, rakip tercih edildi…) ve biliniyorsa tercih edilen firmayı yazın.</p>
+    </li>
+    <li>
+      <strong class="help-step-title">Gerekirse sözleşme yapın</strong>
+      Kabul edilen teklifte <strong>Sözleşme oluştur</strong>: kalemler, şartlar ve çizimler tekliften gelir; 20 maddelik eser sözleşmesi şablondan basılır. Ödeme planını sözleşmede düzenleyin, imzalandıktan sonra <strong>İmzalandı olarak işaretle</strong>.
+    </li>
+    <li>
+      <strong class="help-step-title">Kapora ve ödeme planını kurun</strong>
+      Sipariş sayfasındaki <strong>Ödeme planı</strong> bölümünde kapora oranını yazıp <strong>Kapora + kalan planı oluştur</strong>'a basın veya taksitleri elle girin. Kapora geldiğinde <strong>Tahsilat al</strong> ile kaydedin; tahsilat kasaya ve müşterinin carisine işlenir, plandaki taksit düşer. Vadesi yaklaşan taksitler için müşteriye banka bilgisiyle hatırlatma gider; tümü <span class="help-path">Satış › Ödeme takibi</span>'nde listelenir.
+    </li>
+    <li>
+      <strong class="help-step-title">Siparişi üretime alın</strong>
+      Sipariş <strong>Plan → Onay bekliyor → Onaylandı → Üretimde → Depo / Sevkiyat → Sevk edildi → Teslim edildi</strong> adımlarından geçer. Sevk tarihini yazın; <span class="help-path">Üretim › Üretim planı</span> haftalık yükü ve geciken işleri gösterir. Sipariş sayfasından:
+      <ul>
+        <li><strong>İş emri</strong>ni, çizim listesinden de imalat föylerini atölyeye yazdırın.</li>
+        <li><strong>Metraj ve stok</strong>: profil, donanım ve aksesuar ihtiyacını görün, stoktan düşün; eksikler için tedarikçiye alış taslağı oluşturun.</li>
+        <li><strong>Cam</strong> bölümüne camcıyı ve beklenen teslim tarihini yazın; cam ölçülerini <span class="help-path">Üretim › Cam listeleri</span>'nden camcıya basın.</li>
+        <li><strong>Kesime gönder</strong> ve <strong>Kesim aktarımı</strong> ile kesim makinesine CSV dosyası alın.</li>
+        <li><strong>Etiketler</strong>i basıp <span class="help-path">Üretim › Barkod okut</span> ekranında istasyon istasyon okutun; ilerleme siparişte görünür, tüm adetler paketlenince sipariş depoya geçer.</li>
+      </ul>
+      Sipariş üretime girdiğinde ve sevk tarihi yazıldığında müşteriye bildirim gider.
+    </li>
+    <li>
+      <strong class="help-step-title">Montajı planlayın</strong>
+      Sipariş sayfasında <strong>Montaj ekibi</strong>, <strong>Montaj tarihi</strong> ve adresi girip <strong>Montaj bilgilerini kaydet</strong>'e basın; müşteriye montaj günü hatırlatması gider. Sahada çalışan kişileri <span class="help-path">Saha ve servis › Personel takvimi</span>'ne bu işe yazın; işin kaç kişi kaç gün sürdüğü ve işçilik maliyeti oradan çıkar.
+    </li>
+    <li>
+      <strong class="help-step-title">Sevk ve teslim</strong>
+      Ürünleri gönderirken <strong>İrsaliye kes</strong>: hangi pozdan kaç adet gittiğini seçin. Montaj bitince <strong>Teslim tutanağı</strong>nı yazdırıp müşteriye imzalatın; tutanaktaki QR müşteriyi takip sayfasına götürür.
+    </li>
+    <li>
+      <strong class="help-step-title">Eksikleri kapatın</strong>
+      Montajda bir cam kırıldıysa veya bir kol eksikse sipariş sayfasındaki <strong>Eksikler ve kusurlar</strong> bölümüne poz, tür, adet, sorumlu ve hedef tarihle yazın. Tüm işlerin açık eksikleri <span class="help-path">Üretim › Eksikler</span>'de toplanır; <strong>Eksik listesi yazdır</strong> ile sorumluya verin, gelince <strong>Giderildi</strong> yapın. Giderilmeden teslim edilen eksikler teslim tutanağına yazılır.
+    </li>
+    <li>
+      <strong class="help-step-title">Faturalayın ve kalan bakiyeyi tahsil edin</strong>
+      Teklif sayfasındaki <strong>Faturaya dönüştür</strong> satış faturası taslağı açar (<span class="help-path">Ön muhasebe › Faturalar</span>). Resmi e-Arşiv / e-Fatura'yı entegratörünüzde kesip numarasını buraya yazın ve onaylayın. Kalan bakiyeyi <strong>Tahsilat al</strong> ile kapatın; müşterinin takip sayfasında kalan tutar sıfırlanır.
+    </li>
+    <li>
+      <strong class="help-step-title">Satış sonrası</strong>
+      Teslimden birkaç gün sonra (açık eksik veya servis yoksa) Ayşe Hanım'a Google yorum isteği gider. Her yıl dönümünde bakım, garanti bitmeden 30 gün önce de garanti hatırlatması gönderilir. Bir sorun olursa müşteri takip sayfasından kendisi <strong>servis talebi</strong> açabilir; talep <span class="help-path">Saha ve servis › Servis</span>'e düşer.
+    </li>
+  </ol>
+</section>
+
+<section class="admin-panel help-section" id="satis">
+  <h2>Satış</h2>
+  <div class="help-cards">
+    <div class="help-card">
+      <h3>Firma havuzu</h3>
+      <p>Kurumsal satış için aday firmalar (müteahhit, mimar, site yönetimi). Sektör ve ilçe seçip <strong>Tara</strong> ile Google Haritalar'dan firma çekilir; web sitesi olan firmaların e-posta ve sosyal medya hesapları sitelerinden okunur.</p>
+      <ul><li>Her firmaya görüşme notu ve <strong>sonraki takip günü</strong> yazın; günü gelenler menüde sayı olarak görünür.</li><li>Tarama yalnızca düğmeye basınca yapılır ve Google kotası harcar.</li><li>İstemeyen firmayı "İletişim kurulmasın" işaretleyin.</li></ul>
+      <a href="/yonetim/crm/firmalar">Firma havuzunu aç →</a>
+    </div>
+    <div class="help-card">
+      <h3>Keşifler</h3>
+      <p>Yerinde ölçü randevuları. Randevu günü yazılınca müşteriye bildirilir. Ölçüler telefondan girilir, <strong>Çizim listesine aktar</strong> ile pozlara dönüşür, keşif formu yazdırılabilir.</p>
+      <a href="/yonetim/kesif">Keşifleri aç →</a>
+    </div>
+    <div class="help-card">
+      <h3>Teklifler</h3>
+      <p>Çizim listesinden (<strong>Teklif hazırla</strong>) veya boş olarak açılır. Bloklar, kalemler, satır iskontosu, genel iskonto, KDV (eklenir / dahil / yok), şartlar ve değişkenler (teslim süresi gibi) düzenlenir.</p>
+      <ul><li>Durumlar: Taslak → Gönderildi → Kabul edildi / Reddedildi / Süresi doldu.</li><li>Yalnızca taslak teklif düzenlenebilir; gönderildikten sonra geri alınamaz.</li><li>Online onay "Gönderildi" durumunda açıktır.</li><li>Çıktı: TEKLİFTİR + ürün tablosu + altında poz çizimleri.</li></ul>
+      <a href="/yonetim/crm/teklifler">Teklifleri aç →</a>
+    </div>
+    <div class="help-card">
+      <h3>Kurumsal sunum</h3>
+      <p>Kapaktan iletişim sayfasına kadar A4 tanıtım sayfaları (hakkımızda, hizmetler, referanslar…). Ekran için yatay, baskı için dikey indirilir; teklif sayfasındaki <strong>Sunumla PDF</strong> ile teklifin önüne eklenir.</p>
+      <a href="/yonetim/sunum">Sunumu düzenle →</a>
+    </div>
+    <div class="help-card">
+      <h3>Sözleşmeler</h3>
+      <p>Kabul edilen tekliften (<strong>Sözleşme oluştur</strong>) veya boş açılır. Kalemler fiyat tablosu olarak, teklif şartları "Özel Şartlar" maddesinde basılır; madde numaraları kendiliğinden kayar. Bedel ve ödeme planı sözleşmede girilir.</p>
+      <a href="/yonetim/sozlesmeler">Sözleşmeleri aç →</a>
+    </div>
+    <div class="help-card">
+      <h3>Ödeme takibi</h3>
+      <p>Tüm siparişlerin ödenmemiş taksitleri: geciken, 7 gün içinde vadesi gelen ve tümü. Plan siparişte kurulur, tahsilat siparişe bağlanarak girilince taksit düşer.</p>
+      <a href="/yonetim/odemeler">Ödeme takibini aç →</a>
+    </div>
+    <div class="help-card">
+      <h3>Müşteriler</h3>
+      <p>Müşteri ve tedarikçi kartları (cari). Yeni kart "Bireysel" açılır; bireyselde vergi no yerine T.C. kimlik no istenir. Müşteri kaynağı (satış dönüşüm raporu için) ve "bildirim istemiyor" işareti de buradadır.</p>
+      <a href="/yonetim/crm/musteriler">Müşterileri aç →</a>
+    </div>
+    <div class="help-card">
+      <h3>İletişim mesajları</h3>
+      <p>Web sitesindeki formlardan gelen talepler. Okunmamışlar menüde sayı olarak görünür; mesajdan tek tıkla müşteri kartı ve keşif randevusu açılır.</p>
+      <a href="/yonetim/mesajlar">Mesajları aç →</a>
+    </div>
+  </div>
+</section>
+
+<section class="admin-panel help-section" id="uretim">
+  <h2>Üretim</h2>
+  <div class="help-cards">
+    <div class="help-card">
+      <h3>Siparişler</h3>
+      <p>Kabul edilen tekliften, sözleşmeden veya elle açılır. Durum, sevk tarihi, cam, montaj, ödeme planı, eksikler, irsaliye, iş emri, teslim tutanağı, barkod ilerlemesi ve müşteri takip bağlantısı tek sayfadadır.</p>
+      <ul><li><strong>Müşteri takip sayfası</strong>: bağlantıyı kopyalayın veya WhatsApp ile gönderin; müşteri durumu, tarihleri ve kalan ödemesini görür, fiyat ve iç notları görmez.</li><li>Sipariş işaretleri ile "cam hariç", "montaj hariç" gibi durumları belirtin.</li></ul>
+      <a href="/yonetim/siparisler">Siparişleri aç →</a>
+    </div>
+    <div class="help-card">
+      <h3>Üretim planı</h3>
+      <p>Sevk tarihine göre haftalık üretim yükü (m², ünite), sevki geçen ve tarihi girilmemiş siparişler, üretimdeki siparişlerin istasyon ilerlemesi ve 14 günlük montaj takvimi. Haftalık kapasite girilirse aşan hafta kırmızı görünür.</p>
+      <a href="/yonetim/siparisler/planlama">Üretim planını aç →</a>
+    </div>
+    <div class="help-card">
+      <h3>Çizim listeleri</h3>
+      <p>Bir işin tüm pozları. Pozlar çizim ekranında bölünür, açılım ve ölçü verilir; hesaplanan kesim listesi, donanım, panel ve cam ölçüleriyle maliyet aynı sayfadadır.</p>
+      <ul><li>Çıktılar ayrıdır: <strong>Çizimi yazdır</strong>, <strong>Malzemeleri yazdır</strong>, <strong>Hepsini yazdır</strong> (çizimde fiyat yoktur).</li><li>Ölçü listesi, imalat föyleri ve toplu profil kesim optimizasyonu (boy ve fire) listeden basılır.</li></ul>
+      <a href="/yonetim/cizim">Çizim listelerini aç →</a>
+    </div>
+    <div class="help-card">
+      <h3>Cam listeleri</h3>
+      <p>Cam ölçülerini satır satır yazın veya Excel'den yapıştırın; pozlardaki camlar da <strong>Cam ölçülerini listeye aktar</strong> ile gelir. Plaka yerleşimi tahmini fireyi gösterir; liste camcıya basılır veya teklife eklenir. Cam tipleri ve m² fiyatları <strong>Cam tipleri ve fiyatlar</strong>'dadır.</p>
+      <a href="/yonetim/camlar">Cam listelerini aç →</a>
+    </div>
+    <div class="help-card">
+      <h3>Eksikler</h3>
+      <p>Tüm işlerdeki cam kırığı, eksik kol, aksesuar gibi kayıtlar. Kayıt sipariş sayfasından eklenir; burada sorumluya ve duruma göre izlenir.</p>
+      <a href="/yonetim/eksikler">Eksikleri aç →</a>
+    </div>
+    <div class="help-card">
+      <h3>Malzeme ihtiyacı</h3>
+      <p>Beklenen stok = mevcut stok − onaylı ve üretimdeki siparişlerin henüz düşülmemiş metrajı. Kritik seviyenin altına düşen kartlar için tedarikçiye alış taslağı önerilir. Kritik seviye ve hedef stok kartından girilir.</p>
+      <a href="/yonetim/uretim/malzeme-ihtiyaci">Malzeme ihtiyacını aç →</a>
+    </div>
+    <div class="help-card">
+      <h3>Barkod okut</h3>
+      <p>İstasyonu seçin, imleç kutudayken etiketi okutun; okuyucu Enter gönderince kayıt düşer. Onaylı siparişte ilk okutma siparişi üretime alır, tüm adetler paketlenince sipariş depoya geçer.</p>
+      <a href="/yonetim/uretim/okut">Barkod okutmayı aç →</a>
+    </div>
+  </div>
+</section>
+
+<section class="admin-panel help-section" id="saha">
+  <h2>Saha ve servis</h2>
+  <div class="help-cards">
+    <div class="help-card">
+      <h3>Servis</h3>
+      <p>Bitmiş işlerdeki arıza ve bakım talepleri. Talep panelden, sipariş sayfasından (<strong>Servis talebi aç</strong>) veya müşterinin takip sayfasından açılır.</p>
+      <ul><li>Talebe ziyaret (servis formu) eklenir: yapılan iş, kullanılan parçalar, sonuç ve ücret.</li><li>Stoktan seçilen parçalar stoktan düşer.</li><li>"Sorun giderildi" talebi kapatır; diğer sonuçlarda yeni ziyaret için açık kalır.</li><li>Ücretli ziyaret <strong>Faturaya dönüştür</strong> ile satış faturası taslağı olur.</li><li>Sahada elle doldurmak için talep formu veya boş servis formu yazdırılır.</li></ul>
+      <a href="/yonetim/servis">Servisi aç →</a>
+    </div>
+    <div class="help-card">
+      <h3>Personel takvimi</h3>
+      <p>Hangi personel ve montaj ekibinin hangi gün hangi işte çalıştığı. <strong>Adam-gün raporu</strong> işe göre kaç kişinin kaç gün çalıştığını ve işçilik maliyetini verir (maliyeti yalnızca Admin ve Muhasebe görür); maliyet proje analizine işlenir.</p>
+      <a href="/yonetim/takvim">Takvimi aç →</a>
+    </div>
+    <div class="help-card">
+      <h3>Montajcılar</h3>
+      <p>Kendi montaj ekipleriniz ve taşeronlar, günlük ücretleriyle. Siparişe ekip ve montaj tarihi atanır; montaj takvimi üretim planında görünür.</p>
+      <a href="/yonetim/siparisler/montajcilar">Montajcıları aç →</a>
+    </div>
+  </div>
+</section>
+
+<section class="admin-panel help-section" id="muhasebe">
+  <h2>Ön muhasebe <span class="help-role">Admin, Muhasebe</span></h2>
+  <p class="admin-muted">İç muhasebe kaydıdır; resmi e-Fatura / e-Arşiv GİB onaylı entegratörünüzde kesilir ve numarası buraya yazılır. Beyanname yerine geçmez.</p>
+  <div class="help-cards">
+    <div class="help-card">
+      <h3>Genel bakış ve raporlar</h3>
+      <p>Hesap bakiyeleri, önümüzdeki 30 günün nakit akışı tahmini, kâr / zarar ve KDV özeti. Tutarlar KDV hariçtir.</p>
+      <a href="/yonetim/muhasebe">Genel bakışı aç →</a>
+    </div>
+    <div class="help-card">
+      <h3>Faturalar</h3>
+      <p>Satış ve alış faturaları. Tekliften, servis ziyaretinden veya alış taslağından gelir ya da elle girilir. Taslak → Onaylı → İptal; bağlı tahsilat varken iptal edilemez. Fatura bir proje analizine bağlanabilir.</p>
+      <a href="/yonetim/muhasebe/faturalar">Faturaları aç →</a>
+    </div>
+    <div class="help-card">
+      <h3>Cari hesaplar</h3>
+      <p>Müşteri ve tedarikçi bakiyeleri, ekstre yazdırma, açılış bakiyesi / düzeltme. Artı: cari bize borçlu, eksi: biz borçluyuz. Kayıt silinmez, ters tutarla düzeltilir.</p>
+      <a href="/yonetim/muhasebe/cariler">Carileri aç →</a>
+    </div>
+    <div class="help-card">
+      <h3>Kasa ve banka, çek ve senet</h3>
+      <p>Kasa ve banka hesaplarının hareketleri, tahsilat ve ödemeler, hesaplar arası virman. Çek ve senetler Portföyde, Tahsile verildi, Tahsil edildi, Ciro edildi, Karşılıksız gibi durumlarla izlenir.</p>
+      <a href="/yonetim/muhasebe/kasa-banka">Kasa ve bankayı aç →</a>
+    </div>
+    <div class="help-card">
+      <h3>Giderler ve personel</h3>
+      <p>Faturasız giderler (kira, yakıt, yemek…) ve personel kartları: maaş, avans ödemeleri, günlük maliyet. Günlük maliyet takvimdeki işçilik hesabında kullanılır.</p>
+      <a href="/yonetim/muhasebe/giderler">Giderleri aç →</a>
+    </div>
+    <div class="help-card">
+      <h3>Proje analizi</h3>
+      <p>Bir işin gelirleri ve maliyetleri: bağlı faturalar, giderler, takvimden gelen işçilik ve elle yazılan kalemler. Bugüne kadar girilen maliyetlere göre fiyat önerisi verir.</p>
+      <a href="/yonetim/muhasebe/projeler">Proje analizini aç →</a>
+    </div>
+    <div class="help-card">
+      <h3>Ürün ve stok</h3>
+      <p>Profil, donanım, aksesuar ve cam stok kartları; birim, fiyat (TL / EUR / USD), kritik seviye ve hedef stok. Siparişten stok düşme, servis parçaları ve sayım düzeltmeleri stok hareketlerinde görünür.</p>
+      <a href="/yonetim/muhasebe/urunler">Ürün ve stoğu aç →</a>
+    </div>
+    <div class="help-card">
+      <h3>Veri aktarımı</h3>
+      <p>Kolaybi'den veya Excel'den cari ve ürün tablolarını başlık satırıyla kopyalayıp yapıştırın. Hatalı satır varsa hiçbir kayıt eklenmez; kayıtlı olanlar atlanır.</p>
+      <a href="/yonetim/muhasebe/aktar">Veri aktarımını aç →</a>
+    </div>
+  </div>
+</section>
+
+<section class="admin-panel help-section" id="tanimlar">
+  <h2>Tanımlar</h2>
+  <div class="help-cards">
+    <div class="help-card">
+      <h3>Profil sistemleri</h3>
+      <p>Her serinin profil ölçüleri, kesim düşümleri, birim fiyatları (TL veya döviz) ve <strong>malzemeler (seri kataloğu)</strong>. Çizimlerin kesim listesi, maliyeti ve siparişin metrajı bu değerlerle hesaplanır; değerleri üreticinin teknik kataloğundan girin.</p>
+      <a href="/yonetim/cizim/sistemler">Sistemleri aç →</a>
+    </div>
+    <div class="help-card">
+      <h3>Fiyat listeleri ve kurlar</h3>
+      <p>Tedarikçi fiyat listeleri ve EUR / USD kurları. Döviz fiyatlı stok kartları ve profil sistemleri güncel kurla TL'ye çevrilir.</p>
+      <a href="/yonetim/fiyat-listeleri">Fiyat listelerini aç →</a>
+    </div>
+    <div class="help-card">
+      <h3>Markalar</h3>
+      <p>Çizimde seçilen markanın logosu çizimin sağ üstünde görünür; logo yoksa marka adı yazılır.</p>
+      <a href="/yonetim/markalar">Markaları aç →</a>
+    </div>
+    <div class="help-card">
+      <h3>Barkod yazıcıları ve kesim makineleri</h3>
+      <p>Zebra / ZPL ve TSPL uyumlu etiket yazıcıları (ağ adresi boşsa etiket dosya olarak iner) ve her kesim makinesinin CSV sütunları, ayracı ve karakter kodlaması. İlk aktarımı makinede deneyip kesim listesiyle karşılaştırın.</p>
+      <a href="/yonetim/uretim/yazicilar">Yazıcıları aç →</a> · <a href="/yonetim/uretim/makineler">Makineleri aç →</a>
+    </div>
+  </div>
+</section>
+
+<section class="admin-panel help-section" id="icerik">
+  <h2>Site içeriği</h2>
+  <p>Web sitesinde görünen içerikler; kaydettiğiniz anda sitede yayına girer.</p>
+  <div class="help-cards">
+    <div class="help-card"><h3>Hizmetler, projeler, galeri</h3><p>Hizmet sayfaları, tamamlanan projeler ve fotoğraf galerisi. Yüklenen görseller otomatik küçültülür.</p><a href="/yonetim/hizmetler">Hizmetleri aç →</a></div>
+    <div class="help-card"><h3>Referanslar</h3><p>Müşteri logoları ana sayfada kayan şerit olarak görünür; logonun zemini kaldırılır ve siyaha çevrilir. Yayınlamadan önce firmanın iznini alın.</p><a href="/yonetim/referanslar">Referansları aç →</a></div>
+    <div class="help-card"><h3>Sosyal medya</h3><p>Instagram / Facebook için hazır bilgilendirici gönderiler, proje fotoğrafına yazı ve logo ekleme, öne çıkan kapakları ve hikâye görselleri; her birinin açıklama metniyle.</p><a href="/yonetim/sosyal-medya">Sosyal medyayı aç →</a></div>
+    <div class="help-card"><h3>Sık sorulan sorular ve blog</h3><p>Sitedeki SSS bölümü ve blog yazıları; arama motorlarında görünürlüğü artırır.</p><a href="/yonetim/yazilar">Blog yazılarını aç →</a></div>
+  </div>
+</section>
+
+<section class="admin-panel help-section" id="yonetim">
+  <h2>Yönetim ve raporlar</h2>
+  <div class="help-cards">
+    <div class="help-card"><h3>Raporlar</h3><p>Satış (teklif, kabul, ciro), <strong>Satış dönüşümü</strong> (talep → keşif → teklif → kabul hunisi, müşteri kaynağı ve kayıp nedenleri), web sitesi ziyaretleri, çizim ve cam istatistikleri. Yüzdeler bir önceki eşit dönemle karşılaştırılır.</p><a href="/yonetim/raporlar">Raporları aç →</a></div>
+    <div class="help-card"><h3>Site ayarları <span class="help-role">Admin</span></h3><p>Firma bilgileri, iletişim, sosyal hesaplar, Google Analytics / Meta Pixel ve <strong>Müşteri bildirimleri</strong>: e-posta ve WhatsApp açma, WhatsApp şablon adları, Google yorum bağlantısı.</p><a href="/yonetim/ayarlar">Site ayarlarını aç →</a></div>
+    <div class="help-card"><h3>Bildirimler <span class="help-role">Admin</span></h3><p>Gönderilen ve bekleyen müşteri bildirimleri, deneme gönderimi ve WhatsApp şablonu kurulum adımları.</p><a href="/yonetim/bildirimler">Bildirimleri aç →</a></div>
+    <div class="help-card"><h3>Belge şablonları <span class="help-role">Admin</span></h3><p><strong>Antet ve filigran</strong> (logo, iletişim, alt bilgi, filigran tüm belgelerde ortak), teklif şablonu (başlık, giriş, kapanış, şartlar, banka, imza yetkilisi), sözleşme maddeleri ve hazır madde metinleri. Önizleme ile kayıt açmadan görülür.</p><a href="/yonetim/sablonlar">Şablonları aç →</a></div>
+    <div class="help-card"><h3>Kullanıcılar ve denetim kaydı <span class="help-role">Admin</span></h3><p>Kullanıcı ekleme ve rol verme (Admin, Editor, Muhasebe). Denetim kaydı son 500 değişikliği kimin yaptığıyla gösterir.</p><a href="/yonetim/kullanicilar">Kullanıcıları aç →</a></div>
+  </div>
+</section>
+
+<section class="admin-panel help-section" id="kurulum">
+  <h2>İlk kurulum kontrol listesi</h2>
+  <p>Ana sayfadaki <strong>Kurulumu tamamlayın</strong> kutusu eksikleri gösterir. Sırasıyla:</p>
+  <ol>
+    <li><span class="help-path">Yönetim › Site ayarları</span>: firma unvanı, telefon, adres, e-posta.</li>
+    <li><span class="help-path">Yönetim › Belge şablonları › Antet ve filigran</span>: logo ve alt bilgi.</li>
+    <li><span class="help-path">Yönetim › Belge şablonları › Teklif</span>: <strong>İmza yetkilisi</strong> (teklifin altındaki ad), banka / IBAN, teklif şartları ve varsayılan teslim süresi.</li>
+    <li><span class="help-path">Tanımlar › Profil sistemleri</span>: kullandığınız serilerin ölçüleri ve fiyatları; <span class="help-path">Üretim › Cam listeleri › Cam tipleri ve fiyatlar</span>.</li>
+    <li><span class="help-path">Tanımlar › Fiyat listeleri</span>: güncel EUR / USD kuru.</li>
+    <li><span class="help-path">Ön muhasebe › Kasa ve banka</span> ve <span class="help-path">Personel</span>: hesaplar ve personel kartları (günlük maliyetle).</li>
+    <li><span class="help-path">Saha ve servis › Montajcılar</span>: ekipler ve taşeronlar.</li>
+    <li><span class="help-path">Site ayarları › Müşteri bildirimleri</span>: e-posta / WhatsApp ve Google yorum bağlantısı.</li>
+    <li><span class="help-path">Yönetim › Kullanıcılar</span>: çalışma arkadaşlarınıza doğru rolle hesap açın.</li>
+  </ol>
+</section>
+
+<section class="admin-panel help-section" id="sss">
+  <h2>Sık sorulanlar</h2>
+  <dl class="help-faq">
+    <dt>Gönderdiğim teklifi değiştirmem gerekiyor.</dt>
+    <dd>Gönderilmiş teklif değiştirilemez; müşterinin gördüğü ve onaylayabileceği belge sabit kalsın diye. Çizim listesinden <strong>Teklif hazırla</strong> ile yeni teklif açın, eskisini <strong>Reddedildi</strong> yapıp kayıp nedeni olarak "Diğer" seçin ve nota "revize edildi" yazın. Eski bağlantının açılmasını istemiyorsanız eski teklifte <strong>Bağlantıyı yenile</strong>'ye basın.</dd>
+    <dt>Şablonda logoyu veya şartları değiştirdim ama eski teklif eskisi gibi basılıyor.</dt>
+    <dd>Her teklif oluşturulduğu andaki şablonun kopyasıyla basılır; böylece gönderilmiş belge sonradan değişmez. Taslak teklifte <strong>Şablonu yenile</strong> ile güncel şablonu alabilirsiniz.</dd>
+    <dt>Teklifte maliyet 0 görünüyor.</dt>
+    <dd>Pozun profil sistemi seçilmemiş ya da sistemin fiyatları girilmemiştir. Çizimde sistemi seçin, <span class="help-path">Tanımlar › Profil sistemleri</span>'nde fiyatları ve cam tipinin m² fiyatını girin. Fiyatı elle de yazabilirsiniz.</dd>
+    <dt>Müşteriye bildirim gitmedi.</dt>
+    <dd><span class="help-path">Yönetim › Bildirimler</span>'de gönderim durumunu ve hata mesajını görün. Müşteri kartında "bildirim istemiyor" işaretli olmamalı, e-posta / telefon doğru olmalı; WhatsApp için o olayın şablon adı Site ayarlarına yazılmış olmalı.</dd>
+    <dt>Bir taksiti yanlış tahsil ettim.</dt>
+    <dd>Muhasebe kayıtları silinmez. İlgili tahsilatı iptal edin veya ters tutarla düzeltin; taksit ödeme takibinde yeniden açık görünür.</dd>
+    <dt>Çizimde fiyat görünüyor mu?</dt>
+    <dd>Hayır. Çizim ve malzeme çıktılarında fiyat yoktur; fiyat yalnızca teklif ve sözleşmede basılır. Maliyet ve marj hiçbir müşteri belgesinde yer almaz.</dd>
+  </dl>
+</section>
