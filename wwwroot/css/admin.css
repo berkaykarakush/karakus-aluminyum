@@ -32,6 +32,11 @@ body.admin{margin:0;background:var(--canvas);color:var(--ink);font-family:"Manro
 .admin-sidebar-bottom{margin-top:auto;padding:12px 8px 2px;font-size:11px;color:#8e99a1;border-top:1px solid #262c32}
 .admin-sidebar-bottom a{color:#b6bdc2;text-decoration:none}
 .admin-sidebar-bottom a:hover{color:#fff}
+.admin-sidebar-bottom a+a{margin-top:6px}
+.admin-sidebar-bottom a{display:block}
+.admin-sidebar-bottom a.active{color:#fff;font-weight:600}
+.admin-help-link{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;font-size:14px;font-weight:700;color:var(--muted);text-decoration:none;border:1px solid var(--line,#dfe3e6);border-radius:50%}
+.admin-help-link:hover{color:var(--ink);background:var(--canvas)}
 
 /* Üst çubuk */
 .admin-main{min-width:0;display:flex;flex-direction:column}

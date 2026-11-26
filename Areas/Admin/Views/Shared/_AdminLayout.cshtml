@@ -74,7 +74,7 @@
       </nav>
     </details>
   }
-  <div class="admin-sidebar-bottom"><a href="/" target="_blank" rel="noopener">Siteyi görüntüle ↗</a></div>
+  <div class="admin-sidebar-bottom"><a class="@(currentPath == "/yonetim/yardim" ? "active" : "")" href="/yonetim/yardim">Yardım ve kullanım kılavuzu</a><a href="/" target="_blank" rel="noopener">Siteyi görüntüle ↗</a></div>
 </aside>
 <div class="admin-backdrop" onclick="document.getElementById('adminApp').classList.remove('sidebar-open')"></div>
 <section class="admin-main">
@@ -82,6 +82,7 @@
     <button class="admin-mobile-toggle" type="button" onclick="document.getElementById('adminApp').classList.toggle('sidebar-open')" aria-label="Menüyü aç">☰</button>
     @if (!accountantOnly) { <form class="admin-search" method="get" action="/yonetim/ara" role="search"><input type="search" name="q" value="@Context.Request.Query["q"]" placeholder="Müşteri, teklif, sözleşme, çizim ara..." aria-label="Panelde ara"/></form> }
     <div class="admin-top-right">
+      <a class="admin-help-link" href="/yonetim/yardim" title="Yardım ve kullanım kılavuzu" aria-label="Yardım">?</a>
 
       <span class="admin-user" title="@User.Identity?.Name"><span class="admin-avatar" aria-hidden="true">@(User.Identity?.Name?.FirstOrDefault().ToString().ToUpperInvariant() ?? "Y")</span><span class="admin-user__name">@User.Identity?.Name</span></span>
       <form method="post" action="/yonetim-cikis">@Html.AntiForgeryToken()<button class="admin-logout" type="submit">Çıkış</button></form>

@@ -1,0 +1,27 @@
+/* Yardım sayfası: içindekiler, örnek senaryo adımları ve bölüm rehberi */
+.help-toc{display:flex;flex-wrap:wrap;gap:8px}
+.help-toc a{padding:6px 12px;font-size:14px;color:inherit;text-decoration:none;background:#f1f3f5;border-radius:999px}
+.help-toc a:hover{background:#e4e7eb}
+.help-section{scroll-margin-top:80px}
+.help-section h2{margin-top:0}
+.help-section h3{margin:18px 0 6px;font-size:16px}
+.help-section p,.help-section li{line-height:1.55}
+.help-steps{margin:0;padding:0;list-style:none;counter-reset:step}
+.help-steps>li{position:relative;margin:0 0 14px;padding:0 0 14px 44px;border-bottom:1px solid #eceef1;counter-increment:step}
+.help-steps>li:last-child{margin-bottom:0;padding-bottom:0;border-bottom:0}
+.help-steps>li::before{content:counter(step);position:absolute;top:0;left:0;width:30px;height:30px;font-weight:700;line-height:30px;text-align:center;color:#fff;background:#b0202a;border-radius:50%}
+.help-steps strong.help-step-title{display:block;margin-bottom:4px;font-size:15px}
+.help-path{display:inline-block;padding:1px 7px;font-size:13px;white-space:nowrap;background:#f1f3f5;border-radius:6px}
+.help-tip{margin:8px 0 0;padding:8px 12px;font-size:14px;background:#fff8e6;border-left:3px solid #e0a100;border-radius:4px}
+.help-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.help-card{padding:14px 16px;border:1px solid #e3e6ea;border-radius:10px}
+.help-card h3{margin:0 0 6px;font-size:15px}
+.help-card p{margin:0 0 6px;font-size:14px}
+.help-card ul{margin:0;padding-left:18px;font-size:14px}
+.help-card a{font-size:13px}
+.help-role{display:inline-block;margin-left:6px;padding:0 6px;font-size:11px;font-weight:600;vertical-align:middle;color:#555;background:#eef0f3;border-radius:4px}
+.help-flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px 22px;margin:6px 0 0;padding:0;list-style:none;font-size:14px}
+.help-flow li{position:relative;padding:4px 10px;background:#f1f3f5;border-radius:6px}
+.help-flow li+li::before{content:"→";position:absolute;top:50%;left:-17px;color:#888;transform:translateY(-50%)}
+.help-faq dt{margin-top:12px;font-weight:700}
+.help-faq dd{margin:4px 0 0}
