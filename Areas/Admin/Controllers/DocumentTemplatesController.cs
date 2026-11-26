@@ -119,12 +119,12 @@ public sealed class DocumentTemplatesController : Controller
     {
         var template = await DocumentViews.CurrentTemplateAsync(_db, kind);
         var none = new AttachmentList(Array.Empty<KarakusAluminyum.Web.Services.Drawing.PozView>());
-        // Örnek proforma ve sözleşme: kalemler, iskonto, KDV ve şartlarla nasıl basıldığı görünsün.
+        // Örnek teklif ve sözleşme: kalemler, iskonto, KDV ve şartlarla nasıl basıldığı görünsün.
         var content = new DocumentContent
         {
             Intro = template.Intro, Closing = template.Closing, Note = template.DefaultNote, Subject = "örnek işin tanımı burada yer alır.",
             Variables = DocumentJson.ParseVariables(template.VariablesJson), Terms = DocumentJson.ParseTerms(template.TermsJson),
-            Blocks = { new DocumentBlock { Name = "Örnek Blok", Clauses = { new BlockClause { Title = "Örnek madde", Text = "Hazır madde metinleri burada listelenir." } } } },
+            Blocks = { new DocumentBlock { Name = kind == DocumentKinds.Quote ? "PVC Doğrama" : "Örnek Blok", Clauses = { new BlockClause { Title = "Örnek madde", Text = "Hazır madde metinleri burada listelenir." } } } },
             Payments = { new PaymentLine { Kind = PaymentKinds.Cash, Amount = 100000 } }
         };
         content.Variables.TryAdd("proje", "örnek proje");
@@ -133,8 +133,12 @@ public sealed class DocumentTemplatesController : Controller
         {
             var quote = new Quote { QuoteNumber = "ÖRNEK", Title = "Örnek proje doğramaları", DocumentDate = DateTime.UtcNow, ValidUntilUtc = DateTime.UtcNow.AddDays(14), VatMode = VatMode.Added, TaxRate = 20, Items =
             {
-                new QuoteItem { BlockName = "Örnek Blok", Description = "Poz 1 - Plastik Doğrama, Açılır, 1200 × 2200 mm", Quantity = 8, UnitPrice = 9500, SortOrder = 0 },
-                new QuoteItem { BlockName = "Örnek Blok", Description = "Montaj ve nakliye", Quantity = 1, Unit = "Götürü", UnitPrice = 12000, DiscountRate = 10, SortOrder = 1 }
+                // Kurumsal teklif örneği: çok kalemli grup toplamıyla, tek kalemli grup kendi tutarıyla basılır.
+                new QuoteItem { BlockName = "PVC Doğrama", Description = "4100x2200 4'lü Sürme", Quantity = 6, UnitPrice = 42000, SortOrder = 0 },
+                new QuoteItem { BlockName = "PVC Doğrama", Description = "900x2200 Açılır Kapı", Quantity = 3, UnitPrice = 18000, SortOrder = 1 },
+                new QuoteItem { BlockName = "PVC Doğrama", Description = "450x900 Açılır Banyo Penceresi", Quantity = 15, UnitPrice = 5200, SortOrder = 2 },
+                new QuoteItem { BlockName = "Isıcam", Description = "3'lü Isıcam", Quantity = 186, Unit = "M2", UnitPrice = 3500, SortOrder = 3 },
+                new QuoteItem { BlockName = "Montaj", Description = "Montaj ve nakliye", Quantity = 1, Unit = "Götürü", UnitPrice = 12000, DiscountRate = 10, SortOrder = 4 }
             } };
             var totals = QuoteRules.Calculate(quote.Items, quote.DiscountRate, quote.TaxRate, quote.VatMode);
             (quote.Subtotal, quote.DiscountAmount, quote.TaxAmount, quote.GrandTotal) = totals;

@@ -34,6 +34,7 @@ body.doc--contract{font-family:Arial,Helvetica,sans-serif;font-size:11.5pt}
 .doc-signatures strong{display:block;margin-bottom:2mm}
 /* Ekler: poz listesi (poz-list.css). Sayfa kenar boşluğu 25 mm: liste 160 mm genişliğe göre ölçeklenir. */
 .doc-attachments{margin-top:3mm}
+.doc-attachments-title{margin:0 0 3mm;font:700 12pt Arial,Helvetica,sans-serif}
 .doc-verified{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;max-width:210mm;margin:0 auto 12px;padding:10px 14px;font:14px/1.4 Arial,Helvetica,sans-serif;color:#0b5c2e;background:#e8f6ee;border:1px solid #9fd5b4;border-radius:8px}
 @media print{.doc-verified{display:none}}
 /* Proforma fatura (teklif) ve sözleşmedeki fiyat tablosu */
@@ -79,6 +80,29 @@ body.doc--proforma{font-family:Arial,Helvetica,sans-serif;font-size:10pt;line-he
 /* Sözleşmede fiyat tablosu ve özel şartlar */
 .doc--contract .pf-lines,.doc--contract .pf-totals{font-family:Arial,Helvetica,sans-serif}
 .doc--contract .pf-terms{margin:0 0 3mm}
+/* Kurumsal teklif (teklif-formati.pdf): mektup metni Times, ürün tablosu Arial, ince gri çizgiler */
+.ql-meta{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:1mm 6mm;margin:-3mm 0 4mm;font:9pt Arial,Helvetica,sans-serif;color:#444}
+.ql-salute{margin-bottom:4mm!important}
+.ql-table{width:100%;margin:6mm 0 2mm;border-collapse:collapse;font:10pt/1.3 Arial,Helvetica,sans-serif}
+.ql-table th{padding:2.2mm 2mm;font-weight:700;text-align:left;background:#f1f2f4;border-top:1px solid #d5d8dc;border-bottom:1px solid #c4c8cd;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.ql-table td{padding:2mm;vertical-align:top;border-bottom:1px solid #d5d8dc}
+.ql-table th+th,.ql-table td+td{border-left:1px solid #d5d8dc}
+.ql-table tr{break-inside:avoid}
+.ql-table th:first-child{width:33mm}
+.ql-table td:first-child{white-space:nowrap}
+.ql-table .ql-qty{width:15mm}
+.ql-table .ql-amount{width:34mm;white-space:nowrap}
+.ql-table .ql-total td{background:#fafbfc;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.ql-table .ql-grand td{font-weight:700;white-space:nowrap;border-top:1.5px solid #555;border-bottom:1.5px solid #555}
+.ql-words{margin:0 0 6mm!important;font-size:10.5pt;font-style:italic;text-align:right;overflow-wrap:anywhere}
+.ql-section{margin:0 0 4mm;break-inside:avoid}
+.ql-section h3{margin:0 0 1.5mm;font-size:12pt}
+.ql-terms{display:grid;grid-template-columns:auto 1fr;gap:1mm 4mm;margin:0;font-size:11pt}
+.ql-terms dt{font-weight:700}
+.ql-terms dd{margin:0}
+.ql-bank{white-space:pre-line}
+.ql-signoff{margin-top:10mm;break-inside:avoid}
+@media screen and (max-width:800px){.ql-table{display:block;max-width:100%;overflow-x:auto;font-size:9.5pt}.ql-table .ql-amount{width:auto}.ql-terms{grid-template-columns:1fr}.ql-meta{flex-wrap:wrap;justify-content:flex-start;margin-top:0}}
 @media screen and (max-width:800px){body.doc{padding:12px 8px}.doc-sheet{table-layout:fixed}.doc--proforma .doc-sheet>thead>tr>td,.doc--proforma .doc-sheet>tfoot>tr>td,.doc--proforma .doc-sheet>tbody>tr>td{padding:0 12px}.doc-logo{width:150px;height:auto}.doc--proforma .doc-title{font-size:16pt}.pf-totals{min-width:0;width:100%}.pf-parties{grid-template-columns:1fr}.pf-terms{grid-template-columns:1fr}.pf-sign,.pf-sign tbody,.pf-sign tr,.pf-sign td{display:block;width:auto}.pf-lines{display:block;max-width:100%;overflow-x:auto}}
 @media screen and (max-width:800px){.doc-sheet>thead>tr>td,.doc-sheet>tfoot>tr>td,.doc-sheet>tbody>tr>td{padding:0 16px}.doc-title{font-size:24pt}.doc-amount{white-space:normal}}
 @media print{

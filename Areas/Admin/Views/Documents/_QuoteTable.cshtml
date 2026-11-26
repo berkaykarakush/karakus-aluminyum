@@ -1,0 +1,25 @@
+@model KarakusAluminyum.Web.Services.Documents.QuoteTable
+@using KarakusAluminyum.Web.Services.Documents
+@{
+    // Kurumsal teklif tablosu: ürün grupları, grup toplamları ve işin genel toplamı. Maliyet ve marj hiç yoktur.
+    var tr = TurkishNumbers.Culture;
+    string Amount(decimal v) => (v < 0 ? "-" : "") + TurkishNumbers.Money(Math.Abs(v));
+}
+<table class="ql-table">
+  <thead><tr><th>Ürün Adı</th><th>Ürün Açıklaması</th><th class="ql-qty">Miktar</th><th>Birim</th><th class="ql-amount">Tutar</th></tr></thead>
+  <tbody>
+  @foreach (var row in Model.Rows)
+  {
+    <tr class="@(row.IsTotal ? "ql-total" : null)">
+      <td>@row.Product</td><td>@row.Description</td>
+      <td class="ql-qty">@row.Quantity?.ToString("0.###", tr)</td><td>@row.Unit</td>
+      <td class="ql-amount">@(row.Amount is decimal a ? Amount(a) : "")</td>
+    </tr>
+  }
+  @foreach (var total in Model.Totals)
+  {
+    <tr class="@(total.IsGrand ? "ql-grand" : "ql-total")"><td></td><td>@total.Label</td><td class="ql-qty"></td><td></td><td class="ql-amount">@Amount(total.Amount)</td></tr>
+  }
+  </tbody>
+</table>
+<p class="ql-words">Yalnız: @TurkishNumbers.MoneyWords(Model.GrandTotal)</p>

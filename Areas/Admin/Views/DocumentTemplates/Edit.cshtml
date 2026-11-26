@@ -31,12 +31,11 @@
         <div><label asp-for="SellerLabel">Satıcı etiketi</label><input asp-for="SellerLabel" /></div>
       }
     </div>
-    <label asp-for="SellerLegalName">@(isContract ? "Taraflar maddesindeki satıcı ifadesi (ör. firma, sahibi ve vekili)" : "Satıcı ünvanı (proformanın satıcı kutusunda)")</label><input asp-for="SellerLegalName" />
+    <label asp-for="SellerLegalName">@(isContract ? "Taraflar maddesindeki satıcı ifadesi (ör. firma, sahibi ve vekili)" : "Firma ünvanı (antette ve alt bilgide)")</label><input asp-for="SellerLegalName" />
     <label asp-for="SellerAddress">@(isContract ? "Tebligat adresi" : "Satıcı adresi")</label><input asp-for="SellerAddress" />
     @if (!isContract)
     {
-      <label asp-for="BankInfo">Banka bilgileri (proformada basılır)</label><textarea asp-for="BankInfo" rows="3" placeholder="Banka adı - Şube&#10;IBAN: TR00 0000 0000 0000 0000 0000 00&#10;Hesap sahibi"></textarea>
-      <label asp-for="AcceptanceText">Müşteri onay metni</label><input asp-for="AcceptanceText" />
+      <label asp-for="BankInfo">Banka bilgileri (teklifin altında basılır)</label><textarea asp-for="BankInfo" rows="3" placeholder="Banka adı - Şube&#10;IBAN: TR00 0000 0000 0000 0000 0000 00&#10;Hesap sahibi"></textarea>
     }
   </div>
   <div class="admin-panel">
@@ -56,7 +55,7 @@
   </div>
   <div class="admin-panel">
     <h2>@(isContract ? "Varsayılan özel şartlar" : "Teklif şartları")</h2>
-    <p class="admin-muted">@(isContract ? "Tekliften gelmeyen sözleşmelere başlangıç olarak gelir. Tekliften oluşturulan sözleşme teklifin şartlarını alır." : "Yeni proformaya gelir; her teklifte değiştirilebilir. Ödeme, teslim, montaj, hariç tutulanlar ve garanti gibi.") Başlığı ve metni boş satırlar silinir.</p>
+    <p class="admin-muted">@(isContract ? "Tekliften gelmeyen sözleşmelere başlangıç olarak gelir. Tekliften oluşturulan sözleşme teklifin şartlarını alır." : "Yeni teklife gelir; her teklifte değiştirilebilir. Ödeme, teslim, montaj, hariç tutulanlar ve garanti gibi.") Başlığı ve metni boş satırlar silinir.</p>
     <div class="admin-grid" style="grid-template-columns:minmax(0,1fr) minmax(0,3fr)">
       @for (var i = 0; i < terms.Count + 2; i++)
       {

@@ -1,22 +1,17 @@
 @model KarakusAluminyum.Web.Services.Documents.QuotePrintVm
 @using KarakusAluminyum.Web.Models.Crm
 @using KarakusAluminyum.Web.Services.Documents
-@inject DocumentBrandingProvider Branding
 @{
-    var brand = await Branding.GetAsync();
-    // Proforma fatura (ERP'lerdeki satış teklifi düzeni): satıcı ve alıcı bilgileri, belge bilgileri, kalem tablosu,
-    // iskonto ve KDV dökümü, yazıyla tutar, teknik özellikler, şartlar, banka bilgileri ve müşteri onay kutusu.
+    // Kurumsal teklif (teklif-formati.pdf): TEKLİFTİR başlığı ve tarih, "Sayın ..." hitabı, giriş ve teknik özellik cümleleri,
+    // Ürün Adı / Ürün Açıklaması / Miktar / Birim / Tutar tablosu, kapanış, şartlar, imza; altında poz çizimleri.
     Layout = null;
     var t = Model.Template;
     var c = Model.Content;
     var system = Model.System;
     var quote = Model.Quote;
-    var customer = quote.Customer;
     ViewData["DocDate"] = PrintDates.Text(Model.PrintedOn);
     var technical = Model.Blocks.Where(b => b.Block.Clauses.Any(x => !string.IsNullOrWhiteSpace(x.Text))).ToList();
     var terms = c.Terms.Where(x => !string.IsNullOrWhiteSpace(x.Text)).ToList();
-    var buyerTax = string.Join(" / ", new[] { customer?.TaxOffice, customer?.TaxNumber }.Where(x => !string.IsNullOrWhiteSpace(x)));
-    var buyerPlace = string.Join(" / ", new[] { customer?.District, customer?.City }.Where(x => !string.IsNullOrWhiteSpace(x)));
 }
 <!doctype html>
 <html lang="tr">
@@ -35,7 +30,7 @@
     <style>@@page{size:A4;margin:0}@@media print{.doc-head{padding-top:12mm!important}.doc-sheet>tfoot .doc-foot{height:34mm}.doc-print-foot{bottom:10mm}}</style>
   }
 </head>
-<body class="doc doc--quote doc--proforma">
+<body class="doc doc--quote doc--letter">
   <partial name="~/Areas/Admin/Views/Shared/_BrandLayer.cshtml" />
   @if (ViewData["PublicNote"] is string publicNote) { <partial name="~/Areas/Admin/Views/Documents/_PublicBanner.cshtml" model="publicNote" /> }
   <div class="doc-toolbar">
@@ -57,92 +52,47 @@
     <thead><tr><td><partial name="~/Areas/Admin/Views/Documents/_DocumentHead.cshtml" model="t" /></td></tr></thead>
     <tfoot><tr><td><partial name="~/Areas/Admin/Views/Documents/_DocumentFoot.cshtml" model="t" /></td></tr></tfoot>
     <tbody><tr><td class="doc-body">
-      <div class="pf-parties">
-        <section class="pf-party">
-          <h3>Satıcı</h3>
-          <strong>@(string.IsNullOrWhiteSpace(t.SellerLegalName) ? t.SellerName : t.SellerLegalName)</strong>
-          @if (!string.IsNullOrWhiteSpace(t.SellerAddress)) { <div>@t.SellerAddress</div> }
-          @if (!string.IsNullOrWhiteSpace(t.SellerTaxInfo)) { <div>VD / VKN: @t.SellerTaxInfo</div> }
-          @if (!string.IsNullOrWhiteSpace(brand.Phone)) { <div>Tel: @brand.Phone@(string.IsNullOrWhiteSpace(brand.Phone2) ? "" : " · " + brand.Phone2)</div> }
-          @if (!string.IsNullOrWhiteSpace(t.SellerEmail ?? brand.Email)) { <div>E-posta: @(t.SellerEmail ?? brand.Email)</div> }
-          @if (!string.IsNullOrWhiteSpace(brand.Website)) { <div>Web: @brand.Website</div> }
-        </section>
-        <section class="pf-party">
-          <h3>Alıcı</h3>
-          <strong>@Model.CustomerName</strong>
-          @if (!string.IsNullOrWhiteSpace(customer?.ContactPerson)) { <div>Yetkili: @customer.ContactPerson</div> }
-          @if (!string.IsNullOrWhiteSpace(customer?.Address)) { <div>@customer.Address</div> }
-          @if (buyerPlace.Length > 0) { <div>@buyerPlace</div> }
-          @if (buyerTax.Length > 0) { <div>VD / VKN: @buyerTax</div> }
-          @if (!string.IsNullOrWhiteSpace(customer?.Phone)) { <div>Tel: @customer.Phone</div> }
-          @if (!string.IsNullOrWhiteSpace(customer?.Email)) { <div>E-posta: @customer.Email</div> }
-        </section>
-        <dl class="pf-info">
-          <dt>Belge no</dt><dd>@(string.IsNullOrEmpty(quote.QuoteNumber) ? "-" : quote.QuoteNumber)</dd>
-          <dt>Tarih</dt><dd>@PrintDates.Text(Model.PrintedOn)</dd>
-          <dt>Geçerlilik</dt><dd>@(quote.ValidUntilUtc is DateTime valid ? TurkishNumbers.Date(valid) : "-")</dd>
-          <dt>Para birimi</dt><dd>TL</dd>
-          @if (!string.IsNullOrWhiteSpace(quote.Title)) { <dt>Konu</dt><dd>@quote.Title</dd> }
-        </dl>
+      <div class="ql-meta">
+        @if (!string.IsNullOrEmpty(quote.QuoteNumber)) { <span>Teklif No: @quote.QuoteNumber</span> }
+        @if (quote.ValidUntilUtc is DateTime valid) { <span>Geçerlilik: @TurkishNumbers.Date(valid)</span> }
       </div>
+      <p class="ql-salute">Sayın @Model.CustomerName,</p>
 
       @if (!string.IsNullOrWhiteSpace(c.Intro)) { <p>@TemplateText.ToHtml(c.Intro, c.Variables, system)</p> }
-      @if (!string.IsNullOrWhiteSpace(c.Closing)) { <p>@TemplateText.ToHtml(c.Closing, c.Variables, system)</p> }
-
-      <partial name="~/Areas/Admin/Views/Documents/_PriceTable.cshtml" model="Model.Prices" />
-
-      @if (technical.Count > 0)
+      @* Teknik özellikler örnekteki gibi ayrı cümlelerdir: marka, renk, cam ve panjur bilgisi. *@
+      @foreach (var view in technical)
       {
-        <section class="pf-section">
-          <h3>Teknik özellikler</h3>
-          @foreach (var view in technical)
-          {
-            @if (!string.IsNullOrWhiteSpace(view.Block.Name) && technical.Count > 1) { <p class="pf-section-name">@view.Block.Name</p> }
-            <ul>
-              @foreach (var clause in view.Block.Clauses.Where(x => !string.IsNullOrWhiteSpace(x.Text)))
-              {
-                <li>@if (!string.IsNullOrWhiteSpace(clause.Title)) { <strong>@clause.Title: </strong> }@TemplateText.ToHtml(clause.Text, view.Block.Variables, c.Variables, system)</li>
-              }
-            </ul>
-          }
-        </section>
+        @foreach (var clause in view.Block.Clauses.Where(x => !string.IsNullOrWhiteSpace(x.Text)))
+        {
+          <p>@if (!string.IsNullOrWhiteSpace(clause.Title)) { <strong>@clause.Title: </strong> }@TemplateText.ToHtml(clause.Text, view.Block.Variables, c.Variables, system)</p>
+        }
       }
+
+      <partial name="~/Areas/Admin/Views/Documents/_QuoteTable.cshtml" model="Model.Table" />
+
+      @if (!string.IsNullOrWhiteSpace(c.Closing)) { <p>@TemplateText.ToHtml(c.Closing, c.Variables, system)</p> }
 
       @if (terms.Count > 0)
       {
-        <section class="pf-section">
-          <h3>Teklif şartları</h3>
-          <dl class="pf-terms">
+        <section class="ql-section">
+          <h3>Teklif Şartları</h3>
+          <dl class="ql-terms">
             @foreach (var term in terms) { <dt>@term.Title</dt><dd>@TemplateText.ToHtml(term.Text, c.Variables, system)</dd> }
           </dl>
         </section>
       }
 
-      @if (!string.IsNullOrWhiteSpace(c.Note)) { <section class="pf-section"><h3>Not</h3><p>@TemplateText.ToHtml(c.Note, c.Variables, system)</p></section> }
+      @if (!string.IsNullOrWhiteSpace(c.Note)) { <section class="ql-section"><h3>Not</h3><p>@TemplateText.ToHtml(c.Note, c.Variables, system)</p></section> }
 
       @if (!string.IsNullOrWhiteSpace(t.BankInfo))
       {
-        <section class="pf-section"><h3>Banka bilgileri</h3><p class="pf-bank">@t.BankInfo</p></section>
+        <section class="ql-section"><h3>Banka Bilgileri</h3><p class="ql-bank">@t.BankInfo</p></section>
       }
 
-      <p class="pf-legal">Bu belge proforma faturadır; teklif niteliğindedir ve fatura yerine geçmez. Kesin fatura, teslim veya hizmetin ifasıyla birlikte düzenlenir.</p>
-
-      <table class="pf-sign"><tbody><tr>
-        <td>
-          <strong>Satıcı</strong>
-          <div>@TemplateText.ToHtml(t.SignOff, system)</div>
-          <div>@(string.IsNullOrWhiteSpace(t.SellerLegalName) ? t.SellerName : t.SellerLegalName)</div>
-          @if (!string.IsNullOrWhiteSpace(t.Signatory)) { <div>@t.Signatory</div> }
-          <div class="pf-sign__line">Kaşe / İmza</div>
-        </td>
-        <td>
-          <strong>Alıcı onayı</strong>
-          @if (!string.IsNullOrWhiteSpace(t.AcceptanceText)) { <div>@t.AcceptanceText</div> }
-          <div class="pf-sign__field">Ad Soyad:</div>
-          <div class="pf-sign__field">Tarih:</div>
-          <div class="pf-sign__line">Kaşe / İmza</div>
-        </td>
-      </tr></tbody></table>
+      <div class="ql-signoff">
+        <div>@TemplateText.ToHtml(string.IsNullOrWhiteSpace(t.SignOff) ? "Saygılarımızla," : t.SignOff, system)</div>
+        @if (!string.IsNullOrWhiteSpace(t.Signatory)) { <div>@t.Signatory</div> }
+      </div>
     </td></tr></tbody>
   </table>
   @if (Model.Attachments.Items.Count > 0)

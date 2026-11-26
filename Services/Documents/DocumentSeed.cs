@@ -10,9 +10,13 @@ public static class DocumentSeed
     private const string Address = "Karacaoğlan Mah. 6252 Sk. No: 3 Bornova / İzmir";
     private const string Phone = "+90 553 835 48 72";
 
-    // Proforma (ERP'lerdeki satış teklifi düzeni): kalem tablosu, iskonto, KDV, şartlar, banka ve onay kutusu.
-    public const string QuoteTitle = "PROFORMA FATURA";
-    public const string QuoteIntro = "Talebiniz doğrultusunda hazırlanan proforma faturamız aşağıda bilgilerinize sunulmuştur.";
+    // Kurumsal teklif (teklif-formati.pdf): "TEKLİFTİR" başlıklı mektup, ürün tablosu, kapanış, imza ve altta çizimler.
+    public const string QuoteTitle = "TEKLİFTİR";
+    public const string QuoteIntro = "Talebiniz doğrultusunda hazırlanan imalat ve montaj teklifimiz aşağıda bilgilerinize sunulmuştur:";
+    public const string QuoteClosing = "Belirtilen tüm işlerin imalatı ve montajı, sunulan fiyatlar doğrultusunda firmamız tarafından gerçekleştirilecektir.";
+    // Önceki proforma düzeninin varsayılanları: bunlarla kaydedilmiş teklifler yeni düzenin başlığı ve girişiyle basılır.
+    public const string ProformaTitle = "PROFORMA FATURA";
+    public const string ProformaIntro = "Talebiniz doğrultusunda hazırlanan proforma faturamız aşağıda bilgilerinize sunulmuştur.";
     public const string Acceptance = "Yukarıdaki fiyat ve şartları kabul ederek siparişi onaylıyorum.";
 
     // Yeni belgeye gelen değişken değerleri. Şablon ayarlarından ve her belgede değiştirilebilir.
@@ -42,6 +46,7 @@ public static class DocumentSeed
         Phone = Phone,
         FooterAddress = Address,
         Intro = QuoteIntro,
+        Closing = QuoteClosing,
         SignOff = "Saygılarımızla,",
         AcceptanceText = Acceptance,
         TermsJson = DocumentJson.Serialize(QuoteTerms()),
