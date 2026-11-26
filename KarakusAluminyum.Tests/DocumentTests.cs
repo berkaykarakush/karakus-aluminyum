@@ -172,17 +172,19 @@ public sealed class QuoteDocumentTests(PostgresFixture postgres)
         Assert.NotEqual("{}", quote.SnapshotJson);
 
         var html = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/crm/teklifler/yazdir/{quote.Id}"));
-        // Proforma: kalemler bölüm başlıklarıyla, bölüm toplamları, KDV dökümü ve yazıyla genel toplam.
-        Assert.Contains("PROFORMA FATURA", html);
-        Assert.Contains("<tr class=\"pf-section\"><td colspan=\"6\">A Blok</td></tr>", html);
-        Assert.Contains("1.785.000,00", html);
-        Assert.Contains("A Blok toplamı</td><td class=\"pf-num\">3.750.000,00", html);
-        Assert.Contains("C Blok toplamı</td><td class=\"pf-num\">3.050.000,00", html);
-        Assert.Contains("Birim Fiyat (KDV dahil)", html);
-        Assert.Contains("Genel toplam (KDV dahil)</td><td>6.800.000,00 TL", html);
+        // Kurumsal teklif: blok adı Ürün Adı'dır; çok kalemli blokta kalem tutarı yazılmaz, blok toplamı ayrı satırdır.
+        Assert.Contains("TEKLİFTİR", html);
+        Assert.DoesNotContain("PROFORMA", html);
+        Assert.Contains("<th>Ürün Adı</th><th>Ürün Açıklaması</th>", html);
+        Assert.Contains("<td>A Blok</td><td>Doğrama ve Camlar</td>", html);
+        Assert.DoesNotContain("1.785.000,00", html);
+        Assert.Matches("<td>A Blok Toplamı</td>\\s*<td class=\"ql-qty\">4</td><td>Adet</td>\\s*<td class=\"ql-amount\">3.750.000,00 TL</td>", html);
+        Assert.Matches("<td>C Blok Toplamı</td>\\s*<td class=\"ql-qty\">3</td><td>Adet</td>\\s*<td class=\"ql-amount\">3.050.000,00 TL</td>", html);
+        Assert.Contains("Fiyata dahil KDV (%20)", html);
+        Assert.Matches("İşin Genel Toplamı \\(KDV dahil\\)</td><td class=\"ql-qty\"></td><td></td><td class=\"ql-amount\">6.800.000,00 TL", html);
         Assert.Contains("Yalnız: " + TurkishNumbers.MoneyWords(6800000m), html);
-        Assert.Contains("fatura yerine geçmez", html);
-        Assert.Contains("Alıcı onayı", html);
+        Assert.DoesNotContain("fatura yerine geçmez", html);
+        Assert.Contains("Saygılarımızla,", html);
         Assert.Contains("Yapımı devam eden 3 blok inşaatlarınız", html);
         Assert.Contains("Panjurlar vizon renkte", html);
         Assert.Contains("Bodrum kat dahil değildir.", html);
@@ -245,7 +247,7 @@ public sealed class QuoteDocumentTests(PostgresFixture postgres)
         });
 
         var html = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/crm/teklifler/yazdir/{id}"));
-        Assert.Contains("Eski kalem", html); // proforma kalemleri basar
+        Assert.Contains("Eski kalem", html); // bloksuz eski kalemler de tabloda basılır
         Assert.Contains("120,00 TL", html);
     }
 }
@@ -626,7 +628,7 @@ public sealed class DocumentTemplateTests(PostgresFixture postgres)
     }
 }
 
-// Proforma teklif ve ayrıntılı sözleşme (ERP'lerdeki satış teklifi / proforma düzeni).
+// Kurumsal teklif (teklif-formati.pdf) ve ayrıntılı sözleşme.
 [Collection("postgres")]
 public sealed class ProformaTests(PostgresFixture postgres)
 {
@@ -650,34 +652,59 @@ public sealed class ProformaTests(PostgresFixture postgres)
     }
 
     [Fact]
-    public async Task Proforma_PrintsPartiesLinesDiscountsVatTermsAndApproval()
+    public async Task Quote_PrintsCorporateTable_WithPozNames_DiscountsVatAndTerms()
     {
         var app = postgres.Shared;
         var (client, token) = await QuoteDocumentTests.AdminAsync(app);
         var customer = await QuoteDocumentTests.NewCustomerAsync(app);
-        var title = Unique("Proforma");
+        var title = Unique("Kurumsal");
         var saved = await QuoteDocumentTests.SaveQuoteAsync(client, token, "/yonetim/crm/teklifler/ekle", customer, title, Json(("Poz 1 - Açılır", 2, 1000m, 10m), ("Montaj", 1, 500m, 0m)), vat: "Added");
         Assert.Equal(HttpStatusCode.Redirect, saved.StatusCode);
-        var quote = await app.WithDbAsync(db => db.Quotes.AsNoTracking().Include(q => q.Items).SingleAsync(q => q.Title == title));
+        var quote = await app.WithDbAsync(db => db.Quotes.AsNoTracking().Include(q => q.Items).Include(q => q.Customer).SingleAsync(q => q.Title == title));
         Assert.Equal(10m, quote.Items.Single(i => i.Description == "Poz 1 - Açılır").DiscountRate);
         Assert.Equal((2300m, 460m, 2760m), (quote.Subtotal, quote.TaxAmount, quote.GrandTotal));
         Assert.Single(DocumentJson.ParseContent(quote.DocumentJson).Terms); // boş şart kaydedilmez
 
         var html = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/crm/teklifler/yazdir/{quote.Id}"));
-        Assert.Contains("PROFORMA FATURA", html);
-        Assert.Contains("VD / VKN: Bornova / 1234567890", html); // alıcı vergi bilgisi müşteri kartından
-        Assert.Contains(quote.QuoteNumber, html);
-        Assert.Contains("<th class=\"pf-num\">İsk.</th>", html);
-        Assert.Contains("%10", html);
-        Assert.Contains("Brüt toplam</td><td>2.500,00 TL", html);
-        Assert.Contains("Satır iskontoları</td><td>-200,00 TL", html);
-        Assert.Contains("KDV matrahı</td><td>2.300,00 TL", html);
-        Assert.Contains("KDV (%20)</td><td>460,00 TL", html);
-        Assert.Contains("Genel toplam (KDV dahil)</td><td>2.760,00 TL", html);
+        Assert.Contains("TEKLİFTİR", html);
+        Assert.Contains($"Sayın {quote.Customer!.Name},", html);
+        Assert.Contains("Teklif No: " + quote.QuoteNumber, html);
+        // Adsız blokta kalemler tek tek fiyatlanır; "Poz 1 - ..." açıklamasında poz adı Ürün Adı sütununa geçer.
+        Assert.Matches("<td>Poz 1</td><td>Açılır</td>\\s*<td class=\"ql-qty\">2</td><td>Adet</td>\\s*<td class=\"ql-amount\">1.800,00 TL</td>", html);
+        Assert.Matches("<td></td><td>Montaj</td>\\s*<td class=\"ql-qty\">1</td><td>Adet</td>\\s*<td class=\"ql-amount\">500,00 TL</td>", html);
+        Assert.Contains("<td>Ara Toplam</td><td class=\"ql-qty\"></td><td></td><td class=\"ql-amount\">2.300,00 TL</td>", html);
+        Assert.Contains("<td>KDV (%20)</td><td class=\"ql-qty\"></td><td></td><td class=\"ql-amount\">460,00 TL</td>", html);
+        Assert.Contains("<td>İşin Genel Toplamı (KDV dahil)</td><td class=\"ql-qty\"></td><td></td><td class=\"ql-amount\">2.760,00 TL</td>", html);
         Assert.Contains("<dt>Teslim süresi</dt><dd>45 iş günüdür.</dd>", html);
-        Assert.Contains("fatura yerine geçmez", html);
-        Assert.Contains("Kaşe / İmza", html);
+        Assert.Contains("Saygılarımızla,", html);
         Assert.DoesNotContain("maliyet", html, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // Proforma düzeninde kaydedilmiş teklif: değiştirilmemiş eski başlık ve giriş yeni düzenle basılır, kayıt değişmez.
+    [Fact]
+    public async Task OldProformaQuote_PrintsWithCorporateTitleAndIntro()
+    {
+        var app = postgres.Shared;
+        var (client, token) = await QuoteDocumentTests.AdminAsync(app);
+        var customer = await QuoteDocumentTests.NewCustomerAsync(app);
+        var title = Unique("Eski proforma");
+        await QuoteDocumentTests.SaveQuoteAsync(client, token, "/yonetim/crm/teklifler/ekle", customer, title, Json(("Kalem", 1, 100m, 0m)));
+        var id = await app.WithDbAsync(async db =>
+        {
+            var quote = await db.Quotes.SingleAsync(q => q.Title == title);
+            var template = DocumentJson.ParseTemplate(quote.SnapshotJson)!;
+            template.Title = DocumentSeed.ProformaTitle;
+            var content = DocumentJson.ParseContent(quote.DocumentJson);
+            content.Intro = DocumentSeed.ProformaIntro;
+            (quote.SnapshotJson, quote.DocumentJson) = (DocumentJson.Serialize(template), DocumentJson.Serialize(content));
+            await db.SaveChangesAsync();
+            return quote.Id;
+        });
+        var html = WebUtility.HtmlDecode(await client.GetStringAsync($"/yonetim/crm/teklifler/yazdir/{id}"));
+        Assert.Contains("TEKLİFTİR", html);
+        Assert.Contains(DocumentSeed.QuoteIntro, html);
+        Assert.DoesNotContain("PROFORMA", html);
+        Assert.DoesNotContain("proforma", html);
     }
 
     [Fact]
@@ -781,7 +808,7 @@ public sealed class ProformaTests(PostgresFixture postgres)
         Assert.Equal(HttpStatusCode.OK, bad.StatusCode);
     }
 
-    // Eski kurulum: şablonu hiç değiştirilmemişse proforma ve ayrıntılı maddelere yükselir; değiştirilmiş metin korunur.
+    // Eski kurulum: şablonu hiç değiştirilmemişse kurumsal teklif ve ayrıntılı maddelere yükselir; değiştirilmiş metin korunur.
     [Fact]
     public async Task Upgrade_RenewsUntouchedTemplates_KeepsEditedOnes()
     {
@@ -790,7 +817,7 @@ public sealed class ProformaTests(PostgresFixture postgres)
         await app.WithDbAsync(async db =>
         {
             var quote = await db.DocumentTemplates.SingleAsync(t => t.Kind == DocumentKinds.Quote);
-            (quote.Title, quote.Intro, quote.TermsJson, quote.AcceptanceText) = ("TEKLİFTİR", DocumentSeed.FirstQuoteIntro, "[]", null);
+            (quote.Title, quote.Intro, quote.Closing, quote.TermsJson, quote.AcceptanceText) = (DocumentSeed.ProformaTitle, DocumentSeed.FirstQuoteIntro, null, "[]", null);
             var contract = await db.DocumentTemplates.SingleAsync(t => t.Kind == DocumentKinds.Contract);
             contract.ArticlesJson = DocumentJson.Serialize(DocumentSeed.FirstContractTitles.Select(t => new ContractArticle { Title = t, Kind = t == "Sözleşmenin Konusu" ? ContractArticleKinds.Subject : t == "İşin Toplam Bedeli" ? ContractArticleKinds.Price : t == "Ödeme Şekli" ? ContractArticleKinds.Payment : ContractArticleKinds.Text }).ToList());
             contract.VariablesJson = "{}";
@@ -800,7 +827,7 @@ public sealed class ProformaTests(PostgresFixture postgres)
             return 0;
         });
         var templates = await app.WithDbAsync(db => db.DocumentTemplates.AsNoTracking().ToDictionaryAsync(t => t.Kind));
-        Assert.Equal((DocumentSeed.QuoteTitle, DocumentSeed.QuoteIntro), (templates[DocumentKinds.Quote].Title, templates[DocumentKinds.Quote].Intro));
+        Assert.Equal((DocumentSeed.QuoteTitle, DocumentSeed.QuoteIntro, DocumentSeed.QuoteClosing), (templates[DocumentKinds.Quote].Title, templates[DocumentKinds.Quote].Intro, templates[DocumentKinds.Quote].Closing));
         Assert.NotEmpty(DocumentJson.ParseTerms(templates[DocumentKinds.Quote].TermsJson));
         Assert.Equal(DocumentSeed.ContractArticles().Count, DocumentJson.ParseArticles(templates[DocumentKinds.Contract].ArticlesJson).Count);
         Assert.Equal("30", DocumentJson.ParseVariables(templates[DocumentKinds.Contract].VariablesJson)["teslim_suresi"]);

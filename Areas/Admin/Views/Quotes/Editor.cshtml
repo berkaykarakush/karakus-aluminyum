@@ -19,8 +19,8 @@
   <div asp-validation-summary="All" class="doc-errors"></div>
 
   <section class="doc-card">
-    <h2>Proforma bilgileri</h2>
-    <p class="admin-muted">Teklif proforma fatura olarak basılır: satıcı ve alıcı bilgileri, kalem tablosu, iskonto ve KDV dökümü, şartlar, banka bilgileri ve müşteri onay kutusu. Alıcının adresi ve vergi bilgileri müşteri kartından gelir.</p>
+    <h2>Teklif bilgileri</h2>
+    <p class="admin-muted">Teklif kurumsal teklif düzeninde basılır: "TEKLİFTİR" başlığı, "Sayın müşteri" hitabı, giriş ve teknik özellik cümleleri, Ürün Adı / Ürün Açıklaması / Miktar / Birim / Tutar tablosu, kapanış, şartlar ve imza; altında poz çizimleri.</p>
     <div class="doc-grid">
       <div><label asp-for="CustomerId">Müşteri *</label><select asp-for="CustomerId" asp-items="customers" required><option value="">Müşteri seçin</option></select></div>
       <div><label asp-for="Title">Teklif başlığı *</label><input asp-for="Title" required placeholder="Örn. 3 blok inşaat doğrama işi" /></div>
@@ -48,7 +48,7 @@
 
   <section class="doc-card">
     <h2>Bölümler ve kalemler</h2>
-    <p class="admin-muted">Her blok proformada bir bölüm başlığıdır (ör. A Blok); birden çok bölümde bölüm toplamları da basılır. Kalemler, miktarlar, birim fiyatlar ve satır iskontoları basılır. Maddeler "Teknik özellikler" başlığı altında yazar. Maliyet ve marj yalnızca bu ekranda görünür.</p>
+    <p class="admin-muted">Blok adı tablodaki Ürün Adı'dır (ör. PVC Doğrama, Motorlu Panjur). Birden çok kalemli blokta kalemlerin tutarı yazılmaz, altına "Blok adı Toplamı" satırı gelir; adsız bloktaki kalemler tek tek fiyatlanır ("Poz 1 - ..." açıklamasında poz adı Ürün Adı olur). Maddeler tablonun üstünde cümle olarak yazar. Maliyet ve marj yalnızca bu ekranda görünür.</p>
     <div id="doc-blocks"></div>
     <div class="doc-row"><button type="button" class="doc-btn" id="doc-add-block">+ Blok ekle</button><strong id="doc-total"></strong></div>
   </section>

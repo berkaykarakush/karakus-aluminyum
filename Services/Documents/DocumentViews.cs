@@ -20,6 +20,7 @@ public sealed record QuoteBlockView(DocumentBlock Block, IReadOnlyList<QuoteItem
 public sealed record QuotePrintVm(Quote Quote, string CustomerName, DocumentTemplate Template, DocumentContent Content, IReadOnlyList<QuoteBlockView> Blocks, AttachmentList Attachments, PresentationVm? Presentation = null)
 {
     public PriceSheet Prices { get; } = PriceSheet.FromQuote(Quote);
+    public QuoteTable Table => QuoteTable.From(Prices);
     public DateOnly PrintedOn { get; init; } = PrintDates.Today; // basılan tarih; kayıtlı teklif tarihi değişmez
 
     public Dictionary<string, string> System => new()
@@ -28,6 +29,7 @@ public sealed record QuotePrintVm(Quote Quote, string CustomerName, DocumentTemp
         ["tarih"] = PrintDates.Text(PrintedOn),
         ["gecerlilik"] = Quote.ValidUntilUtc is DateTime valid ? TurkishNumbers.Date(valid) : "",
         ["belge_no"] = Quote.QuoteNumber,
+        ["konu"] = Quote.Title,
         ["toplam"] = TurkishNumbers.Money(Quote.GrandTotal),
         ["toplam_yazi"] = TurkishNumbers.MoneyWords(Quote.GrandTotal)
     };
@@ -94,7 +96,18 @@ public static class DocumentViews
     {
         var content = DocumentJson.ParseContent(quote.DocumentJson);
         var template = await TemplateForAsync(db, DocumentKinds.Quote, quote.SnapshotJson);
-        return new QuotePrintVm(quote, quote.Customer?.Name ?? "", template, content, BuildBlocks(quote, content), await LoadAttachmentsAsync(db, content.DesignIds), presentation) { PrintedOn = printedOn ?? PrintDates.Today };
+        // Proforma düzeninde kaydedilmiş teklifler kurumsal teklif düzeniyle basılır; değiştirilmemiş eski başlık ve giriş yenisiyle gösterilir.
+        // Yalnızca baskıdır: kayıtlı belge ve onay özeti değişmez.
+        if (template.Title == DocumentSeed.ProformaTitle) template.Title = DocumentSeed.QuoteTitle;
+        if (content.Intro == DocumentSeed.ProformaIntro) content.Intro = DocumentSeed.QuoteIntro;
+        return new QuotePrintVm(quote, quote.Customer?.Name ?? "", template, content, BuildBlocks(quote, content), await LoadAttachmentsAsync(db, QuoteDesignIds(quote, content)), presentation) { PrintedOn = printedOn ?? PrintDates.Today };
+    }
+
+    // Teklifin altındaki çizimler: editörde seçilen çizimler ve çizimden gelen kalemlerin pozları, sırasıyla ve bir kez.
+    public static List<int> QuoteDesignIds(Quote quote, DocumentContent content)
+    {
+        var fromItems = quote.Items.OrderBy(i => i.SortOrder).ThenBy(i => i.Id).Select(i => i.WindowDesignId).OfType<int>();
+        return content.DesignIds.Concat(fromItems).Distinct().ToList();
     }
 
     public static async Task<DocumentTemplate> CurrentTemplateAsync(AppDbContext db, string kind)
