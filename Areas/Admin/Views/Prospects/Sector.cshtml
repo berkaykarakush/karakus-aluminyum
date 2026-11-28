@@ -14,6 +14,9 @@
     <label for="keywords">Google'da aranacak ifadeler (her satıra bir tane, en fazla @KarakusAluminyum.Web.Models.Crm.ProspectSector.MaxKeywords)</label>
     <textarea id="keywords" name="keywords" rows="5" required>@ViewBag.Keywords</textarea>
     <p class="admin-muted">Her ifade, açık her ilçe için ayrı aranır: "elektrik mühendislik Bornova İzmir". Firmaların Google Haritalar'da kendini tanımladığı kısa ifadeler en iyi sonucu verir. Her ifade ilçe sayısı kadar ücretli istek harcar.</p>
+    <label asp-for="MessageTemplate">Hazır mesaj (WhatsApp / e-posta, elle gönderilir)</label>
+    <textarea asp-for="MessageTemplate" rows="5" maxlength="1000" placeholder="@KarakusAluminyum.Web.Services.Prospecting.ProspectPriority.DefaultMessage"></textarea>
+    <p class="admin-muted">Boş bırakılırsa genel metin kullanılır. Değişkenler: {{firma}}, {{yetkili}}, {{yetkili_hitap}} (yetkili varsa " Ahmet Bey" gibi), {{ilce}}, {{gonderen}} (gönderen kullanıcının adı), {{imza}}. Mesaj otomatik gönderilmez; firma sayfasında WhatsApp veya e-posta metin dolu açılır, gönder tuşuna siz basarsınız.</p>
     <p><label><input asp-for="IsActive" /> Taramaya açık</label></p>
     <div class="admin-actions"><button class="admin-btn" type="submit">Kaydet</button><a href="/yonetim/crm/firmalar/tarama">İptal</a></div>
   </form>

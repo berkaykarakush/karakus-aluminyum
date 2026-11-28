@@ -240,7 +240,7 @@ public sealed class NotificationFlowTests(PostgresFixture postgres)
     {
         var app = postgres.CreateApp(database);
         app.NewClient();
-        await SetAsync(app, ("NotifyEmailTo", "ekip@ornek.test, patron@ornek.test"), ("NotifyWhatsAppTo", "905550000000"));
+        await SetAsync(app, ("NotifyEmailTo", "ekip@ornek.test, patron@ornek.test"), ("NotifyWhatsAppEnabled", "true"), ("NotifyWhatsAppTo", "905550000000"));
         return app;
     }
 

@@ -11,6 +11,16 @@ public enum VatMode { Added = 0, Included = 1, None = 2 }
 public static class QuoteLoss
 {
     public static readonly string[] Reasons = { "Fiyat yüksek", "Teslim süresi uzun", "Rakip tercih edildi", "Vazgeçti / ertelendi", "Ulaşılamadı", "Ürün / sistem uymadı", "Diğer" };
+
+    // Kayıp nedenine göre teklifin yeniden aranacağı gün sayısı; null: geri arama listesine girmez (rakip seçildi, ürün uymadı).
+    public static int? WinBackDays(string? reason) => reason switch
+    {
+        "Fiyat yüksek" => 30,
+        "Teslim süresi uzun" => 30,
+        "Vazgeçti / ertelendi" => 60,
+        "Ulaşılamadı" => 7,
+        _ => null
+    };
 }
 
 public sealed class Quote
@@ -43,6 +53,9 @@ public sealed class Quote
     [StringLength(40)] public string? LostReason { get; set; }
     [StringLength(120)] public string? LostCompetitor { get; set; }
     [StringLength(300)] public string? LostNote { get; set; }
+    // Geri kazanma: fiyat, teslim süresi veya erteleme yüzünden kaybedilen teklif bu gün arama listesine düşer.
+    public DateOnly? WinBackOn { get; set; }
+    [StringLength(300)] public string? WinBackNote { get; set; } // son geri arama notu
     [Column(TypeName = "numeric(5,2)")] public decimal TaxRate { get; set; } = 20m;
     [Column(TypeName = "numeric(5,2)")] public decimal DiscountRate { get; set; }
     [Column(TypeName = "numeric(18,2)")] public decimal Subtotal { get; set; }

@@ -7,6 +7,8 @@ using KarakusAluminyum.Web.Services;
 
 namespace KarakusAluminyum.Web.Areas.Admin.Controllers;
 
+public sealed record ReferralRow(int Id, string Name, string? Phone, int Count, int WonCount, decimal Revenue, IReadOnlyList<(int Id, string Name, decimal Won)> Customers);
+
 [Area("Admin"), Authorize(Roles = "Admin,Editor,Accountant"), Route("yonetim/crm/musteriler")]
 public sealed class CustomersController : Controller
 {
@@ -25,12 +27,14 @@ public sealed class CustomersController : Controller
     }
 
     [HttpGet("ekle")]
-    public IActionResult Create() => View("Edit", new Customer());
+    public async Task<IActionResult> Create() { await LoadOptionsAsync(null); return View("Edit", new Customer()); }
 
     [HttpPost("ekle"), ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(Customer model)
     {
-        if (!ModelState.IsValid) return View("Edit", model);
+        ModelState.Remove(nameof(model.ReferredBy));
+        await CheckReferrerAsync(model);
+        if (!ModelState.IsValid) { await LoadOptionsAsync(null); return View("Edit", model); }
         model.CreatedUtc = model.UpdatedUtc = DateTime.UtcNow;
         _db.Customers.Add(model); await _db.SaveChangesAsync();
         await _audit.RecordAsync("create", "Customer", model.Id.ToString(), model.Name);
@@ -42,25 +46,65 @@ public sealed class CustomersController : Controller
     public async Task<IActionResult> Edit(int id)
     {
         var model = await _db.Customers.FindAsync(id);
-        return model is null ? NotFound() : View(model);
+        if (model is null) return NotFound();
+        await LoadOptionsAsync(model);
+        return View(model);
     }
 
     [HttpPost("duzenle/{id:int}"), ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(int id, Customer input)
     {
         if (id != input.Id) return BadRequest();
-        if (!ModelState.IsValid) return View(input);
+        ModelState.Remove(nameof(input.ReferredBy));
+        await CheckReferrerAsync(input);
+        if (!ModelState.IsValid) { await LoadOptionsAsync(input); return View(input); }
         var model = await _db.Customers.FindAsync(id);
         if (model is null) return NotFound();
         model.Name = input.Name; model.Kind = input.Kind; model.Status = input.Status; model.PartyType = input.PartyType;
         model.ContactPerson = input.ContactPerson; model.Email = input.Email; model.Phone = input.Phone;
         model.TaxNumber = input.TaxNumber; model.TaxOffice = input.TaxOffice; model.Address = input.Address;
-        model.City = input.City; model.District = input.District; model.Source = input.Source; model.Notes = input.Notes; model.NotificationsOptOut = input.NotificationsOptOut;
+        model.City = input.City; model.District = input.District; model.Source = input.Source; model.ReferredByCustomerId = input.ReferredByCustomerId; model.Notes = input.Notes; model.NotificationsOptOut = input.NotificationsOptOut;
         model.UpdatedUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         await _audit.RecordAsync("update", "Customer", model.Id.ToString(), model.Name);
         TempData["Notice"] = "Müşteri güncellendi.";
         return RedirectToAction(nameof(Index));
+    }
+
+    // Tavsiye eden müşteri kendisi olamaz ve kayıtlı bir müşteri olmalıdır. Tavsiye seçildiyse kaynak boşsa "Tavsiye" yazılır.
+    private async Task CheckReferrerAsync(Customer input)
+    {
+        if (input.ReferredByCustomerId is not int referrer) return;
+        if (referrer == input.Id || !await _db.Customers.AnyAsync(x => x.Id == referrer)) ModelState.AddModelError(nameof(input.ReferredByCustomerId), "Tavsiye eden olarak başka bir kayıtlı müşteri seçin.");
+        else if (string.IsNullOrWhiteSpace(input.Source)) input.Source = "Tavsiye";
+    }
+
+    private async Task LoadOptionsAsync(Customer? model)
+    {
+        var id = model?.Id ?? 0;
+        ViewBag.Referrers = await _db.Customers.AsNoTracking().Where(x => x.Id != id && x.PartyType != KarakusAluminyum.Web.Models.Accounting.PartyType.Supplier)
+            .OrderBy(x => x.Name).Select(x => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem(x.Name + (x.Phone == null ? "" : " · " + x.Phone), x.Id.ToString())).ToListAsync();
+        if (model is null || id == 0) return;
+        ViewBag.Referred = (await _db.Customers.AsNoTracking().Where(x => x.ReferredByCustomerId == id).OrderByDescending(x => x.CreatedUtc).Select(x => new { x.Id, x.Name }).ToListAsync())
+            .Select(x => (x.Id, x.Name)).ToList();
+        ViewBag.Neighbors = await NeighborWork.FindAsync(_db, model.Address, model.District, excludeCustomerId: id);
+    }
+
+    // Tavsiye raporu: kim kaç müşteri getirdi, getirdikleri müşterilerden ne kadar iş çıktı.
+    [HttpGet("tavsiyeler")]
+    public async Task<IActionResult> Referrals()
+    {
+        var won = new[] { QuoteStatus.Accepted, QuoteStatus.Converted };
+        var referred = await _db.Customers.AsNoTracking().Where(x => x.ReferredByCustomerId != null)
+            .Select(x => new { x.Id, x.Name, Referrer = x.ReferredByCustomerId!.Value, x.CreatedUtc, Won = x.Quotes.Where(q => won.Contains(q.Status)).Sum(q => (decimal?)q.GrandTotal) ?? 0m, Quotes = x.Quotes.Count })
+            .ToListAsync();
+        var referrerIds = referred.Select(x => x.Referrer).Distinct().ToList();
+        var referrers = await _db.Customers.AsNoTracking().Where(x => referrerIds.Contains(x.Id)).Select(x => new { x.Id, x.Name, x.Phone }).ToDictionaryAsync(x => x.Id);
+        var rows = referred.GroupBy(x => x.Referrer).Select(g => new ReferralRow(g.Key, referrers.TryGetValue(g.Key, out var r) ? r.Name : "?", referrers.TryGetValue(g.Key, out var rp) ? rp.Phone : null,
+                g.Count(), g.Count(x => x.Won > 0), g.Sum(x => x.Won), g.OrderByDescending(x => x.CreatedUtc).Select(x => (x.Id, x.Name, x.Won)).ToList()))
+            .OrderByDescending(x => x.Revenue).ThenByDescending(x => x.Count).ToList();
+        ViewBag.TaggedWithoutReferrer = await _db.Customers.CountAsync(x => x.Source == "Tavsiye" && x.ReferredByCustomerId == null);
+        return View(rows);
     }
 
     [HttpPost("sil/{id:int}"), ValidateAntiForgeryToken]

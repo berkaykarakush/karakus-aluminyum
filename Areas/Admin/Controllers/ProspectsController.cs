@@ -3,6 +3,7 @@ using System.Text.Json;
 using KarakusAluminyum.Web.Data;
 using KarakusAluminyum.Web.Models.Crm;
 using KarakusAluminyum.Web.Services;
+using KarakusAluminyum.Web.Services.Documents;
 using KarakusAluminyum.Web.Services.Prospecting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -110,6 +111,8 @@ public sealed class ProspectsController : Controller
         var row = await _db.Prospects.Include(x => x.Sector).Include(x => x.Customer).Include(x => x.Activities.OrderByDescending(a => a.CreatedUtc)).AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
         if (row is null) return NotFound();
         await LoadOptionsAsync();
+        ViewBag.Message = await MessageForAsync(row);
+        ViewBag.Score = ProspectPriority.Score(row, Today);
         return View(row);
     }
 
@@ -131,25 +134,65 @@ public sealed class ProspectsController : Controller
         return RedirectToAction(nameof(Details), new { id });
     }
 
-    // Görüşme kaydı. "Yeni" aşamadaki firma ile ilk temas kurulunca aşama kendiliğinden ilerler.
+    // Görüşme kaydı. İlk temasla aşama ilerler; takip günü boş bırakılırsa aşamaya göre önerilir (ulaşılamadı: 2 gün,
+    // iletişim: 3, görüşme: 5, teklif: 7 gün). geri: kayıttan sonra dönülecek sayfa (ör. günlük arama listesi).
     [HttpPost("{id:int}/gorusme"), ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddActivity(int id, ProspectActivityKind kind, string? text, DateOnly? nextFollowUp)
+    public async Task<IActionResult> AddActivity(int id, ProspectActivityKind kind, string? text, DateOnly? nextFollowUp, string? geri = null)
     {
         var row = await _db.Prospects.FirstOrDefaultAsync(x => x.Id == id);
         if (row is null) return NotFound();
+        // Arama listesinden hızlı kayıt: not yazılmadan da kaydedilebilir.
+        if (kind == ProspectActivityKind.NoAnswer && string.IsNullOrWhiteSpace(text)) text = "Aranıp ulaşılamadı.";
+        if (kind == ProspectActivityKind.Call && string.IsNullOrWhiteSpace(text) && geri is not null) text = "Telefonla görüşüldü.";
         if (!Enum.IsDefined(kind) || string.IsNullOrWhiteSpace(text) || text.Trim().Length > 1000)
         {
             TempData["Notice"] = "Görüşme notu boş olamaz ve en fazla 1000 karakter olabilir.";
-            return RedirectToAction(nameof(Details), new { id });
+            return Back(geri, id);
         }
-        _db.ProspectActivities.Add(new ProspectActivity { ProspectId = id, Kind = kind, Text = text.Trim(), CreatedBy = User.Identity?.Name });
-        if (row.Stage == ProspectStage.New && kind != ProspectActivityKind.Note) row.Stage = kind is ProspectActivityKind.Meeting or ProspectActivityKind.Visit ? ProspectStage.Meeting : ProspectStage.Contacted;
-        row.NextFollowUp = nextFollowUp;
-        row.UpdatedUtc = DateTime.UtcNow;
+        Record(row, kind, text.Trim(), nextFollowUp);
         await _db.SaveChangesAsync();
-        TempData["Notice"] = "Görüşme kaydedildi.";
-        return RedirectToAction(nameof(Details), new { id });
+        TempData["Notice"] = $"{row.Name}: görüşme kaydedildi.{(row.NextFollowUp is DateOnly next ? $" Sonraki takip {next:dd.MM.yyyy}." : "")}";
+        return Back(geri, id);
     }
+
+    private void Record(Prospect row, ProspectActivityKind kind, string text, DateOnly? nextFollowUp)
+    {
+        _db.ProspectActivities.Add(new ProspectActivity { ProspectId = row.Id, Kind = kind, Text = text, CreatedBy = User.Identity?.Name });
+        row.Stage = ProspectPriority.AdvanceStage(row.Stage, kind);
+        row.NextFollowUp = nextFollowUp ?? ProspectPriority.SuggestFollowUp(row.Stage, kind, Today);
+        row.UpdatedUtc = DateTime.UtcNow;
+    }
+
+    // Yalnızca panel içi adreslere dönülür.
+    private IActionResult Back(string? back, int id)
+        => back is not null && back.StartsWith("/yonetim/", StringComparison.Ordinal) && !back.StartsWith("//") ? Redirect(back) : RedirectToAction(nameof(Details), new { id });
+
+    // Hazır mesaj elle gönderilir: WhatsApp (wa.me) veya e-posta programı metin dolu açılır, gönder tuşuna kullanıcı basar.
+    // Açılırken görüşme kaydı düşülür ve takip günü önerilir. Otomatik gönderim yapılmaz.
+    [HttpPost("{id:int}/mesaj"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> SendMessage(int id, string kanal, string? text)
+    {
+        var row = await _db.Prospects.Include(x => x.Sector).FirstOrDefaultAsync(x => x.Id == id);
+        if (row is null) return NotFound();
+        if (row.DoNotContact) { TempData["Notice"] = "Bu firma iletişim kurulmasını istemedi."; return RedirectToAction(nameof(Details), new { id }); }
+        var message = string.IsNullOrWhiteSpace(text) ? await MessageForAsync(row) : text.Trim();
+        if (message.Length > 2000) message = message[..2000];
+        string url;
+        if (kanal == "whatsapp" && ProspectText.WhatsAppNumber(row.Phone) is { } wa) url = $"https://wa.me/{wa}?text={Uri.EscapeDataString(message)}";
+        else if (kanal == "eposta" && row.Email is not null) url = $"mailto:{row.Email}?subject={Uri.EscapeDataString("Karakuş Alüminyum - tanışma")}&body={Uri.EscapeDataString(message)}";
+        else { TempData["Notice"] = kanal == "eposta" ? "Firmanın e-postası kayıtlı değil." : "Firmanın cep telefonu kayıtlı değil; WhatsApp yalnızca cep numarasıyla açılır."; return RedirectToAction(nameof(Details), new { id }); }
+        Record(row, kanal == "whatsapp" ? ProspectActivityKind.WhatsApp : ProspectActivityKind.Email, ProspectText.Truncate("Hazır mesaj açıldı: " + message, 1000), null);
+        await _db.SaveChangesAsync();
+        return Redirect(url);
+    }
+
+    private async Task<string> MessageForAsync(Prospect row)
+        => ProspectPriority.Message(row.Sector?.MessageTemplate, row, (await DocumentPeople.CurrentAsync(_db, User))?.FullName);
+
+    // Sektör ve ilçe verimi: hangi sektör/ilçe gerçekten görüşmeye, teklife ve işe dönüşüyor; Google isteği nereye gidiyor.
+    [HttpGet("verim")]
+    public async Task<IActionResult> Yield()
+        => View(await ProspectYield.BuildAsync(_db));
 
     [HttpPost("{id:int}/musteriye-donustur"), ValidateAntiForgeryToken]
     public async Task<IActionResult> Convert(int id)
@@ -286,7 +329,9 @@ public sealed class ProspectsController : Controller
         if (list.Any(k => k.Length > 80)) ModelState.AddModelError(string.Empty, "Anahtar kelime en fazla 80 karakter olabilir.");
         ModelState.Remove(nameof(input.KeywordsJson));
         if (!ModelState.IsValid) return false;
+        if (input.MessageTemplate?.Trim().Length > 1000) { ModelState.AddModelError(nameof(input.MessageTemplate), "Mesaj en fazla 1000 karakter olabilir."); return false; }
         row.Name = input.Name.Trim();
+        row.MessageTemplate = string.IsNullOrWhiteSpace(input.MessageTemplate) ? null : input.MessageTemplate.Trim();
         row.KeywordsJson = JsonSerializer.Serialize(list);
         row.IsActive = input.IsActive;
         return true;
@@ -323,7 +368,8 @@ public sealed class ProspectsController : Controller
         row.Instagram = instagram; row.Facebook = facebook; row.LinkedIn = linkedin; row.TikTok = tiktok;
         row.Address = Clean(input.Address);
         row.District = Clean(input.District);
-        row.NextFollowUp = input.NextFollowUp;
+        // Sonuçlanan firmada takip günü kalmaz; arama listesine düşmez.
+        row.NextFollowUp = ProspectPriority.Closed.Contains(input.Stage) ? null : input.NextFollowUp;
         row.Notes = Clean(input.Notes);
         row.DoNotContact = input.DoNotContact;
         row.UpdatedUtc = DateTime.UtcNow;

@@ -143,6 +143,7 @@ public sealed class SurveyController : Controller
         var survey = await LoadAsync(id);
         if (survey is null) return NotFound();
         ViewBag.Notices = await _db.NotificationJobs.AsNoTracking().Where(x => x.SiteSurveyId == id).OrderByDescending(x => x.Id).Take(50).ToListAsync();
+        ViewBag.Neighbors = await NeighborWork.FindAsync(_db, survey.Address ?? survey.Customer?.Address, survey.Customer?.District, excludeCustomerId: survey.CustomerId);
         return View(survey);
     }
 

@@ -4,6 +4,8 @@
 @{
     ViewData["Title"] = Model.Name;
     var wa = ProspectText.WhatsAppNumber(Model.Phone);
+    // Detay ekranındaki türler: "ulaşılamadı" ayrı düğmeyle kaydedilir.
+    var kinds = Enum.GetValues<ProspectActivityKind>().Where(k => k != ProspectActivityKind.NoAnswer);
     var links = new List<(string Text, string? Url)> { ("Web sitesi", Model.Website), ("Google Haritalar", Model.GoogleMapsUrl), ("Instagram", Model.Instagram), ("Facebook", Model.Facebook), ("LinkedIn", Model.LinkedIn), ("TikTok", Model.TikTok), ("WhatsApp", wa is null ? null : "https://wa.me/" + wa) };
 }
 <link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
@@ -30,12 +32,13 @@
     <form class="admin-form" method="post" action="/yonetim/crm/firmalar/@Model.Id/gorusme">
       @Html.AntiForgeryToken()
       <div class="admin-grid">
-        <div><label for="kind">Tür</label><select id="kind" name="kind">@foreach (var k in Enum.GetValues<ProspectActivityKind>()) { <option value="@k">@ProspectLabels.Activity(k)</option> }</select></div>
-        <div><label for="nextFollowUp">Sonraki takip</label><input id="nextFollowUp" name="nextFollowUp" type="date" value="@Model.NextFollowUp?.ToString("yyyy-MM-dd")" /></div>
+        <div><label for="kind">Tür</label><select id="kind" name="kind">@foreach (var k in kinds) { <option value="@k">@ProspectLabels.Activity(k)</option> }</select></div>
+        <div><label for="nextFollowUp">Sonraki takip</label><input id="nextFollowUp" name="nextFollowUp" type="date" /><p class="admin-muted" style="margin:4px 0 0">Boş bırakılırsa aşamaya göre yazılır: ulaşılamadı 2 gün, iletişim 3, görüşme 5, teklif 7 gün sonra.@(Model.NextFollowUp is DateOnly current ? $" Şu anki takip: {current:dd.MM.yyyy}." : "")</p></div>
       </div>
       <label for="text">Not</label><textarea id="text" name="text" rows="3" maxlength="1000" required placeholder="Kimle görüşüldü, ne konuşuldu, ne istendi?"></textarea>
       <div class="admin-actions" style="margin-top:8px"><button class="admin-btn">Görüşmeyi kaydet</button></div>
     </form>
+    <form method="post" action="/yonetim/crm/firmalar/@Model.Id/gorusme" style="margin-top:6px">@Html.AntiForgeryToken()<input type="hidden" name="kind" value="@ProspectActivityKind.NoAnswer" /><button class="admin-btn admin-btn--secondary" title="Not gerekmez; 2 gün sonra arama listesine yeniden gelir">Aradım, ulaşılamadı</button></form>
     @foreach (var a in Model.Activities)
     {
       <div style="padding:10px 0;border-top:1px solid #e3e7ea">
@@ -53,6 +56,21 @@
       @if (Model.Email is not null) { <a class="admin-btn admin-btn--secondary" href="mailto:@Model.Email">@Model.Email</a> }
       @foreach (var (text, url) in links.Where(l => l.Url is not null)) { <a class="admin-btn admin-btn--secondary" href="@url" target="_blank" rel="noopener noreferrer">@text ↗</a> }
     </div>
+    @{ var score = (ProspectScore)ViewBag.Score; }
+    <p style="margin:12px 0 0"><strong>Öncelik: @score.Total / 100</strong> <small class="admin-muted">@string.Join(" · ", score.Reasons)</small></p>
+    @if (!Model.DoNotContact && (wa is not null || Model.Email is not null))
+    {
+      <h3>Hazır mesaj</h3>
+      <form method="post" action="/yonetim/crm/firmalar/@Model.Id/mesaj" target="_blank" class="admin-form">
+        @Html.AntiForgeryToken()
+        <textarea name="text" rows="6" maxlength="2000" aria-label="Hazır mesaj">@ViewBag.Message</textarea>
+        <p class="admin-muted" style="margin:4px 0 8px">Mesaj otomatik gönderilmez: WhatsApp veya e-posta metin dolu açılır, gönder tuşuna siz basarsınız. Açılınca görüşme kaydı düşülür. @if (Model.SectorId is int sectorId) { <text>Sektörün metnini <a href="/yonetim/crm/firmalar/sektor/@sectorId">sektör ayarlarından</a> değiştirebilirsiniz.</text> }</p>
+        <div class="admin-actions">
+          @if (wa is not null) { <button class="admin-btn" name="kanal" value="whatsapp">WhatsApp'ta aç</button> }
+          @if (Model.Email is not null) { <button class="admin-btn admin-btn--secondary" name="kanal" value="eposta">E-postada aç</button> }
+        </div>
+      </form>
+    }
     <p class="admin-muted" style="margin-top:12px">
       Kaynak: @ProspectSources.Label(Model.Source) · Eklenme: @Model.CreatedUtc.AddHours(3).ToString("dd.MM.yyyy")
       @if (Model.Rating is double r) { <text> · Google puanı: @r.ToString("0.0") (@Model.RatingCount yorum)</text> }

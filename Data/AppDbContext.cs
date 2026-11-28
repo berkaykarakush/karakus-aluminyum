@@ -141,6 +141,9 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<Contract>().HasIndex(x => x.ContractNumber).IsUnique();
         builder.Entity<Contract>().HasIndex(x => x.PublicToken).IsUnique();
         builder.Entity<PresentationSection>().HasIndex(x => x.SortOrder);
+        builder.Entity<Customer>().HasOne(x => x.ReferredBy).WithMany().HasForeignKey(x => x.ReferredByCustomerId).OnDelete(DeleteBehavior.SetNull);
+        builder.Entity<Customer>().HasIndex(x => x.ReferredByCustomerId);
+        builder.Entity<Quote>().HasIndex(x => new { x.Status, x.WinBackOn });
         builder.Entity<Prospect>().HasIndex(x => x.GooglePlaceId).IsUnique().HasFilter("\"GooglePlaceId\" IS NOT NULL");
         builder.Entity<Prospect>().HasIndex(x => new { x.Stage, x.NextFollowUp });
         builder.Entity<Prospect>().HasIndex(x => x.SectorId);

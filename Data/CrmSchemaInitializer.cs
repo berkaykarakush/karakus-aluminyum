@@ -1044,6 +1044,17 @@ ALTER TABLE "Quotes" ADD COLUMN IF NOT EXISTS "Signatory" character varying(120)
 ALTER TABLE "Quotes" ADD COLUMN IF NOT EXISTS "SignatoryTitle" character varying(60);
 ALTER TABLE "Contracts" ADD COLUMN IF NOT EXISTS "Signatory" character varying(120);
 ALTER TABLE "Contracts" ADD COLUMN IF NOT EXISTS "SignatoryTitle" character varying(60);
+ALTER TABLE "ProspectSectors" ADD COLUMN IF NOT EXISTS "MessageTemplate" character varying(1000);
+ALTER TABLE "Quotes" ADD COLUMN IF NOT EXISTS "WinBackOn" date;
+ALTER TABLE "Quotes" ADD COLUMN IF NOT EXISTS "WinBackNote" character varying(300);
+CREATE INDEX IF NOT EXISTS "IX_Quotes_Status_WinBackOn" ON "Quotes" ("Status", "WinBackOn");
+ALTER TABLE "Customers" ADD COLUMN IF NOT EXISTS "ReferredByCustomerId" integer;
+CREATE INDEX IF NOT EXISTS "IX_Customers_ReferredByCustomerId" ON "Customers" ("ReferredByCustomerId");
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_Customers_Customers_ReferredByCustomerId') THEN
+    ALTER TABLE "Customers" ADD CONSTRAINT "FK_Customers_Customers_ReferredByCustomerId" FOREIGN KEY ("ReferredByCustomerId") REFERENCES "Customers" ("Id") ON DELETE SET NULL;
+  END IF;
+END $$;
 CREATE UNIQUE INDEX IF NOT EXISTS "IX_ProductionScans_ProductionOrderId_WindowDesignId_Unit_Station" ON "ProductionScans" ("ProductionOrderId", "WindowDesignId", "Unit", "Station");
 
 """;
