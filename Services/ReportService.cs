@@ -70,6 +70,7 @@ public sealed class ReportService
         var surveys = await _db.SiteSurveys.CountAsync(x => x.CreatedUtc >= range.FromUtc && x.CreatedUtc < range.ToUtc && x.Status != KarakusAluminyum.Web.Models.Production.SurveyStatus.Cancelled);
         // Taslak teklif müşteriye gitmediği için huninin dışında.
         var quotes = await _db.Quotes.AsNoTracking().Where(q => q.CreatedUtc >= range.FromUtc && q.CreatedUtc < range.ToUtc && q.Status != QuoteStatus.Draft)
+            .OrderBy(q => q.Id) // gruplamada ilk yazım (ör. rakip adı) her seferinde aynı olsun
             .Select(q => new { q.Status, q.GrandTotal, q.LostReason, q.LostCompetitor, Source = q.Customer!.Source }).ToListAsync();
         var orders = await _db.ProductionOrders.CountAsync(o => o.CreatedUtc >= range.FromUtc && o.CreatedUtc < range.ToUtc && o.Status != KarakusAluminyum.Web.Models.Production.OrderStatus.Cancelled);
         static bool Won(QuoteStatus s) => s is QuoteStatus.Accepted or QuoteStatus.Converted;

@@ -1,0 +1,19 @@
+@model KarakusAluminyum.Web.Models.Accounting.FixedCost
+@using KarakusAluminyum.Web.Models.Accounting
+@{ ViewData["Title"] = "Sabit gideri düzenle"; var categories = (List<ExpenseCategory>)ViewBag.Categories; }
+<div class="admin-actions"><h1>Sabit gideri düzenle</h1><a class="admin-btn admin-btn--secondary" href="/yonetim/muhasebe/raporlar/aylik-maliyet">Aylık maliyet</a></div>
+<div class="admin-panel"><form class="admin-form" method="post" action="/yonetim/muhasebe/raporlar/sabit-gider">@Html.AntiForgeryToken()
+  <input type="hidden" name="id" value="@Model.Id" />
+  <label for="name">Gider adı</label><input id="name" name="name" value="@Model.Name" required maxlength="120" />
+  <label for="monthlyAmount">Aylık tutar (TL, KDV hariç)</label><input id="monthlyAmount" name="monthlyAmount" type="number" step="0.01" min="0" data-no-round value="@Model.MonthlyAmount.ToString(System.Globalization.CultureInfo.InvariantCulture)" required />
+  <label for="categoryId">Gider kategorisi</label>
+  <select id="categoryId" name="categoryId"><option value="">Kategori yok</option>@foreach (var c in categories) { <option value="@c.Id" selected="@(c.Id == Model.CategoryId)">@c.Name</option> }</select>
+  <p class="admin-hint">Kategori seçilirse o ay bu kategoride girilen gider kayıtları tanımlı tutarın yerine geçer (ör. faturası gelen elektrik). Kayıt yoksa tanımlı tutar yazılır.</p>
+  <label for="start">Başlangıç ayı</label><input id="start" name="start" type="month" value="@Model.StartMonth.ToString("yyyy-MM")" required />
+  <label for="end">Bitiş ayı (boşsa devam ediyor)</label><input id="end" name="end" type="month" value="@Model.EndMonth?.ToString("yyyy-MM")" />
+  <label for="note">Not</label><input id="note" name="note" value="@Model.Note" maxlength="300" />
+  <div class="admin-actions"><button class="admin-btn">Kaydet</button></div>
+</form>
+<form method="post" action="/yonetim/muhasebe/raporlar/sabit-gider/@Model.Id/sil" onsubmit="return confirm('Sabit gider silinsin mi? Geçmiş aylardan da kalkar; yalnızca bitirmek için bitiş ayı girin.')">@Html.AntiForgeryToken()
+  <button class="admin-btn admin-btn--secondary">Sil</button>
+</form></div>

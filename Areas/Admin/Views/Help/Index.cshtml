@@ -37,6 +37,7 @@
   <ul>
     <li><strong>Ölçüler her yerde mm'dir</strong>: çizim, keşif, cam listesi, teklif ve belgeler.</li>
     <li><strong>Fiyat yuvarlama</strong>: her fiyat ve tutar alanının yanındaki <strong>Yuvarla</strong> düğmesi küsuratı düzeltir (ör. 123,45632 → 123 veya 123,50; 10'luk, 50'lik, 100'lük, 500'lük, 1.000'lik de var). Menünün üstünden en yakına, yukarı veya aşağı yuvarlamayı seçin. Teklif, sözleşme ve faturada <strong>Tüm fiyatları yuvarla</strong> bütün kalemlere birden uygular; teklifte yuvarlanan fiyat elle yazılmış sayılır, ↺ ile marja döner.</li>
+    <li><strong>Otomatik tutarı yuvarlama</strong>: teklifin <strong>Fiyatlandırma</strong> bölümünde <strong>Marjdan gelen birim fiyatı yuvarla</strong> (ör. 1.234,57 → 1.250) ve <strong>Genel toplamı yuvarla</strong> (ör. 48.736,42 → 48.700) için adım ve yön seçin. Fiyatlar otomatik kalır: marj, maliyet veya kalem değişince yeniden hesaplanıp yine yuvarlanır. Genel toplamdaki fark çıktıda <strong>Yuvarlama</strong> satırı olarak basılır ve tekliften oluşan sözleşmeye geçer; sözleşmede <strong>Bedel ve ödeme planı</strong> bölümünden de değiştirilebilir.</li>
     <li><strong>Arama</strong>: üst çubuktaki kutuya müşteri adı, telefon, teklif, sözleşme veya çizim adı yazın.</li>
     <li><strong>Belge tarihi</strong>: her çıktı bugünün tarihiyle basılır. Çıktının üstündeki <strong>Belge tarihi</strong> alanından başka bir tarih seçebilir veya kayıtlı tarihe dönebilirsiniz; kayıt değişmez.</li>
     <li><strong>Yazdır / PDF kaydet</strong>: tüm çıktılar tarayıcıdan basılır. PDF için yazıcı olarak "PDF olarak kaydet"i seçin.</li>
@@ -56,7 +57,7 @@
     </li>
     <li>
       <strong class="help-step-title">Keşifte ölçüleri telefondan girin</strong>
-      Keşif sayfasını telefonda açın; her boşluk için genişlik, yükseklik (mm), adet ve açılım yazıp <strong>Ölçüleri kaydet</strong>'e basın. Kâğıtla gidecekseniz <strong>boş keşif formu</strong>nu yazdırabilirsiniz. Ölçüler bitince <strong>Çizim listesine aktar</strong>: her satır bir poz olur.
+      Keşif sayfasını telefonda açın; her boşluk için genişlik, yükseklik (mm), adet ve açılım yazıp <strong>Ölçüleri kaydet</strong>'e basın. Kâğıtla gidecekseniz <strong>boş keşif formu</strong>nu yazdırabilirsiniz. Ölçüler bitince <strong>Çizim listesine aktar</strong>: her satır bir poz olur. <strong>Ölçüyü alan</strong> keşfi açan kullanıcıyla dolar; ölçü listesinde, teklifte ve sözleşmede görünür.
     </li>
     <li>
       <strong class="help-step-title">Çizimleri ayrıntılandırın</strong>
@@ -243,6 +244,11 @@
       <a href="/yonetim/muhasebe">Genel bakışı aç →</a>
     </div>
     <div class="help-card">
+      <h3>Aylık maliyet</h3>
+      <p>Bir ayın tüm maliyet kalemleri tek sayfada: personel (günlük maliyet × 26 iş günü; ay içinde başlayan kısmi ay), takvimdeki taşeron / ekip işçiliği, kira, elektrik, muhasebeci gibi <strong>sabit giderler</strong>, diğer gider kayıtları ve alış faturaları. Altında yılın aylara göre özeti ve satışla karşılaştırma var. Sabit gidere kategori bağlarsanız o ay girilen gider kaydı tanımlı tutarın yerine geçer, çift sayılmaz. Tutarlar KDV hariçtir; CSV indirilebilir.</p>
+      <a href="/yonetim/muhasebe/raporlar/aylik-maliyet">Aylık maliyeti aç →</a>
+    </div>
+    <div class="help-card">
       <h3>Faturalar</h3>
       <p>Satış ve alış faturaları. Tekliften, servis ziyaretinden veya alış taslağından gelir ya da elle girilir. Taslak → Onaylı → İptal; bağlı tahsilat varken iptal edilemez. Fatura bir proje analizine bağlanabilir.</p>
       <a href="/yonetim/muhasebe/faturalar">Faturaları aç →</a>
@@ -324,7 +330,7 @@
     <div class="help-card"><h3>Site ayarları <span class="help-role">Admin</span></h3><p>Firma bilgileri, iletişim, sosyal hesaplar, Google Analytics / Meta Pixel ve <strong>Müşteri bildirimleri</strong>: e-posta ve WhatsApp açma, WhatsApp şablon adları, Google yorum bağlantısı.</p><a href="/yonetim/ayarlar">Site ayarlarını aç →</a></div>
     <div class="help-card"><h3>Bildirimler <span class="help-role">Admin</span></h3><p>Gönderilen ve bekleyen müşteri bildirimleri, deneme gönderimi ve WhatsApp şablonu kurulum adımları.</p><a href="/yonetim/bildirimler">Bildirimleri aç →</a></div>
     <div class="help-card"><h3>Belge şablonları <span class="help-role">Admin</span></h3><p><strong>Antet ve filigran</strong> (logo, iletişim, alt bilgi, filigran tüm belgelerde ortak), teklif şablonu (başlık, giriş, kapanış, şartlar, banka, imza yetkilisi), sözleşme maddeleri ve hazır madde metinleri. Önizleme ile kayıt açmadan görülür.</p><a href="/yonetim/sablonlar">Şablonları aç →</a></div>
-    <div class="help-card"><h3>Kullanıcılar ve denetim kaydı <span class="help-role">Admin</span></h3><p>Kullanıcı ekleme ve rol verme (Admin, Editor, Muhasebe). Denetim kaydı son 500 değişikliği kimin yaptığıyla gösterir.</p><a href="/yonetim/kullanicilar">Kullanıcıları aç →</a></div>
+    <div class="help-card"><h3>Kullanıcılar ve denetim kaydı <span class="help-role">Admin</span></h3><p>Kullanıcı ekleme ve rol verme (Admin, Editor, Muhasebe). Kullanıcının <strong>ad soyad ve unvanı</strong> keşifte ölçüyü alan, teklif ve sözleşmede imza yetkilisi olarak otomatik yazılır. Denetim kaydı son 500 değişikliği kimin yaptığıyla gösterir.</p><a href="/yonetim/kullanicilar">Kullanıcıları aç →</a></div>
   </div>
 </section>
 
@@ -340,7 +346,7 @@
     <li><span class="help-path">Ön muhasebe › Kasa ve banka</span> ve <span class="help-path">Personel</span>: hesaplar ve personel kartları (günlük maliyetle).</li>
     <li><span class="help-path">Saha ve servis › Montajcılar</span>: ekipler ve taşeronlar.</li>
     <li><span class="help-path">Site ayarları › Müşteri bildirimleri</span>: e-posta / WhatsApp ve Google yorum bağlantısı.</li>
-    <li><span class="help-path">Yönetim › Kullanıcılar</span>: çalışma arkadaşlarınıza doğru rolle hesap açın.</li>
+    <li><span class="help-path">Yönetim › Kullanıcılar</span>: çalışma arkadaşlarınıza doğru rolle hesap açın ve ad soyadlarını yazın (belgelerde ölçüyü alan ve imza yetkilisi olarak görünür).</li>
   </ol>
 </section>
 

@@ -44,6 +44,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<Employee> Employees => Set<Employee>();
+    public DbSet<FixedCost> FixedCosts => Set<FixedCost>();
     public DbSet<CariAdjustment> CariAdjustments => Set<CariAdjustment>();
     public DbSet<CostProject> CostProjects => Set<CostProject>();
     public DbSet<ProjectCostItem> ProjectCostItems => Set<ProjectCostItem>();
@@ -214,6 +215,7 @@ public sealed class AppDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<Cheque>().HasOne(x => x.Account).WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<Cheque>().HasIndex(x => new { x.Status, x.DueDate });
         builder.Entity<Expense>().HasOne(x => x.Category).WithMany().HasForeignKey(x => x.CategoryId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<FixedCost>().HasOne(x => x.Category).WithMany().HasForeignKey(x => x.CategoryId).OnDelete(DeleteBehavior.SetNull);
         builder.Entity<Expense>().HasOne(x => x.Customer).WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<Expense>().HasOne(x => x.Account).WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Restrict);
         // Bağlı kaydı olan proje silinemez; bağlı belge silinirse proje kalır.

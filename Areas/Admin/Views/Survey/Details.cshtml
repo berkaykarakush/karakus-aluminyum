@@ -43,7 +43,7 @@
       <dt>Randevu</dt><dd>@when</dd>
       <dt>Görüşülecek</dt><dd>@(Model.ContactName ?? "-") @(Model.ContactPhone is null ? "" : "· " + Model.ContactPhone)</dd>
       <dt>Adres</dt><dd>@(Model.Address ?? "-")</dd>
-      <dt>Keşfe giden</dt><dd>@(Model.Surveyor ?? "-")</dd>
+      <dt>Ölçüyü alan</dt><dd>@(Model.Surveyor ?? "-")</dd>
       @if (Model.ContactMessageId is int messageId) { <dt>Kaynak</dt><dd><a href="/yonetim/mesajlar/@messageId">Web talebi</a></dd> }
     </dl>
     @if (!string.IsNullOrWhiteSpace(Model.Notes)) { <p style="white-space:pre-wrap;margin:10px 0 0">@Model.Notes</p> }

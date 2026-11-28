@@ -91,6 +91,7 @@
           @if (!string.IsNullOrWhiteSpace(t.SellerTaxInfo)) { <div>@t.SellerTaxInfo</div> }
         </td>
       </tr></tbody></table>
+      @if (!string.IsNullOrWhiteSpace(Model.Surveyors)) { <p class="doc-measured">Ölçüyü alan: @Model.Surveyors</p> }
       </div>
     </td></tr></tbody>
   </table>

@@ -55,6 +55,7 @@
       <div class="ql-meta">
         @if (!string.IsNullOrEmpty(quote.QuoteNumber)) { <span>Teklif No: @quote.QuoteNumber</span> }
         @if (quote.ValidUntilUtc is DateTime valid) { <span>Geçerlilik: @TurkishNumbers.Date(valid)</span> }
+        @if (!string.IsNullOrWhiteSpace(Model.Surveyors)) { <span>Ölçüyü alan: @Model.Surveyors</span> }
       </div>
       <p class="ql-salute">Sayın @Model.CustomerName,</p>
 
@@ -91,7 +92,7 @@
 
       <div class="ql-signoff">
         <div>@TemplateText.ToHtml(string.IsNullOrWhiteSpace(t.SignOff) ? "Saygılarımızla," : t.SignOff, system)</div>
-        @if (!string.IsNullOrWhiteSpace(t.Signatory)) { <div>@t.Signatory</div> }
+        @if (!string.IsNullOrWhiteSpace(t.Signatory)) { <div>@t.Signatory@(string.IsNullOrWhiteSpace(t.SignatoryTitle) ? "" : $" ({t.SignatoryTitle})")</div> }
       </div>
     </td></tr></tbody>
   </table>

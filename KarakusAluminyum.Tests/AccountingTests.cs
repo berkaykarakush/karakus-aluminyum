@@ -950,6 +950,39 @@ public sealed class AccountingFlowTests(PostgresFixture postgres)
     }
 
     [Fact]
+    public async Task MonthlyCosts_FixedCostCrud_ReportAndCsv()
+    {
+        await using var app = postgres.CreateApp("monthly_costs");
+        var (client, token) = await AdminAsync(app);
+        var category = await app.WithDbAsync(db => db.ExpenseCategories.Select(x => x.Id).FirstAsync());
+        await app.WithDbAsync(async db =>
+        {
+            db.Employees.Add(new Employee { Name = "Usta Ali", DailyCost = 2000m, IsActive = true });
+            return await db.SaveChangesAsync();
+        });
+        var response = await client.PostFormAsync("/yonetim/muhasebe/raporlar/sabit-gider", token,
+            ("id", "0"), ("name", "Atölye kirası"), ("monthlyAmount", "30000"), ("start", "2026-01"), ("end", ""), ("note", ""), ("ay", "2026-03"));
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        // Aynı kategori ikinci sabit gidere bağlanamaz; bitiş başlangıçtan önce olamaz.
+        await client.PostFormAsync("/yonetim/muhasebe/raporlar/sabit-gider", token, ("id", "0"), ("name", "Elektrik"), ("monthlyAmount", "4000"), ("categoryId", category.ToString()), ("start", "2026-01"));
+        await client.PostFormAsync("/yonetim/muhasebe/raporlar/sabit-gider", token, ("id", "0"), ("name", "Su"), ("monthlyAmount", "500"), ("categoryId", category.ToString()), ("start", "2026-01"));
+        await client.PostFormAsync("/yonetim/muhasebe/raporlar/sabit-gider", token, ("id", "0"), ("name", "Ters"), ("monthlyAmount", "1"), ("start", "2026-05"), ("end", "2026-02"));
+        Assert.Equal(new[] { "Atölye kirası", "Elektrik" }, await app.WithDbAsync(db => db.FixedCosts.OrderBy(x => x.Name).Select(x => x.Name).ToListAsync()));
+
+        var page = WebUtility.HtmlDecode(await client.GetStringAsync("/yonetim/muhasebe/raporlar/aylik-maliyet?ay=2026-03"));
+        Assert.Contains("Usta Ali", page);
+        Assert.Contains("86.000,00 TL", page); // 2.000 × 26 + 30.000 kira + 4.000 elektrik
+        var csv = await client.GetStringAsync("/yonetim/muhasebe/raporlar/aylik-maliyet?ay=2026-03&csv=true");
+        Assert.Contains("Aylık net maliyet", csv);
+        Assert.Contains("Atölye kirası", csv);
+
+        var id = await app.WithDbAsync(db => db.FixedCosts.Where(x => x.Name == "Elektrik").Select(x => x.Id).SingleAsync());
+        Assert.Contains("Sabit gideri düzenle", await client.GetStringAsync($"/yonetim/muhasebe/raporlar/sabit-gider/{id}"));
+        await client.PostFormAsync($"/yonetim/muhasebe/raporlar/sabit-gider/{id}/sil", token);
+        Assert.Equal(1, await app.WithDbAsync(db => db.FixedCosts.CountAsync()));
+    }
+
+    [Fact]
     public async Task ExistingDatabase_GetsAccountingTables_AndKeepsCustomers()
     {
         await using (var first = postgres.CreateApp("accounting_upgrade"))
@@ -960,7 +993,7 @@ public sealed class AccountingFlowTests(PostgresFixture postgres)
                 db.Customers.Add(new Customer { Name = "Eski müşteri" });
                 await db.SaveChangesAsync();
                 await db.Database.ExecuteSqlRawAsync("""
-                    DROP TABLE "PaymentAllocations"; DROP TABLE "CashTransactions"; DROP TABLE "Cheques"; DROP TABLE "Expenses"; DROP TABLE "ExpenseCategories"; DROP TABLE "StockMovements";
+                    DROP TABLE "PaymentAllocations"; DROP TABLE "CashTransactions"; DROP TABLE "Cheques"; DROP TABLE "Expenses"; DROP TABLE IF EXISTS "FixedCosts"; DROP TABLE "ExpenseCategories"; DROP TABLE "StockMovements";
                     DROP TABLE IF EXISTS "OrderInstallments"; ALTER TABLE IF EXISTS "CashTransactions" DROP COLUMN IF EXISTS "ProductionOrderId"; ALTER TABLE "NotificationJobs" DROP COLUMN IF EXISTS "SiteSurveyId"; DROP TABLE IF EXISTS "SurveyLines", "SiteSurveys"; ALTER TABLE "NotificationJobs" DROP COLUMN IF EXISTS "ProductionOrderId", DROP COLUMN IF EXISTS "ServiceRequestId"; DROP TABLE IF EXISTS "PunchItems", "WorkLogs", "ServiceParts", "ServiceVisits", "ServiceRequests"; -- servis tabloları fatura ve stok kartına bağlı
                     DROP TABLE "InvoiceLines"; DROP TABLE "Invoices";
                     DROP TABLE IF EXISTS "ProductionScans", "DeliveryNoteLines", "DeliveryNotes", "OrderEvents", "ProductionOrders", "Installers";
@@ -979,6 +1012,7 @@ public sealed class AccountingFlowTests(PostgresFixture postgres)
         Assert.Equal(PartyType.Customer, customer.PartyType);
         Assert.Contains("Merkez Kasa", WebUtility.HtmlDecode(await client.GetStringAsync("/yonetim/muhasebe/kasa-banka")));
         Assert.True(await second.WithDbAsync(db => db.ExpenseCategories.AnyAsync()));
+        Assert.Contains("Sabit gider tanımları", WebUtility.HtmlDecode(await client.GetStringAsync("/yonetim/muhasebe/raporlar/aylik-maliyet"))); // FixedCosts sonradan oluşur
         await ApprovedAsync(second, client, token, customer.Id);
         Assert.Equal(1200m, await BalanceAsync(second, customer.Id));
 

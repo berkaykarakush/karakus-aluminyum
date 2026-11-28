@@ -124,7 +124,9 @@ public sealed class DrawingController : Controller
     public async Task<IActionResult> Measurements(int id)
     {
         var list = await _db.DrawingLists.AsNoTracking().Include(x => x.Customer).Include(x => x.Items).AsSplitQuery().FirstOrDefaultAsync(x => x.Id == id);
-        return list is null ? NotFound() : View(list);
+        if (list is null) return NotFound();
+        ViewBag.Surveyors = await DocumentPeople.SurveyorsAsync(_db, id, Array.Empty<int>());
+        return View(list);
     }
 
     // Eski tek çizim bağlantıları (arama, kayıtlı yer imleri) pozun listesinde açılır.

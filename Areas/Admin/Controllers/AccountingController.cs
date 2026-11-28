@@ -129,6 +129,96 @@ public sealed class AccountingController : Controller
         return View(rows);
     }
 
+    // Aylık net maliyet: personel, taşeron, sabit giderler, gider kayıtları ve alışlar; altında yılın aylara göre özeti.
+    [HttpGet("raporlar/aylik-maliyet")]
+    public async Task<IActionResult> MonthlyCosts(string? ay, bool taseron = true, bool csv = false)
+    {
+        var month = ParseMonth(ay) ?? MonthlyCost.MonthOf(Today);
+        var yearStart = new DateOnly(month.Year, 1, 1);
+        var data = await MonthlyCost.LoadAsync(_db, yearStart, new DateOnly(month.Year, 12, 31));
+        var report = MonthlyCost.Build(month, data, Today, taseron);
+        if (csv)
+        {
+            var rows = new List<string[]>();
+            rows.AddRange(report.Staff.Select(x => new[] { "Personel", x.Name + (x.IsActive ? "" : " (pasif)"), $"{x.CalendarDays:0.##} gün takvimde", N(x.Cost) }));
+            rows.AddRange(report.Teams.Select(x => new[] { taseron ? "Taşeron / ekip" : "Taşeron / ekip (toplama dahil değil)", x.Name, $"{x.Days:0.##} gün", N(x.Cost) }));
+            rows.AddRange(report.Fixed.Select(x => new[] { "Sabit gider", x.Name, x.Actual is > 0 ? "gerçekleşen" : "tanımlı tutar", N(x.Cost) }));
+            rows.AddRange(report.Expenses.Select(x => new[] { "Gider", x.Category, $"{x.Count} kayıt", N(x.Amount) }));
+            rows.Add(new[] { "Alış", "Alış faturaları (iadeler düşülmüş)", "", N(report.PurchaseNet) });
+            rows.Add(new[] { "Toplam", "Aylık net maliyet", "", N(report.Total) });
+            rows.Add(new[] { "Bilgi", "Satışlar (iadeler düşülmüş)", "", N(report.SalesNet) });
+            rows.Add(new[] { "Bilgi", "Satış - maliyet", "", N(report.Result) });
+            return Csv($"aylik-maliyet-{month:yyyy-MM}", new[] { "Grup", "Kalem", "Açıklama", "Tutar (KDV hariç)" }, rows);
+        }
+        ViewBag.Year = Enumerable.Range(1, 12).Select(m => MonthlyCost.Build(new DateOnly(month.Year, m, 1), data, Today, taseron)).ToList();
+        ViewBag.Categories = await _db.ExpenseCategories.AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.Name).ToListAsync();
+        ViewBag.FixedCosts = await _db.FixedCosts.AsNoTracking().Include(x => x.Category).OrderBy(x => x.Name).ToListAsync();
+        return View(report);
+    }
+
+    [HttpGet("raporlar/sabit-gider/{id:int}")]
+    public async Task<IActionResult> EditFixedCost(int id)
+    {
+        var row = await _db.FixedCosts.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+        if (row is null) return NotFound();
+        ViewBag.Categories = await _db.ExpenseCategories.AsNoTracking().Where(x => x.IsActive || x.Id == row.CategoryId).OrderBy(x => x.Name).ToListAsync();
+        return View("FixedCost", row);
+    }
+
+    // id = 0 yeni kayıt. Aylar "yyyy-MM" biçimindedir.
+    [HttpPost("raporlar/sabit-gider"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveFixedCost(int id, string? name, decimal monthlyAmount, int? categoryId, string? start, string? end, string? note, string? ay)
+    {
+        var row = id == 0 ? new FixedCost() : await _db.FixedCosts.FirstOrDefaultAsync(x => x.Id == id);
+        if (row is null) return NotFound();
+        var errors = new List<string>();
+        name = name?.Trim();
+        if (string.IsNullOrEmpty(name) || name.Length > 120) errors.Add("Gider adı yazın (en fazla 120 karakter).");
+        if (monthlyAmount is < 0 or > 1_000_000_000) errors.Add("Aylık tutar sıfır veya daha büyük olmalıdır.");
+        var startMonth = ParseMonth(start);
+        var endMonth = string.IsNullOrWhiteSpace(end) ? null : ParseMonth(end);
+        if (startMonth is null) errors.Add("Başlangıç ayını seçin.");
+        if (!string.IsNullOrWhiteSpace(end) && endMonth is null) errors.Add("Bitiş ayı geçersiz.");
+        if (startMonth is not null && endMonth is not null && endMonth < startMonth) errors.Add("Bitiş ayı başlangıçtan önce olamaz.");
+        if (categoryId is int c)
+        {
+            if (!await _db.ExpenseCategories.AnyAsync(x => x.Id == c)) errors.Add("Geçerli bir gider kategorisi seçin.");
+            else if (await _db.FixedCosts.AnyAsync(x => x.CategoryId == c && x.Id != id)) errors.Add("Bu kategori başka bir sabit gidere bağlı. Her kategori tek sabit gidere bağlanabilir.");
+        }
+        if (note?.Trim().Length > 300) errors.Add("Not en fazla 300 karakter olabilir.");
+        if (errors.Count > 0)
+        {
+            TempData["Notice"] = string.Join(" ", errors);
+            return Redirect(id == 0 ? $"/yonetim/muhasebe/raporlar/aylik-maliyet?ay={ay}" : $"/yonetim/muhasebe/raporlar/sabit-gider/{id}");
+        }
+        row.Name = name!;
+        row.MonthlyAmount = InvoiceRules.Money(monthlyAmount);
+        row.CategoryId = categoryId;
+        row.StartMonth = startMonth!.Value;
+        row.EndMonth = endMonth;
+        row.Note = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+        if (id == 0) _db.FixedCosts.Add(row);
+        await _db.SaveChangesAsync();
+        await _audit.RecordAsync(id == 0 ? "create" : "update", "FixedCost", row.Id.ToString(), $"{row.Name}; {row.MonthlyAmount}");
+        TempData["Notice"] = $"{row.Name} sabit gideri kaydedildi.";
+        return Redirect($"/yonetim/muhasebe/raporlar/aylik-maliyet?ay={ay ?? row.StartMonth.ToString("yyyy-MM")}");
+    }
+
+    [HttpPost("raporlar/sabit-gider/{id:int}/sil"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteFixedCost(int id)
+    {
+        var row = await _db.FixedCosts.FirstOrDefaultAsync(x => x.Id == id);
+        if (row is null) return NotFound();
+        _db.FixedCosts.Remove(row);
+        await _db.SaveChangesAsync();
+        await _audit.RecordAsync("delete", "FixedCost", id.ToString(), row.Name);
+        TempData["Notice"] = $"{row.Name} sabit gideri silindi. Geçmiş aylar için silmek yerine bitiş ayı girebilirsiniz.";
+        return Redirect("/yonetim/muhasebe/raporlar/aylik-maliyet");
+    }
+
+    private static DateOnly? ParseMonth(string? value)
+        => DateOnly.TryParseExact(value + "-01", "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) && d.Year is >= 2000 and <= 2100 ? d : null;
+
     [HttpGet("aktar")]
     public IActionResult Import() => View();
 

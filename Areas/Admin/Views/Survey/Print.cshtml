@@ -38,7 +38,7 @@
       </div>
       <div class="sv-row">
         <div class="sv-field" style="flex:3"><span>Adres</span>@V(Model.Address)</div>
-        <div class="sv-field"><span>Keşfe giden</span>@V(Model.Surveyor)</div>
+        <div class="sv-field"><span>Ölçüyü alan</span>@V(Model.Surveyor)</div>
       </div>
       <div class="sv-section"><h3>Notlar (kat, asansör, iskele, müşterinin isteği)</h3><div class="sv-box" style="white-space:pre-wrap">@Model.Notes</div></div>
       <table class="pf-lines sv-lines">
@@ -52,7 +52,7 @@
         </tbody>
       </table>
       <table class="pf-sign"><tbody><tr>
-        <td><strong>Ölçüyü alan</strong><div class="pf-sign__field">Ad Soyad:</div><div class="pf-sign__line">İmza</div></td>
+        <td><strong>Ölçüyü alan</strong><div class="pf-sign__field">Ad Soyad: @Model.Surveyor</div><div class="pf-sign__line">İmza</div></td>
         <td><strong>Müşteri</strong><div class="pf-sign__field">Ad Soyad:</div><div class="pf-sign__line">İmza</div></td>
       </tr></tbody></table>
     </td></tr></tbody>

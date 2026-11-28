@@ -38,6 +38,8 @@ public sealed class QuotesController : Controller
         // Proforma şartları (ödeme, teslim, garanti) ve değerleri şablondan gelir; teklifte değiştirilebilir.
         var content = new DocumentContent { Intro = template.Intro, Closing = template.Closing, Note = template.DefaultNote, Blocks = { block }, Terms = DocumentJson.ParseTerms(template.TermsJson), Variables = DocumentJson.ParseVariables(template.VariablesJson) };
         var input = new QuoteInputViewModel { ValidUntilUtc = DateTime.UtcNow.Date.AddDays(14) };
+        // İmza yetkilisi teklifi hazırlayan kullanıcıdır; kullanıcının adı yazılı değilse şablondaki yetkili gelir.
+        (input.Signatory, input.SignatoryTitle) = await DefaultSignatoryAsync(template);
         var list = listId is null ? null : await _db.DrawingLists.AsNoTracking().FirstOrDefaultAsync(x => x.Id == listId);
         if (list is not null)
         {
@@ -96,9 +98,9 @@ public sealed class QuotesController : Controller
         {
             view.Block.Items = view.Items.Select(i =>
             {
-                var manual = i.UnitPrice != QuoteRules.PriceFromCost(i.UnitCost, quote.MarginPercent);
+                var manual = i.UnitPrice != QuoteRules.PriceFromCost(i.UnitCost, quote.MarginPercent, content.PriceRounding);
                 var cost = i.WindowDesignId is int d && costs.TryGetValue(d, out var c) ? c.LineCost(glassPrice, i.ManualBaseCost, i.ManualGlassCost) : i.UnitCost;
-                return new BlockItem { Description = i.Description, Quantity = i.Quantity, Unit = i.Unit, DiscountRate = i.DiscountRate, DesignId = i.WindowDesignId, UnitCost = cost, ManualPrice = manual, ManualBaseCost = i.ManualBaseCost, ManualGlassCost = i.ManualGlassCost, UnitPrice = manual ? i.UnitPrice : QuoteRules.PriceFromCost(cost, quote.MarginPercent) };
+                return new BlockItem { Description = i.Description, Quantity = i.Quantity, Unit = i.Unit, DiscountRate = i.DiscountRate, DesignId = i.WindowDesignId, UnitCost = cost, ManualPrice = manual, ManualBaseCost = i.ManualBaseCost, ManualGlassCost = i.ManualGlassCost, UnitPrice = manual ? i.UnitPrice : QuoteRules.PriceFromCost(cost, quote.MarginPercent, content.PriceRounding) };
             }).ToList();
             return view.Block;
         }).ToList();
@@ -107,7 +109,8 @@ public sealed class QuotesController : Controller
         {
             Id = quote.Id, CustomerId = quote.CustomerId, Title = quote.Title, DocumentDate = quote.DocumentDate, ValidUntilUtc = quote.ValidUntilUtc,
             VatMode = quote.VatMode, TaxRate = quote.TaxRate, DiscountRate = quote.DiscountRate, DocumentJson = DocumentJson.Serialize(content),
-            DrawingListId = quote.DrawingListId, GlassTypeId = quote.GlassTypeId, MarginPercent = quote.MarginPercent
+            DrawingListId = quote.DrawingListId, GlassTypeId = quote.GlassTypeId, MarginPercent = quote.MarginPercent,
+            Signatory = quote.Signatory, SignatoryTitle = quote.SignatoryTitle
         });
     }
 
@@ -269,6 +272,8 @@ public sealed class QuotesController : Controller
         quote.DrawingListId = input.DrawingListId;
         quote.GlassTypeId = input.GlassTypeId;
         quote.MarginPercent = input.MarginPercent;
+        quote.Signatory = Clean(input.Signatory);
+        quote.SignatoryTitle = Clean(input.SignatoryTitle);
 
         // Çizim kalemlerinin maliyeti tarayıcıdan değil çizimden gelir; listede olmayan poz elle girilmiş kalem sayılır.
         var costs = await CostsAsync(quote.DrawingListId);
@@ -286,18 +291,23 @@ public sealed class QuotesController : Controller
                 var manualGlass = linked is null ? null : Money(item.ManualGlassCost);
                 var unitCost = linked?.LineCost(glassPrice, manualBase, manualGlass) ?? decimal.Round(item.UnitCost, 2, MidpointRounding.AwayFromZero);
                 // Marj fiyatı yalnızca çizime bağlı, elle yazılmamış kalemde sunucuda yeniden hesaplanır.
-                var unitPrice = linked is not null && !item.ManualPrice ? QuoteRules.PriceFromCost(unitCost, quote.MarginPercent) : item.UnitPrice;
+                var unitPrice = linked is not null && !item.ManualPrice ? QuoteRules.PriceFromCost(unitCost, quote.MarginPercent, content.PriceRounding) : item.UnitPrice;
                 quote.Items.Add(new QuoteItem { BlockName = name, SortOrder = order++, Description = item.Description!.Trim(), Quantity = item.Quantity, Unit = string.IsNullOrWhiteSpace(item.Unit) ? "Adet" : item.Unit.Trim(), UnitPrice = unitPrice, DiscountRate = decimal.Round(item.DiscountRate, 2, MidpointRounding.AwayFromZero), UnitCost = unitCost, WindowDesignId = linked?.DesignId, ManualBaseCost = manualBase, ManualGlassCost = manualGlass });
             }
             block.Items.Clear(); // kalemlerin tek kaynağı QuoteItems tablosudur
         }
         quote.DocumentJson = DocumentJson.Serialize(content);
 
-        var totals = QuoteRules.Calculate(quote.Items, quote.DiscountRate, quote.TaxRate, quote.VatMode);
+        var totals = QuoteRules.Calculate(quote.Items, quote.DiscountRate, quote.TaxRate, quote.VatMode, content.TotalRounding);
         quote.Subtotal = totals.Subtotal; quote.DiscountAmount = totals.DiscountAmount;
         quote.TaxAmount = totals.TaxAmount; quote.GrandTotal = totals.GrandTotal;
         quote.CostTotal = decimal.Round(quote.Items.Sum(i => i.UnitCost * i.Quantity), 2, MidpointRounding.AwayFromZero);
     }
+
+    private async Task<(string? Name, string? Title)> DefaultSignatoryAsync(DocumentTemplate template)
+        => await DocumentPeople.CurrentAsync(_db, User) is { } me ? (me.FullName, me.JobTitle) : (template.Signatory, template.SignatoryTitle);
+
+    private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private async Task<Dictionary<int, DesignCost>> CostsAsync(int? listId)
         => listId is int id ? (await QuotePricing.ForListAsync(_db, id)).ToDictionary(x => x.Design.Id, x => x.Cost) : new();
@@ -316,6 +326,7 @@ public sealed class QuotesController : Controller
 
     private async Task LoadOptions(int? listId)
     {
+        ViewBag.Staff = await DocumentPeople.StaffNamesAsync(_db);
         ViewBag.ListName = listId is int lid ? await _db.DrawingLists.Where(x => x.Id == lid).Select(x => x.Name).FirstOrDefaultAsync() : null;
         ViewBag.GlassTypes = await _db.GlassTypes.AsNoTracking().OrderBy(x => x.Id).Select(x => new GlassOption(x.Id, x.Name, x.PricePerM2, x.IsActive)).ToListAsync();
         ViewBag.DesignCosts = (await CostsAsync(listId)).Values.Select(c => new DesignCostOption(c.DesignId, c.BaseCost, c.GlassAreaM2, c.Problem)).ToList();

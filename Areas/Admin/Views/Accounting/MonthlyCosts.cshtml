@@ -1,0 +1,109 @@
+@model KarakusAluminyum.Web.Services.Accounting.MonthlyCostReport
+@using KarakusAluminyum.Web.Models.Accounting
+@using KarakusAluminyum.Web.Services.Accounting
+@using KarakusAluminyum.Web.Services.Documents
+@{
+    ViewData["Title"] = "Aylık maliyet";
+    var tr = TurkishNumbers.Culture;
+    var year = (List<MonthlyCostReport>)ViewBag.Year;
+    var categories = (List<ExpenseCategory>)ViewBag.Categories;
+    var fixedCosts = (List<FixedCost>)ViewBag.FixedCosts;
+    var ay = Model.Month.ToString("yyyy-MM");
+    var monthName = Model.Month.ToString("MMMM yyyy", tr);
+    string M(decimal v) => TurkishNumbers.Money(v);
+    string Days(decimal v) => v.ToString("0.##", tr);
+}
+<link rel="stylesheet" href="~/css/window-designer.css" asp-append-version="true" />
+<div class="admin-actions"><h1>Aylık maliyet</h1><a class="admin-btn admin-btn--secondary" href="?ay=@ay&taseron=@Model.IncludeTeams&csv=true">CSV indir</a></div>
+<partial name="_ReportNav" />
+<form class="admin-panel admin-actions" method="get">
+  <input type="month" name="ay" value="@ay" aria-label="Ay" required />
+  <label><input type="checkbox" name="taseron" value="true" @(Model.IncludeTeams ? "checked" : "") /> Takvimdeki taşeron / ekip işçiliğini toplama kat</label>
+  <input type="hidden" name="taseron" value="false" />
+  <button class="admin-btn">Göster</button>
+</form>
+
+<div class="report-kpis">
+  <div class="report-kpi"><span class="report-kpi__label">@monthName net maliyet</span><strong class="report-kpi__value">@M(Model.Total)</strong></div>
+  <div class="report-kpi"><span class="report-kpi__label">Günlük ortalama</span><strong class="report-kpi__value">@M(Model.DailyAverage)</strong></div>
+  <div class="report-kpi"><span class="report-kpi__label">Satışlar (net)</span><strong class="report-kpi__value">@M(Model.SalesNet)</strong></div>
+  <div class="report-kpi"><span class="report-kpi__label">Satış - maliyet</span><strong class="report-kpi__value">@M(Model.Result)</strong></div>
+</div>
+
+<div class="admin-panel" style="overflow-x:auto"><h2>Özet</h2><table class="admin-table"><tbody>
+  <tr><td>Personel</td><td>@M(Model.StaffTotal)</td></tr>
+  <tr style="@(Model.IncludeTeams ? "" : "opacity:.6")"><td>Taşeron / montaj ekipleri (takvim)@(Model.IncludeTeams ? "" : " (toplama dahil değil)")</td><td>@M(Model.TeamTotal)</td></tr>
+  <tr><td>Sabit giderler</td><td>@M(Model.FixedTotal)</td></tr>
+  <tr><td>Diğer giderler (gider kayıtları)</td><td>@M(Model.ExpenseTotal)</td></tr>
+  <tr><td>Malzeme ve alışlar (alış faturaları, iadeler düşülmüş)</td><td>@M(Model.PurchaseNet)</td></tr>
+  <tr><td><strong>Aylık net maliyet</strong></td><td><strong>@M(Model.Total)</strong></td></tr>
+</tbody></table>
+<p class="admin-muted">Tutarlar KDV hariç TL'dir. Kasadan ödenen maaş ve avans bu ay @M(Model.SalariesPaid); personel maliyetiyle çift sayılmaması için toplama girmez.</p></div>
+
+<div class="admin-panel" style="overflow-x:auto"><h2>Personel</h2>
+<table class="admin-table"><thead><tr><th>Personel</th><th>Görev</th><th>Takvimde gün</th><th>Günlük maliyet</th><th>Ay payı</th><th>Aylık maliyet</th></tr></thead><tbody>
+@foreach (var x in Model.Staff)
+{
+  <tr><td><a href="/yonetim/muhasebe/personel/duzenle/@x.Id">@x.Name</a>@(x.IsActive ? "" : " (pasif)")</td><td>@x.Position</td><td>@Days(x.CalendarDays)</td>
+    <td>@M(x.DailyCost)@if (x.Estimated) { <small class="admin-muted" title="Günlük maliyet girilmemiş, net maaş ÷ 26 ile tahmin edildi"> (tahmini)</small> }</td>
+    <td>@(x.IsActive ? (x.MonthFactor == 1 ? "Tam ay" : "%" + (x.MonthFactor * 100).ToString("0", tr)) : "Takvim günü")</td><td>@M(x.Cost)</td></tr>
+}
+@if (Model.Staff.Count == 0) { <tr><td colspan="6">Bu ay için personel yok. <a href="/yonetim/muhasebe/personel/ekle">Personel ekleyin</a>.</td></tr> }
+</tbody></table>
+<p class="admin-muted">Aktif personel ayın tamamı için sayılır: günlük maliyet × 26 iş günü (günlük maliyet girilmemişse net maaş). Ay içinde işe başlayan kısmi ay olarak, pasif personel yalnızca takvimdeki günleri kadar sayılır. Günlük maliyeti personel kartından girin (SGK ve yan haklar dahil).</p></div>
+
+@if (Model.Teams.Count > 0)
+{
+  <div class="admin-panel" style="overflow-x:auto"><h2>Taşeron ve montaj ekipleri</h2>
+  <table class="admin-table"><thead><tr><th>Ekip</th><th>Takvimde gün</th><th>Günlük ücret</th><th>Maliyet</th></tr></thead><tbody>
+  @foreach (var x in Model.Teams) { <tr><td>@x.Name@(x.IsSubcontractor ? " (taşeron)" : "")</td><td>@Days(x.Days)</td><td>@M(x.DailyCost)@if (x.Estimated) { <small class="admin-muted"> (ücret girilmemiş)</small> }</td><td>@M(x.Cost)</td></tr> }
+  </tbody></table>
+  <p class="admin-muted">Taşeronun faturasını alış faturası veya gider olarak da giriyorsanız, çift sayılmaması için yukarıdaki "toplama kat" kutusunu kaldırın.</p></div>
+}
+
+<div class="admin-panel" style="overflow-x:auto"><h2>Sabit giderler</h2>
+<table class="admin-table"><thead><tr><th>Gider</th><th>Kategori</th><th>Tanımlı aylık</th><th>Gerçekleşen</th><th>Rapora giren</th></tr></thead><tbody>
+@foreach (var x in Model.Fixed)
+{
+  <tr><td><a href="/yonetim/muhasebe/raporlar/sabit-gider/@x.Id">@x.Name</a>@if (x.Note is not null) { <br /><small class="admin-muted">@x.Note</small> }</td><td>@(x.Category ?? "—")</td><td>@M(x.Planned)</td>
+    <td>@(x.Actual is decimal a && a > 0 ? M(a) : "—")</td><td>@M(x.Cost)</td></tr>
+}
+@if (Model.Fixed.Count == 0) { <tr><td colspan="5">Bu ay geçerli sabit gider yok. Aşağıdan kira, elektrik, muhasebeci gibi aylık giderleri ekleyin.</td></tr> }
+</tbody></table>
+<p class="admin-muted">Kategori seçilen sabit giderde, o ay bu kategoride gider kaydı varsa gerçekleşen tutar kullanılır ve kayıtlar "Diğer giderler"e ayrıca girmez; kayıt yoksa tanımlı tutar yazılır.</p></div>
+
+<div class="admin-panel" style="overflow-x:auto"><h2>Diğer giderler</h2>
+<table class="admin-table"><thead><tr><th>Kategori</th><th>Kayıt</th><th>Tutar</th></tr></thead><tbody>
+@foreach (var x in Model.Expenses) { <tr><td>@x.Category</td><td>@x.Count</td><td>@M(x.Amount)</td></tr> }
+@if (Model.Expenses.Count == 0) { <tr><td colspan="3">Bu ay sabit gidere bağlı olmayan gider kaydı yok.</td></tr> }
+</tbody></table></div>
+
+<div class="admin-panel" style="overflow-x:auto"><h2>@Model.Month.Year yılı aylara göre</h2>
+<table class="admin-table"><thead><tr><th>Ay</th><th>Personel</th><th>Taşeron</th><th>Sabit</th><th>Gider</th><th>Alış</th><th>Net maliyet</th><th>Satış</th><th>Satış - maliyet</th></tr></thead><tbody>
+@foreach (var r in year)
+{
+  <tr style="@(r.Month == Model.Month ? "font-weight:600" : "")"><td><a href="?ay=@r.Month.ToString("yyyy-MM")&taseron=@Model.IncludeTeams">@r.Month.ToString("MMMM", tr)</a></td><td>@M(r.StaffTotal)</td><td>@M(r.TeamTotal)</td><td>@M(r.FixedTotal)</td><td>@M(r.ExpenseTotal)</td><td>@M(r.PurchaseNet)</td><td>@M(r.Total)</td><td>@M(r.SalesNet)</td><td>@M(r.Result)</td></tr>
+}
+<tr><td><strong>Yıl toplamı</strong></td><td>@M(year.Sum(r => r.StaffTotal))</td><td>@M(year.Sum(r => r.TeamTotal))</td><td>@M(year.Sum(r => r.FixedTotal))</td><td>@M(year.Sum(r => r.ExpenseTotal))</td><td>@M(year.Sum(r => r.PurchaseNet))</td><td><strong>@M(year.Sum(r => r.Total))</strong></td><td>@M(year.Sum(r => r.SalesNet))</td><td>@M(year.Sum(r => r.Result))</td></tr>
+</tbody></table>
+<p class="admin-muted">Gelecek aylarda personel ve sabit giderler plan olarak görünür; gider, alış ve satış yalnızca kayıt girildikçe dolar.</p></div>
+
+<div class="admin-panel"><h2>Sabit gider tanımları</h2>
+<table class="admin-table"><thead><tr><th>Gider</th><th>Kategori</th><th>Aylık tutar</th><th>Geçerlilik</th><th></th></tr></thead><tbody>
+@foreach (var f in fixedCosts)
+{
+  <tr><td>@f.Name</td><td>@(f.Category?.Name ?? "—")</td><td>@M(f.MonthlyAmount)</td><td>@f.StartMonth.ToString("MM.yyyy") – @(f.EndMonth?.ToString("MM.yyyy") ?? "devam ediyor")</td><td><a class="admin-btn" href="/yonetim/muhasebe/raporlar/sabit-gider/@f.Id">Düzenle</a></td></tr>
+}
+@if (fixedCosts.Count == 0) { <tr><td colspan="5">Henüz sabit gider tanımlanmadı.</td></tr> }
+</tbody></table>
+<h3 style="margin:16px 0 6px;font-size:14px">Yeni sabit gider</h3>
+<form class="admin-actions" method="post" action="/yonetim/muhasebe/raporlar/sabit-gider" style="flex-wrap:wrap">@Html.AntiForgeryToken()
+  <input type="hidden" name="id" value="0" /><input type="hidden" name="ay" value="@ay" />
+  <input name="name" placeholder="Ad (ör. Atölye kirası)" aria-label="Gider adı" required maxlength="120" />
+  <input type="number" name="monthlyAmount" step="0.01" min="0" data-no-round placeholder="Aylık tutar (KDV hariç)" aria-label="Aylık tutar" required />
+  <select name="categoryId" aria-label="Gider kategorisi"><option value="">Kategori yok</option>@foreach (var c in categories) { <option value="@c.Id">@c.Name</option> }</select>
+  <label>Başlangıç <input type="month" name="start" value="@ay" required /></label>
+  <label>Bitiş <input type="month" name="end" aria-label="Bitiş ayı (boşsa devam ediyor)" /></label>
+  <input name="note" placeholder="Not (isteğe bağlı)" aria-label="Not" maxlength="300" />
+  <button class="admin-btn">Ekle</button>
+</form></div>

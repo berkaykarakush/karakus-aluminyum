@@ -44,7 +44,8 @@ public sealed class SurveyController : Controller
     [HttpGet("ekle")]
     public async Task<IActionResult> Create(int? musteri, int? mesaj)
     {
-        var input = new SurveyInputVm { CustomerId = musteri };
+        // Ölçüyü alan, keşfi açan kullanıcıdır (kullanıcı ayarlarında adı yazılıysa); formda değiştirilebilir.
+        var input = new SurveyInputVm { CustomerId = musteri, Surveyor = (await DocumentPeople.CurrentAsync(_db, User))?.FullName };
         if (musteri is int customerId && await _db.Customers.AsNoTracking().FirstOrDefaultAsync(x => x.Id == customerId) is { } customer)
             (input.Address, input.ContactName, input.ContactPhone) = (OrderService.Location(customer), customer.ContactPerson ?? customer.Name, customer.Phone);
         if (mesaj is int messageId && await _db.ContactMessages.AsNoTracking().FirstOrDefaultAsync(x => x.Id == messageId) is { } message)
@@ -171,6 +172,8 @@ public sealed class SurveyController : Controller
         if (errors.Count > 0) { TempData["Notice"] = string.Join(" ", errors); return RedirectToAction(nameof(Details), new { id }); }
         _db.SurveyLines.RemoveRange(survey.Lines);
         survey.Lines = kept;
+        // Ölçüyü alan yazılmamışsa ölçüleri giren kullanıcı yazılır.
+        if (string.IsNullOrWhiteSpace(survey.Surveyor) && kept.Count > 0) survey.Surveyor = (await DocumentPeople.CurrentAsync(_db, User))?.FullName;
         survey.UpdatedUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         TempData["Notice"] = $"{kept.Count} ölçü kaydedildi.";
@@ -301,5 +304,8 @@ public sealed class SurveyController : Controller
     }
 
     private async Task LoadOptions()
-        => ViewBag.Customers = new SelectList(await _db.Customers.AsNoTracking().Where(x => x.PartyType != PartyType.Supplier).OrderBy(x => x.Name).Select(x => new { x.Id, x.Name }).ToListAsync(), "Id", "Name");
+    {
+        ViewBag.Customers = new SelectList(await _db.Customers.AsNoTracking().Where(x => x.PartyType != PartyType.Supplier).OrderBy(x => x.Name).Select(x => new { x.Id, x.Name }).ToListAsync(), "Id", "Name");
+        ViewBag.Staff = await DocumentPeople.StaffNamesAsync(_db);
+    }
 }

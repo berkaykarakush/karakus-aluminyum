@@ -21,8 +21,10 @@ public sealed record PriceSheet(
     public bool HasLineDiscount => Sections.SelectMany(s => s.Lines).Any(l => l.DiscountRate > 0);
     public decimal LineDiscount => Gross - Subtotal;
     public decimal Net => Subtotal - DiscountAmount; // genel iskonto sonrası
-    // KDV matrahı: KDV hariç net tutar.
-    public decimal TaxBase => VatMode == VatMode.Included ? Net - TaxAmount : Net;
+    // Genel toplamın yuvarlanmasından doğan fark (yuvarlama yoksa sıfır).
+    public decimal Rounding => QuoteRules.RoundingAmount(VatMode, Subtotal, DiscountAmount, TaxAmount, GrandTotal);
+    // KDV matrahı: KDV hariç net tutar. KDV dahil fiyatta yuvarlanmış toplamdan ayrılır.
+    public decimal TaxBase => VatMode == VatMode.Included ? GrandTotal - TaxAmount : Net;
 
     public static PriceSheet FromQuote(Quote quote)
     {
@@ -38,7 +40,7 @@ public sealed record PriceSheet(
         var rows = content.Blocks.SelectMany(b => b.Items.Where(i => !string.IsNullOrWhiteSpace(i.Description))
             .Select(i => (Name: string.IsNullOrWhiteSpace(b.Name) ? null : b.Name.Trim(), Description: i.Description!.Trim(), i.Quantity, Unit: string.IsNullOrWhiteSpace(i.Unit) ? "Adet" : i.Unit.Trim(), i.UnitPrice, i.DiscountRate))).ToList();
         var items = rows.Select(r => new QuoteItem { Quantity = r.Quantity, UnitPrice = r.UnitPrice, DiscountRate = r.DiscountRate }).ToList();
-        var totals = items.Count == 0 ? (0m, 0m, 0m, 0m) : QuoteRules.Calculate(items, discountRate, taxRate, vatMode);
+        var totals = items.Count == 0 ? (0m, 0m, 0m, 0m) : QuoteRules.Calculate(items, discountRate, taxRate, vatMode, content.TotalRounding);
         var gross = rows.Sum(r => QuoteRules.GrossTotal(r.Quantity, r.UnitPrice));
         return new PriceSheet(Group(rows), vatMode, taxRate, discountRate, gross, totals.Item1, totals.Item2, totals.Item3, totals.Item4);
     }

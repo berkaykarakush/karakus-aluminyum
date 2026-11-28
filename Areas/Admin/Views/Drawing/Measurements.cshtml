@@ -24,7 +24,7 @@
 <div class="wd-sheet">
   <div class="admin-panel">
     <h2>@Model.Name</h2>
-    <p class="admin-muted">@(Model.Customer is null ? "" : Model.Customer.Name + " · ")@items.Count çizim · @items.Sum(x => x.Quantity) adet · Tarih: @printed.ToString("dd.MM.yyyy")</p>
+    <p class="admin-muted">@(Model.Customer is null ? "" : Model.Customer.Name + " · ")@items.Count çizim · @items.Sum(x => x.Quantity) adet@(ViewBag.Surveyors is string surveyors ? " · Ölçüyü alan: " + surveyors : "") · Tarih: @printed.ToString("dd.MM.yyyy")</p>
     <table class="admin-table wd-table wd-measure-table">
       <thead><tr><th>Sıra</th><th>Çizim</th><th>Ürün</th><th>G × Y (@Units.Code)</th><th>Adet</th></tr></thead>
       <tbody>
