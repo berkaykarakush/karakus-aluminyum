@@ -42,8 +42,8 @@
 /* Fiyatlandırılmış kalem tablosu ve iç kâr özeti */
 .doc-items--priced td:nth-child(2){width:80px}
 .doc-items--priced td:nth-child(3){width:70px}
-.doc-items--priced td:nth-child(4){width:130px}
-.doc-items--priced td:nth-child(5){width:160px}
+.doc-items--priced td:nth-child(4){width:170px}
+.doc-items--priced td:nth-child(5){width:220px}
 .doc-items--priced td:nth-child(6){width:72px}
 .doc-items--priced td:nth-child(7){width:120px}
 .doc-items--priced td:nth-child(8){width:60px}
@@ -51,7 +51,7 @@
 /* Sözleşme kalemleri: maliyet ve marj yok */
 .doc-items--contract td:nth-child(2){width:90px}
 .doc-items--contract td:nth-child(3){width:80px}
-.doc-items--contract td:nth-child(4){width:150px}
+.doc-items--contract td:nth-child(4){width:200px}
 .doc-items--contract td:nth-child(5){width:72px}
 .doc-items--contract td:nth-child(6){width:130px}
 .doc-items--contract td:nth-child(7){width:40px}

@@ -197,7 +197,7 @@ body.admin{margin:0;background:var(--canvas);color:var(--ink);font-family:"Manro
 .inv-table th:nth-child(1){width:180px}
 .inv-table th:nth-child(3),.inv-table th:nth-child(6){width:76px}
 .inv-table th:nth-child(4){width:70px}
-.inv-table th:nth-child(5){width:110px}
+.inv-table th:nth-child(5){width:170px}
 .inv-table th:nth-child(7),.inv-table th:nth-child(8){width:84px}
 .inv-table th:nth-child(9){width:100px}
 .inv-table th:nth-child(10){width:44px}
@@ -209,3 +209,16 @@ body.admin{margin:0;background:var(--canvas);color:var(--ink);font-family:"Manro
 .nav-group[open] .nav-group__badge{display:none}
 .admin-table td>a:first-child{white-space:nowrap}
 @media(max-width:700px){.admin-content>.admin-actions:has(>h1)>h1{flex-basis:100%}}
+/* Fiyat yuvarlama (wwwroot/js/price-round.js) */
+.price-round{display:flex;align-items:stretch;gap:4px;width:100%;min-width:0}
+.price-round input{flex:1 1 auto;width:auto!important;min-width:0}
+.price-round__btn{flex:0 0 auto;padding:0 9px;font:inherit;font-size:12px;font-weight:600;line-height:1.2;color:var(--blue);background:var(--blue-soft);border:1px solid #c9dcea;border-radius:6px;cursor:pointer;white-space:nowrap}
+.price-round__btn:hover,.price-round__btn[aria-expanded=true]{background:#d9e8f2}
+.price-round-menu{position:absolute;z-index:1000;min-width:200px;padding:6px;background:#fff;border:1px solid var(--line-strong);border-radius:10px;box-shadow:0 8px 24px rgba(16,24,32,.14)}
+.price-round-menu__title{margin:2px 6px 6px;font-size:12px;color:var(--muted)}
+.price-round-menu__dirs{display:flex;gap:2px;padding:2px;margin-bottom:4px;background:var(--canvas);border-radius:7px}
+.price-round-menu__dirs button{flex:1;padding:4px 6px;font:inherit;font-size:12px;color:var(--muted);background:none;border:0;border-radius:5px;cursor:pointer}
+.price-round-menu__dirs button[aria-pressed=true]{color:var(--ink);font-weight:600;background:#fff;box-shadow:var(--shadow)}
+.price-round-menu__item{display:flex;justify-content:space-between;gap:16px;width:100%;padding:6px 8px;font:inherit;font-size:13px;color:var(--ink);text-align:left;background:none;border:0;border-radius:6px;cursor:pointer}
+.price-round-menu__item:hover,.price-round-menu__item:focus-visible{background:var(--blue-soft);outline:none}
+.price-round-menu__item strong{font-variant-numeric:tabular-nums}

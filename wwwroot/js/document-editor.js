@@ -179,6 +179,17 @@
     if (sub) summary.append(h("tr", {}, h("td", { colSpan: 2, className: "admin-muted", textContent: `${sub} kalemde taşeron maliyeti kullanılıyor.` })));
   }
 
+  // Birim fiyatları toplu yuvarlar. Teklifte yuvarlanan fiyat elle yazılmış sayılır (↺ ile marja döner).
+  const roundButton = (text, blocks) => window.PriceRound?.bulkButton(text, (fn) => {
+    blocks().forEach((b) => b.items.forEach((item) => {
+      const rounded = fn(Number(item.unitPrice) || 0);
+      if (rounded === Number(item.unitPrice)) return;
+      item.unitPrice = rounded;
+      if (mode === "quote") item.manualPrice = true;
+    }));
+    renderBlocks();
+  }) ?? null;
+
   function renderItems(block, index) {
     const body = h("tbody");
     block.items.forEach((item, i) => {
@@ -217,6 +228,7 @@
       h("table", { className: `doc-items ${mode === "contract" ? "doc-items--contract" : "doc-items--priced"}` }, h("thead", {}, h("tr", {}, headers.map((t) => h("th", { textContent: t })))), body),
       h("div", { className: "doc-row" },
         h("button", { type: "button", className: "doc-btn", textContent: "+ Kalem ekle", onclick: () => { block.items.push({ description: "", quantity: 1, unit: "Adet", unitCost: 0, unitPrice: 0, discountRate: 0 }); renderBlocks(); } }),
+        block.items.length && content.blocks.length > 1 ? roundButton("Bu bloğu yuvarla", () => [block]) : null,
         h("strong", { "data-block-total": index })));
   }
 
@@ -350,6 +362,9 @@
     content.blocks.push({ name: "", variables: {}, clauses: [], items: mode === "quote" ? [{ description: "", quantity: 1, unit: "Adet", unitCost: 0, unitPrice: 0, discountRate: 0 }] : [] });
     renderBlocks();
   });
+  const addBlock = document.getElementById("doc-add-block");
+  const roundAll = roundButton("Tüm fiyatları yuvarla", () => content.blocks);
+  if (roundAll) addBlock.after(roundAll);
   form.addEventListener("submit", () => { form.elements.DocumentJson.value = JSON.stringify(content); });
   if (mode === "contract") ["DiscountRate", "TaxRate"].forEach((name) => form.elements[name]?.addEventListener("input", renderTotals));
   if (mode === "contract") form.elements.VatMode?.addEventListener("change", renderTotals);

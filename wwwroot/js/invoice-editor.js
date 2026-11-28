@@ -49,6 +49,7 @@
         const el = document.createElement("input");
         el.type = type; el.value = row[key] ?? "";
         if (type === "number") { el.min = "0"; el.step = "any"; }
+        if (key === "unitPrice") el.dataset.round = "";
         el.addEventListener("input", () => { row[key] = type === "number" ? Number(el.value) : el.value; refresh(); });
         return add(el, label);
       };
@@ -82,7 +83,10 @@
     totals();
   }
 
-  document.getElementById("inv-add").addEventListener("click", () => { rows.push(newRow()); render(); });
+  const addRow = document.getElementById("inv-add");
+  addRow.addEventListener("click", () => { rows.push(newRow()); render(); });
+  const roundAll = window.PriceRound?.bulkButton("Tüm fiyatları yuvarla", (fn) => { rows.forEach((r) => { r.unitPrice = fn(Number(r.unitPrice) || 0); }); render(); });
+  if (roundAll) addRow.after(roundAll);
   form.elements.Currency.addEventListener("change", rateVisibility);
   form.addEventListener("submit", () => { form.elements.LinesJson.value = JSON.stringify(rows); });
   if (!rows.length) rows.push(newRow());
