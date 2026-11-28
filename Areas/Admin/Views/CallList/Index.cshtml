@@ -1,0 +1,87 @@
+@model KarakusAluminyum.Web.Areas.Admin.Controllers.CallListVm
+@using KarakusAluminyum.Web.Models.Crm
+@using KarakusAluminyum.Web.Services.Documents
+@using KarakusAluminyum.Web.Services.Prospecting
+@{
+    ViewData["Title"] = "Arama listesi";
+    var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(3));
+    const string back = "/yonetim/crm/arama-listesi";
+}
+<div class="admin-actions">
+  <h1>Bugünün arama listesi</h1>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/crm/firmalar">Firma havuzu</a>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/crm/firmalar/verim">Sektör ve ilçe verimi</a>
+</div>
+<p class="admin-muted">Takip günü gelen ve hiç aranmamış firmalar önceliğe göre sıralanır: görüşülmüş/teklif verilmiş, takibi geciken, Google'da çok yorumlu ve iletişim bilgisi tam olan firma önce gelir. Görüşmeyi kaydedince sonraki takip günü kendiliğinden yazılır (ulaşılamadı: 2 gün, iletişim: 3, görüşme: 5, teklif: 7 gün). WhatsApp ve e-posta otomatik gönderilmez; metin hazır açılır, gönder tuşuna siz basarsınız.</p>
+
+<div class="admin-panel" style="overflow-x:auto">
+  <div class="admin-actions">
+    <h2 style="margin:0">Firmalar</h2>
+    <span class="admin-muted">@Model.Prospects.Count / @Model.CallableTotal aranacak firma</span>
+    <form method="get" style="display:flex;gap:6px;align-items:center"><label for="adet" class="admin-muted">Göster</label><select id="adet" name="adet" onchange="this.form.submit()" style="width:auto">@foreach (var n in new[] { 10, 20, 40, 100 }) { <option selected="@(Model.Take == n)">@n</option> }</select></form>
+  </div>
+  <table class="admin-table">
+    <thead><tr><th>Öncelik</th><th>Firma</th><th>Telefon</th><th>Aşama / takip</th><th>Sonuç</th></tr></thead>
+    <tbody>
+    @foreach (var row in Model.Prospects)
+    {
+      var p = row.Prospect;
+      var wa = ProspectText.WhatsAppNumber(p.Phone);
+      <tr>
+        <td><strong title="@string.Join(" · ", row.Score.Reasons)">@row.Score.Total</strong><br /><small class="admin-muted">@string.Join(", ", row.Score.Reasons.Take(2))</small></td>
+        <td><a href="/yonetim/crm/firmalar/@p.Id"><strong>@p.Name</strong></a><br /><small class="admin-muted">@(p.Sector?.Name ?? "Sektör yok") · @p.District@(p.ContactPerson is null ? "" : " · " + p.ContactPerson)</small></td>
+        <td style="white-space:nowrap"><a class="admin-btn admin-btn--secondary" href="tel:@p.Phone">Ara: @p.Phone</a></td>
+        <td>@ProspectLabels.Stage(p.Stage)<br /><small style="@(p.NextFollowUp < today ? "color:#a52b2b;font-weight:700" : null)">@(p.NextFollowUp is DateOnly d ? "Takip " + d.ToString("dd.MM.yyyy") : "Hiç aranmadı")</small></td>
+        <td>
+          <form method="post" action="/yonetim/crm/firmalar/@p.Id/gorusme" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+            @Html.AntiForgeryToken()<input type="hidden" name="geri" value="@back" />
+            <input name="text" maxlength="1000" placeholder="Görüşme notu" aria-label="Görüşme notu" style="width:auto;flex:1 1 160px" />
+            <button class="admin-btn" name="kind" value="@ProspectActivityKind.Call" title="Not yazıp kaydedin; sonraki takip 3 gün sonra">Görüşüldü</button>
+            <button class="admin-btn admin-btn--secondary" name="kind" value="@ProspectActivityKind.NoAnswer" formnovalidate title="2 gün sonra yeniden listeye gelir">Ulaşılamadı</button>
+          </form>
+          <div class="admin-actions" style="margin-top:6px;gap:6px">
+            @if (wa is not null) { <form method="post" action="/yonetim/crm/firmalar/@p.Id/mesaj" target="_blank">@Html.AntiForgeryToken()<input type="hidden" name="kanal" value="whatsapp" /><button class="admin-btn admin-btn--secondary" title="@row.Message">WhatsApp'ta hazır mesaj</button></form> }
+            @if (p.Email is not null) { <form method="post" action="/yonetim/crm/firmalar/@p.Id/mesaj" target="_blank">@Html.AntiForgeryToken()<input type="hidden" name="kanal" value="eposta" /><button class="admin-btn admin-btn--secondary" title="@row.Message">E-postada hazır mesaj</button></form> }
+          </div>
+        </td>
+      </tr>
+    }
+    @if (Model.Prospects.Count == 0) { <tr><td colspan="5">Bugün aranacak firma yok. <a href="/yonetim/crm/firmalar/tarama">Sektör taraması</a> ile havuza firma ekleyebilirsiniz.</td></tr> }
+    </tbody>
+  </table>
+</div>
+
+<div class="admin-panel" style="overflow-x:auto">
+  <h2 style="margin-top:0">Geri kazanılacak teklifler</h2>
+  <p class="admin-muted">Fiyat yüksek veya teslim süresi uzun (30 gün), vazgeçti / ertelendi (60 gün) ya da ulaşılamadı (7 gün) diye reddedilen teklifler bu süre sonra burada görünür. Rakibi seçen veya ürünü uymayan müşteri listeye girmez.</p>
+  <table class="admin-table">
+    <thead><tr><th>Müşteri</th><th>Teklif</th><th>Kayıp nedeni</th><th>İletişim</th><th>Sonuç</th></tr></thead>
+    <tbody>
+    @foreach (var w in Model.WinBacks)
+    {
+      var q = w.Quote;
+      var wa = ProspectText.WhatsAppNumber(w.Phone);
+      <tr>
+        <td><a href="/yonetim/crm/musteriler/duzenle/@q.CustomerId"><strong>@w.CustomerName</strong></a></td>
+        <td><a href="/yonetim/crm/teklifler/detay/@q.Id">@q.QuoteNumber</a><br /><small class="admin-muted">@q.Title · @TurkishNumbers.Money(q.GrandTotal) · @w.DaysSinceQuote gün önce</small></td>
+        <td>@q.LostReason@(q.LostCompetitor is null ? "" : " · " + q.LostCompetitor)@if (q.LostNote is not null) { <br /><small class="admin-muted">@q.LostNote</small> }@if (q.WinBackNote is not null) { <br /><small class="admin-muted">Son: @q.WinBackNote</small> }</td>
+        <td style="white-space:nowrap">
+          @if (w.Phone is not null) { <a class="admin-btn admin-btn--secondary" href="tel:@w.Phone">Ara</a> }
+          @if (wa is not null) { <a class="admin-btn admin-btn--secondary" href="https://wa.me/@wa?text=@Uri.EscapeDataString(w.Message)" target="_blank" rel="noopener noreferrer">WhatsApp'ta hazır mesaj</a> }
+          @if (w.Email is not null) { <a class="admin-btn admin-btn--secondary" href="mailto:@w.Email?subject=@Uri.EscapeDataString("Teklifimiz hakkında")&body=@Uri.EscapeDataString(w.Message)">E-posta</a> }
+          @if (q.DrawingListId is int listId) { <a class="admin-btn admin-btn--secondary" href="/yonetim/crm/teklifler/ekle?liste=@listId">Yeni teklif</a> }
+        </td>
+        <td>
+          <form method="post" action="/yonetim/crm/arama-listesi/teklif/@q.Id" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+            @Html.AntiForgeryToken()
+            <input name="note" maxlength="250" placeholder="Ne konuşuldu?" aria-label="Geri arama notu" style="width:auto;flex:1 1 140px" />
+            <button class="admin-btn" name="sonuc" value="sonra" title="30 gün sonra yeniden listeye gelir">Arandı</button>
+            <button class="admin-btn admin-btn--secondary" name="sonuc" value="kapat" title="Bir daha listeye gelmez">Listeden çıkar</button>
+          </form>
+        </td>
+      </tr>
+    }
+    @if (Model.WinBacks.Count == 0) { <tr><td colspan="5">Bugün yeniden aranacak teklif yok.</td></tr> }
+    </tbody>
+  </table>
+</div>

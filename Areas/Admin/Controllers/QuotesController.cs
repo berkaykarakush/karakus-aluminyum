@@ -217,8 +217,10 @@ public sealed class QuotesController : Controller
             quote.LostReason = lostReason;
             quote.LostCompetitor = string.IsNullOrWhiteSpace(lostCompetitor) ? null : lostCompetitor.Trim()[..Math.Min(lostCompetitor.Trim().Length, 120)];
             quote.LostNote = string.IsNullOrWhiteSpace(lostNote) ? null : lostNote.Trim()[..Math.Min(lostNote.Trim().Length, 300)];
+            // Fiyat, teslim süresi veya erteleme yüzünden kaybedilen teklif bir süre sonra arama listesine düşer.
+            quote.WinBackOn = QuoteLoss.WinBackDays(lostReason) is int days ? DateOnly.FromDateTime(DateTime.UtcNow.AddHours(3)).AddDays(days) : null;
         }
-        else (quote.LostReason, quote.LostCompetitor, quote.LostNote) = (null, null, null);
+        else (quote.LostReason, quote.LostCompetitor, quote.LostNote, quote.WinBackOn) = (null, null, null, null);
         quote.Status = status;
         await _db.SaveChangesAsync();
         TempData["Notice"] = "Teklif durumu güncellendi.";

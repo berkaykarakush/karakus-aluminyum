@@ -4,7 +4,7 @@ namespace KarakusAluminyum.Web.Models.Crm;
 
 // Satış hunisi: potansiyel firma müşteriye dönüşene ya da elenene kadar bu aşamalardan geçer.
 public enum ProspectStage { New = 0, Contacted = 1, Meeting = 2, Quoted = 3, Won = 4, Lost = 5, Unqualified = 6 }
-public enum ProspectActivityKind { Call = 0, Visit = 1, Email = 2, WhatsApp = 3, Meeting = 4, Note = 5 }
+public enum ProspectActivityKind { Call = 0, Visit = 1, Email = 2, WhatsApp = 3, Meeting = 4, Note = 5, NoAnswer = 6 } // NoAnswer: aranıp ulaşılamadı
 public enum ProspectScanStatus { Queued = 0, Running = 1, Done = 2, Failed = 3 }
 
 public static class ProspectLabels
@@ -27,6 +27,7 @@ public static class ProspectLabels
         ProspectActivityKind.Email => "E-posta",
         ProspectActivityKind.WhatsApp => "WhatsApp",
         ProspectActivityKind.Meeting => "Toplantı",
+        ProspectActivityKind.NoAnswer => "Ulaşılamadı",
         _ => "Not"
     };
 
@@ -49,6 +50,8 @@ public sealed class ProspectSector
     public bool IsActive { get; set; } = true;
     public int SortOrder { get; set; }
     public DateTime? LastScanUtc { get; set; }
+    // Bu sektördeki firmalara elle gönderilen hazır WhatsApp / e-posta metni. Boşsa genel metin kullanılır.
+    [StringLength(1000)] public string? MessageTemplate { get; set; }
 }
 
 public sealed class ProspectDistrict

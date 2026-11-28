@@ -102,8 +102,11 @@ public static class SeedData
     };
 
 
+    public const string WhatsAppOffKey = "WhatsAppAutoOff";
+    public const string WinBackSeededKey = "QuoteWinBackSeeded";
+
     // Tek seferlik seed'lerin işaretçileri; site ayarları ekranında gösterilmez.
-    public static readonly string[] InternalSettingKeys = { GallerySeededKey, PresentationSeededKey, ProspectingSeededKey, HomeFaqsSeededKey, DrawingSeededKey, ClausesSeededKey, ContentSeed.VersionKey, ProductSystemsSeededKey, BrandsSeededKey, AccountingSeededKey, RetiredServicesKey, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.KeySetting, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.MarkerSetting, KarakusAluminyum.Web.Services.Drawing.LegacyDrawingSystems.MarkerKey, SampleSystemValues.MarkerKey, DocumentTemplateUpgrade.MarkerKey, KarakusAluminyum.Web.Areas.Admin.Controllers.OrdersController.CapacityKey, KarakusAluminyum.Web.Services.Documents.DocumentBrandingProvider.Key };
+    public static readonly string[] InternalSettingKeys = { GallerySeededKey, PresentationSeededKey, ProspectingSeededKey, HomeFaqsSeededKey, DrawingSeededKey, ClausesSeededKey, ContentSeed.VersionKey, ProductSystemsSeededKey, BrandsSeededKey, AccountingSeededKey, RetiredServicesKey, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.KeySetting, KarakusAluminyum.Web.Services.Seo.IndexNowPublisher.MarkerSetting, KarakusAluminyum.Web.Services.Drawing.LegacyDrawingSystems.MarkerKey, SampleSystemValues.MarkerKey, DocumentTemplateUpgrade.MarkerKey, WhatsAppOffKey, WinBackSeededKey, KarakusAluminyum.Web.Areas.Admin.Controllers.OrdersController.CapacityKey, KarakusAluminyum.Web.Services.Documents.DocumentBrandingProvider.Key };
 
     public static async Task InitializeAsync(IServiceProvider services, IConfiguration config)
     {
@@ -231,6 +234,22 @@ public static class SeedData
             else if (setting.Value.Contains("DOMAININIZ", StringComparison.OrdinalIgnoreCase) || setting.Value.Contains("XXX", StringComparison.OrdinalIgnoreCase) || wrongSocialDefaults.Contains(setting.Value)
                      || (oldDefaults.TryGetValue(definition.Key, out var old) && setting.Value == old))
                 setting.Value = definition.Default;
+        }
+
+        // Otomatik WhatsApp bildirimleri bir kez kapatılır (2026-11-28 kararı); yönetici sonradan açarsa dokunulmaz.
+        if (!existingSettings.Any(s => s.Key == WhatsAppOffKey))
+        {
+            foreach (var key in new[] { "NotifyWhatsAppEnabled", "CustomerNotifyWhatsAppEnabled" })
+                if (existingSettings.FirstOrDefault(s => s.Key == key) is { } toggle) toggle.Value = "false";
+            db.SiteSettingRecords.Add(new SiteSettingRecord { Key = WhatsAppOffKey, Value = "2026-11-28", Description = "Otomatik WhatsApp bildirimleri kapatıldı" });
+        }
+
+        // Geri arama listesi açılmadan önce reddedilen teklifler bir kez listeye alınır: teklif tarihinden kayıp nedenine göre gün sonra.
+        if (!existingSettings.Any(s => s.Key == WinBackSeededKey))
+        {
+            foreach (var quote in await db.Quotes.Where(x => x.Status == KarakusAluminyum.Web.Models.Crm.QuoteStatus.Rejected && x.WinBackOn == null && x.LostReason != null).ToListAsync())
+                if (KarakusAluminyum.Web.Models.Crm.QuoteLoss.WinBackDays(quote.LostReason) is int days) quote.WinBackOn = DateOnly.FromDateTime(quote.DocumentDate).AddDays(days);
+            db.SiteSettingRecords.Add(new SiteSettingRecord { Key = WinBackSeededKey, Value = "2026-11-28", Description = "Reddedilen teklifler geri arama listesine alındı" });
         }
 
         // Anonim ziyaret kayıtları 400 günden uzun tutulmaz.

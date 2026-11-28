@@ -1,0 +1,36 @@
+@model KarakusAluminyum.Web.Services.Prospecting.YieldReport
+@using KarakusAluminyum.Web.Services.Documents
+@using KarakusAluminyum.Web.Services.Prospecting
+@{
+    ViewData["Title"] = "Sektör ve ilçe verimi";
+    string Pct(double? v) => v is double d ? "%" + (d * 100).ToString("0") : "—";
+}
+<div class="admin-actions">
+  <h1>Sektör ve ilçe verimi</h1>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/crm/firmalar">Firma havuzu</a>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/crm/arama-listesi">Arama listesi</a>
+  <a class="admin-btn admin-btn--secondary" href="/yonetim/crm/firmalar/tarama">Sektörler ve tarama</a>
+</div>
+<p class="admin-muted">Hangi sektör ve ilçedeki firmalar gerçekten görüşmeye, teklife ve işe dönüşüyor? <strong>Temas</strong>: aranmış, yazılmış veya ziyaret edilmiş firma. <strong>Kazanılan</strong>: aşaması "Kazanıldı" olan ya da müşteri kartındaki teklifi kabul edilen firma; ciro bu tekliflerin toplamıdır. Kazanma oranı düşük ve Google isteği yüksek sektörleri taramadan çıkarmayı, kazandıranlara daha çok anahtar kelime eklemeyi düşünün. Bu ay Google'a giden istek: <strong>@Model.MonthlyRequests</strong>.</p>
+
+@foreach (var (title, rows, showRequests) in new[] { ("Sektörler", Model.Sectors, true), ("İlçeler", Model.Districts, false) })
+{
+  <div class="admin-panel" style="overflow-x:auto">
+    <h2 style="margin-top:0">@title</h2>
+    <table class="admin-table">
+      <thead><tr><th>@(showRequests ? "Sektör" : "İlçe")</th><th>Firma</th><th>Telefonlu</th><th>Temas</th><th>Görüşme</th><th>Teklif</th><th>Kazanılan</th><th>Kazanma oranı</th><th>Elenen</th><th>Ciro</th>@if (showRequests) { <th>Google isteği</th><th>İstek / kazanılan</th> }</tr></thead>
+      <tbody>
+      @foreach (var r in rows.Append(Model.Total))
+      {
+        var total = ReferenceEquals(r, Model.Total);
+        <tr style="@(total ? "font-weight:700" : null)">
+          <td>@if (!total && r.SectorId is int sid) { <a href="/yonetim/crm/firmalar?sector=@sid">@r.Name</a> } else if (!total && !showRequests) { <a href="/yonetim/crm/firmalar?district=@Uri.EscapeDataString(r.Name)">@r.Name</a> } else { @r.Name }</td>
+          <td>@r.Firms</td><td>@r.WithPhone</td><td>@r.Contacted <small class="admin-muted">@Pct(r.ContactRate)</small></td><td>@r.Met</td><td>@r.Quoted</td><td>@r.Won</td>
+          <td>@Pct(r.WinRate)</td><td>@r.Closed</td><td>@(r.Revenue > 0 ? TurkishNumbers.Money(r.Revenue) : "—")</td>
+          @if (showRequests) { <td>@r.GoogleRequests</td><td>@(r.RequestsPerWon is double rw ? rw.ToString("0") : "—")</td> }
+        </tr>
+      }
+      </tbody>
+    </table>
+  </div>
+}

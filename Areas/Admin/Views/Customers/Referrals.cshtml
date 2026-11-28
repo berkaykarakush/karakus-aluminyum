@@ -1,0 +1,22 @@
+@model List<KarakusAluminyum.Web.Areas.Admin.Controllers.ReferralRow>
+@using KarakusAluminyum.Web.Services.Documents
+@{ ViewData["Title"] = "Tavsiye raporu"; var untagged = (int)ViewBag.TaggedWithoutReferrer; }
+<div class="admin-actions"><h1>Tavsiye raporu</h1><a class="admin-btn admin-btn--secondary" href="/yonetim/crm/musteriler">Müşteriler</a></div>
+<p class="admin-muted">Bizi tavsiye eden müşteriler, getirdikleri müşteriler ve bu müşterilerin kabul edilen teklif tutarı. En çok iş getirenlere teşekkür arayın, bir sonraki bakımda indirim veya küçük bir hediye düşünün. Yeni müşteri kartında <strong>Tavsiye eden müşteri</strong> seçildiğinde buraya düşer.</p>
+@if (untagged > 0) { <p class="notice">Kaynağı "Tavsiye" olan ama tavsiye eden müşterisi seçilmemiş @untagged müşteri var; kartlarında tavsiye edeni seçin.</p> }
+<div class="admin-panel" style="overflow-x:auto">
+  <table class="admin-table">
+    <thead><tr><th>Tavsiye eden</th><th>Getirdiği müşteri</th><th>İşe dönen</th><th>Kabul edilen teklif</th><th>Müşteriler</th></tr></thead>
+    <tbody>
+    @foreach (var r in Model)
+    {
+      <tr>
+        <td><a href="/yonetim/crm/musteriler/duzenle/@r.Id"><strong>@r.Name</strong></a>@if (r.Phone is not null) { <br /><a href="tel:@r.Phone">@r.Phone</a> }</td>
+        <td>@r.Count</td><td>@r.WonCount</td><td>@(r.Revenue > 0 ? TurkishNumbers.Money(r.Revenue) : "—")</td>
+        <td>@for (var i = 0; i < r.Customers.Count; i++) { var c = r.Customers[i]; <a href="/yonetim/crm/musteriler/duzenle/@c.Id">@c.Name</a>@(c.Won > 0 ? " ✓" : "")@(i < r.Customers.Count - 1 ? ", " : "") }</td>
+      </tr>
+    }
+    @if (Model.Count == 0) { <tr><td colspan="5">Henüz tavsiye kaydı yok.</td></tr> }
+    </tbody>
+  </table>
+</div>
