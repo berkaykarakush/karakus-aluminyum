@@ -29,6 +29,9 @@ public sealed class Quote
     public string SnapshotJson { get; set; } = "{}";
     [StringLength(40)] public string? PublicToken { get; set; } // QR koddaki doğrulama bağlantısı: /belge/teklif/{token}
     [StringLength(2000)] public string? Notes { get; set; }
+    // Belgeyi imzalayacak kişi: teklifi hazırlayan kullanıcının adıyla gelir; boşsa şablondaki yetkili basılır.
+    [StringLength(120)] public string? Signatory { get; set; }
+    [StringLength(60)] public string? SignatoryTitle { get; set; }
     // Müşterinin QR'lı teklif sayfasından onayı (README 7.18): kanıt olarak ad, zaman, IP, tarayıcı, tutar ve belge özeti saklanır.
     public DateTime? AcceptedUtc { get; set; }
     [StringLength(120)] public string? AcceptedName { get; set; }

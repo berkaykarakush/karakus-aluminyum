@@ -15,11 +15,12 @@ public sealed class QuoteRulesTests
     [Fact]
     public void Profit_UsesNetSalesWithoutVat()
     {
-        var quote = new Quote { Subtotal = 12000m, DiscountAmount = 1200m, TaxAmount = 1800m, CostTotal = 6000m, VatMode = VatMode.Included };
+        var quote = new Quote { Subtotal = 12000m, DiscountAmount = 1200m, TaxAmount = 1800m, GrandTotal = 10800m, CostTotal = 6000m, VatMode = VatMode.Included };
         var (net, profit, margin) = QuoteRules.Profit(quote);
         Assert.Equal((9000m, 3000m, 50m), (net, profit, margin!.Value));
 
         quote.VatMode = VatMode.Added;
+        quote.GrandTotal = 12600m;
         Assert.Equal(4800m, QuoteRules.Profit(quote).Profit);
         Assert.Null(QuoteRules.Profit(new Quote { Subtotal = 100m }).MarginPercent);
     }
@@ -131,4 +132,42 @@ public sealed class QuoteRulesTests
     [InlineData(101)]
     public void Calculate_RejectsInvalidLineDiscount(int rate)
         => Assert.Throws<ArgumentException>(() => QuoteRules.Calculate(new[] { new QuoteItem { Quantity = 1, UnitPrice = 10m, DiscountRate = rate } }, 0m, 20m));
+
+    [Theory]
+    [InlineData(1234.57, 50, "nearest", 1250)]
+    [InlineData(1234.57, 50, "down", 1200)]
+    [InlineData(1201, 100, "up", 1300)]
+    [InlineData(1200, 100, "up", 1200)]
+    [InlineData(123.456, 0.5, "nearest", 123.5)]
+    [InlineData(123.24, 1, "bogus", 123)]
+    public void RoundingRule_AppliesStepAndDirection(decimal value, decimal step, string direction, decimal expected)
+        => Assert.Equal(expected, RoundingRule.Normalize(new RoundingRule { Step = step, Direction = direction })!.Apply(value));
+
+    [Fact]
+    public void RoundingRule_RejectsUnknownStep()
+        => Assert.Null(RoundingRule.Normalize(new RoundingRule { Step = 7m }));
+
+    [Fact]
+    public void PriceFromCost_RoundsWhenRuleGiven()
+        => Assert.Equal(1250m, QuoteRules.PriceFromCost(1000m, 23.457m, new RoundingRule { Step = 50m }));
+
+    [Fact]
+    public void Calculate_RoundsGrandTotal_VatAdded_KeepsTax()
+    {
+        var items = new[] { new QuoteItem { Quantity = 1, UnitPrice = 40613.69m } };
+        var (subtotal, discount, tax, grand) = QuoteRules.Calculate(items, 0m, 20m, VatMode.Added, new RoundingRule { Step = 100m, Direction = RoundingRule.Down });
+        Assert.Equal((8122.74m, 48700m), (tax, grand));
+        Assert.Equal(-36.43m, QuoteRules.RoundingAmount(VatMode.Added, subtotal, discount, tax, grand));
+    }
+
+    [Fact]
+    public void Calculate_RoundsGrandTotal_VatIncluded_RecomputesTax()
+    {
+        var items = new[] { new QuoteItem { Quantity = 1, UnitPrice = 48736.42m } };
+        var (subtotal, discount, tax, grand) = QuoteRules.Calculate(items, 0m, 20m, VatMode.Included, new RoundingRule { Step = 100m });
+        Assert.Equal((8116.67m, 48700m), (tax, grand));
+        Assert.Equal(-36.42m, QuoteRules.RoundingAmount(VatMode.Included, subtotal, discount, tax, grand));
+        var quote = new Quote { VatMode = VatMode.Included, Subtotal = subtotal, DiscountAmount = discount, TaxAmount = tax, GrandTotal = grand, CostTotal = 30000m };
+        Assert.Equal(40583.33m, QuoteRules.Profit(quote).NetSales);
+    }
 }

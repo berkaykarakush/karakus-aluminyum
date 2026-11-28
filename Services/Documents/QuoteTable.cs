@@ -43,9 +43,11 @@ public sealed record QuoteTable(IReadOnlyList<QuoteTableRow> Rows, IReadOnlyList
 
         var totals = new List<QuoteTableTotal>();
         var rate = (decimal v) => "%" + v.ToString("0.##", TurkishNumbers.Culture);
-        if (sheet.DiscountAmount > 0 || sheet.VatMode == VatMode.Added) totals.Add(new QuoteTableTotal("Ara Toplam", sheet.Subtotal));
+        var rounding = sheet.Rounding != 0;
+        if (sheet.DiscountAmount > 0 || sheet.VatMode == VatMode.Added || rounding) totals.Add(new QuoteTableTotal("Ara Toplam", sheet.Subtotal));
         if (sheet.DiscountAmount > 0) totals.Add(new QuoteTableTotal($"İskonto ({rate(sheet.DiscountRate)})", -sheet.DiscountAmount));
         if (sheet.VatMode == VatMode.Added) totals.Add(new QuoteTableTotal($"KDV ({rate(sheet.TaxRate)})", sheet.TaxAmount));
+        if (rounding) totals.Add(new QuoteTableTotal("Yuvarlama", sheet.Rounding));
         if (sheet.VatMode == VatMode.Included) totals.Add(new QuoteTableTotal($"Fiyata dahil KDV ({rate(sheet.TaxRate)})", sheet.TaxAmount));
         totals.Add(new QuoteTableTotal("İşin Genel Toplamı" + (sheet.VatMode == VatMode.None ? "" : " (KDV dahil)"), sheet.GrandTotal, IsGrand: true));
         return new QuoteTable(rows, totals, sheet.GrandTotal);

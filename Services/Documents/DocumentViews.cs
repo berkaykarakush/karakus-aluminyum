@@ -22,6 +22,7 @@ public sealed record QuotePrintVm(Quote Quote, string CustomerName, DocumentTemp
     public PriceSheet Prices { get; } = PriceSheet.FromQuote(Quote);
     public QuoteTable Table => QuoteTable.From(Prices);
     public DateOnly PrintedOn { get; init; } = PrintDates.Today; // basılan tarih; kayıtlı teklif tarihi değişmez
+    public string? Surveyors { get; init; } // pozların geldiği keşiflerde ölçüyü alan kişiler
 
     public Dictionary<string, string> System => new()
     {
@@ -39,6 +40,7 @@ public sealed record ContractPrintVm(Contract Contract, DocumentTemplate Templat
 {
     public PriceSheet Prices { get; } = PriceSheet.FromContent(Content, Contract.VatMode, Contract.TaxRate, Contract.DiscountRate);
     public DateOnly PrintedOn { get; init; } = PrintDates.Today; // basılan tarih; kayıtlı sözleşme tarihi değişmez
+    public string? Surveyors { get; init; } // pozların geldiği keşiflerde ölçüyü alan kişiler
 
     public Dictionary<string, string> System
     {
@@ -88,19 +90,35 @@ public static class DocumentViews
     public static async Task<ContractPrintVm> ContractPrintAsync(AppDbContext db, Contract contract, DateOnly? printedOn = null)
     {
         var content = DocumentJson.ParseContent(contract.DocumentJson);
-        var template = await TemplateForAsync(db, DocumentKinds.Contract, contract.SnapshotJson);
-        return new ContractPrintVm(contract, template, content, VisibleArticles(DocumentJson.ParseArticles(template.ArticlesJson), content), await LoadAttachmentsAsync(db, content.DesignIds)) { PrintedOn = printedOn ?? PrintDates.Today };
+        var template = WithSignatory(await TemplateForAsync(db, DocumentKinds.Contract, contract.SnapshotJson), contract.Signatory, contract.SignatoryTitle);
+        var listId = contract.QuoteId is int quoteId ? await db.Quotes.Where(x => x.Id == quoteId).Select(x => x.DrawingListId).FirstOrDefaultAsync() : null;
+        return new ContractPrintVm(contract, template, content, VisibleArticles(DocumentJson.ParseArticles(template.ArticlesJson), content), await LoadAttachmentsAsync(db, content.DesignIds))
+        {
+            PrintedOn = printedOn ?? PrintDates.Today, Surveyors = await DocumentPeople.SurveyorsAsync(db, listId, content.DesignIds)
+        };
     }
 
     public static async Task<QuotePrintVm> QuotePrintAsync(AppDbContext db, Quote quote, PresentationVm? presentation = null, DateOnly? printedOn = null)
     {
         var content = DocumentJson.ParseContent(quote.DocumentJson);
-        var template = await TemplateForAsync(db, DocumentKinds.Quote, quote.SnapshotJson);
+        var template = WithSignatory(await TemplateForAsync(db, DocumentKinds.Quote, quote.SnapshotJson), quote.Signatory, quote.SignatoryTitle);
         // Proforma düzeninde kaydedilmiş teklifler kurumsal teklif düzeniyle basılır; değiştirilmemiş eski başlık ve giriş yenisiyle gösterilir.
         // Yalnızca baskıdır: kayıtlı belge ve onay özeti değişmez.
         if (template.Title == DocumentSeed.ProformaTitle) template.Title = DocumentSeed.QuoteTitle;
         if (content.Intro == DocumentSeed.ProformaIntro) content.Intro = DocumentSeed.QuoteIntro;
-        return new QuotePrintVm(quote, quote.Customer?.Name ?? "", template, content, BuildBlocks(quote, content), await LoadAttachmentsAsync(db, QuoteDesignIds(quote, content)), presentation) { PrintedOn = printedOn ?? PrintDates.Today };
+        var designIds = QuoteDesignIds(quote, content);
+        return new QuotePrintVm(quote, quote.Customer?.Name ?? "", template, content, BuildBlocks(quote, content), await LoadAttachmentsAsync(db, designIds), presentation)
+        {
+            PrintedOn = printedOn ?? PrintDates.Today, Surveyors = await DocumentPeople.SurveyorsAsync(db, quote.DrawingListId, designIds)
+        };
+    }
+
+    // Belgeye yazılan imza yetkilisi şablondakinin yerine basılır; belgede yoksa şablondaki kalır. Yalnızca baskıdır.
+    private static DocumentTemplate WithSignatory(DocumentTemplate template, string? signatory, string? title)
+    {
+        if (string.IsNullOrWhiteSpace(signatory)) return template;
+        (template.Signatory, template.SignatoryTitle) = (signatory, title);
+        return template;
     }
 
     // Teklifin altındaki çizimler: editörde seçilen çizimler ve çizimden gelen kalemlerin pozları, sırasıyla ve bir kez.

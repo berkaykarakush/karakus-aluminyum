@@ -1,3 +1,27 @@
 @model List<KarakusAluminyum.Web.Areas.Admin.Controllers.UserListRow>
 @{ ViewData["Title"] = "Kullanıcı yönetimi"; }
-<div class="admin-panel"><div class="admin-actions"><h1>Kullanıcı yönetimi</h1><a class="admin-btn" href="/yonetim/kullanicilar/ekle">Yeni kullanıcı</a></div><p class="admin-muted">Bu sayfaya yalnızca Admin rolü erişebilir.</p><table class="admin-table"><thead><tr><th>E-posta</th><th>Rol</th><th>Durum</th><th>İşlem</th></tr></thead><tbody>@foreach(var user in Model){<tr><td>@user.Email</td><td>@string.Join(", ", user.Roles)</td><td>@(user.IsLocked ? "Kilitli" : "Aktif")</td><td><form method="post" action="/yonetim/kullanicilar/kilitle/@user.Id">@Html.AntiForgeryToken()<button class="admin-btn" type="submit">@(user.IsLocked ? "Kilidi kaldır" : "Kilitle")</button></form></td></tr>}</tbody></table></div>
+<div class="admin-panel">
+  <div class="admin-actions"><h1>Kullanıcı yönetimi</h1><a class="admin-btn" href="/yonetim/kullanicilar/ekle">Yeni kullanıcı</a></div>
+  <p class="admin-muted">Bu sayfaya yalnızca Admin rolü erişebilir. Ad soyad ve unvan belgelerde kullanılır: kullanıcının açtığı keşifte "Ölçüyü alan", hazırladığı teklif ve sözleşmede "İmza yetkilisi" olarak otomatik yazılır.</p>
+  <table class="admin-table">
+    <thead><tr><th>E-posta</th><th>Ad soyad ve unvan</th><th>Rol</th><th>Durum</th><th>İşlem</th></tr></thead>
+    <tbody>
+    @foreach (var user in Model)
+    {
+      <tr>
+        <td>@user.Email</td>
+        <td>
+          <form method="post" action="/yonetim/kullanicilar/bilgi/@user.Id" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">@Html.AntiForgeryToken()
+            <input name="fullName" value="@user.FullName" maxlength="120" placeholder="Ad soyad" aria-label="Ad soyad" style="width:auto;flex:1 1 140px" />
+            <input name="jobTitle" value="@user.JobTitle" maxlength="60" placeholder="Unvan (ör. Satış sorumlusu)" aria-label="Unvan" style="width:auto;flex:1 1 120px" />
+            <button class="admin-btn admin-btn--secondary" type="submit">Kaydet</button>
+          </form>
+        </td>
+        <td>@string.Join(", ", user.Roles)</td>
+        <td>@(user.IsLocked ? "Kilitli" : "Aktif")</td>
+        <td><form method="post" action="/yonetim/kullanicilar/kilitle/@user.Id">@Html.AntiForgeryToken()<button class="admin-btn" type="submit">@(user.IsLocked ? "Kilidi kaldır" : "Kilitle")</button></form></td>
+      </tr>
+    }
+    </tbody>
+  </table>
+</div>

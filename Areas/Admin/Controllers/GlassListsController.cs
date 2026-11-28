@@ -128,7 +128,7 @@ public sealed class GlassListsController : Controller
 
         var description = $"Camlar - {row.Name}";
         quote.Items.Add(new QuoteItem { Description = description.Length > 200 ? description[..200] : description, Quantity = 1, Unit = "Adet", UnitPrice = total, SortOrder = quote.Items.Count });
-        var totals = QuoteRules.Calculate(quote.Items, quote.DiscountRate, quote.TaxRate, quote.VatMode);
+        var totals = QuoteRules.Calculate(quote.Items, quote.DiscountRate, quote.TaxRate, quote.VatMode, KarakusAluminyum.Web.Services.Documents.DocumentJson.ParseContent(quote.DocumentJson).TotalRounding);
         quote.Subtotal = totals.Subtotal; quote.DiscountAmount = totals.DiscountAmount;
         quote.TaxAmount = totals.TaxAmount; quote.GrandTotal = totals.GrandTotal;
         await _db.SaveChangesAsync();

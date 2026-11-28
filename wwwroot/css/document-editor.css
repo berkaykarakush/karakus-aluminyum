@@ -68,3 +68,4 @@
 .doc-cost-part .doc-check{margin:0;font-size:11px;white-space:nowrap}
 .doc-cost-part input[type=number]{padding:4px 6px}
 .doc-cost-total{font-size:12px;font-weight:600;text-align:right}
+.doc-round-row select{flex:1 1 130px}

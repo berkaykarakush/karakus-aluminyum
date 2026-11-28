@@ -27,7 +27,8 @@ public sealed class ContractsController : Controller
         var template = await DocumentViews.CurrentTemplateAsync(_db, DocumentKinds.Contract);
         var content = new DocumentContent { Closing = template.Closing, Note = template.DefaultNote, Blocks = { new DocumentBlock() }, Payments = { new PaymentLine() }, Terms = DocumentJson.ParseTerms(template.TermsJson), Variables = DocumentJson.ParseVariables(template.VariablesJson) };
         await LoadOptions();
-        return View("Editor", new ContractInputVm { DocumentJson = DocumentJson.Serialize(content) });
+        var (signatory, signatoryTitle) = await DefaultSignatoryAsync(template);
+        return View("Editor", new ContractInputVm { DocumentJson = DocumentJson.Serialize(content), Signatory = signatory, SignatoryTitle = signatoryTitle });
     }
 
     [HttpPost("ekle"), ValidateAntiForgeryToken, RequestSizeLimit(MaxDocumentBytes)]
@@ -66,6 +67,7 @@ public sealed class ContractsController : Controller
         var content = new DocumentContent
         {
             Closing = template.Closing, Note = source.Note, Variables = variables, DesignIds = source.DesignIds, Terms = source.Terms, Subject = quote.Title,
+            TotalRounding = source.TotalRounding, // teklifte yuvarlanan genel toplam sözleşmede de aynı kalır
             Blocks = DocumentViews.BuildBlocks(quote, source).Select(view => new DocumentBlock
             {
                 Name = view.Block.Name, Variables = view.Block.Variables,
@@ -79,8 +81,12 @@ public sealed class ContractsController : Controller
         content.Payments = DefaultPayments(quote.GrandTotal, variables.TryGetValue("avans_orani", out var advance) ? advance : null);
         var customer = quote.Customer!;
         var taxInfo = string.Join(" ", new[] { customer.TaxOffice, customer.TaxNumber }.Where(x => !string.IsNullOrWhiteSpace(x)));
+        // İmza yetkilisi sözleşmeyi oluşturan kullanıcıdır; adı yazılı değilse teklifteki, o da yoksa şablondaki yetkili gelir.
+        var me = await DocumentPeople.CurrentAsync(_db, User);
+        var (signatory, signatoryTitle) = me is not null ? (me.FullName, me.JobTitle) : quote.Signatory is not null ? (quote.Signatory, quote.SignatoryTitle) : (template.Signatory, template.SignatoryTitle);
         var contract = new Contract
         {
+            Signatory = signatory, SignatoryTitle = signatoryTitle,
             ContractNumber = NewNumber(), QuoteId = quote.Id, CustomerId = quote.CustomerId, Title = quote.Title, DocumentDate = DateTime.UtcNow.Date,
             BuyerName = customer.Name, BuyerAddress = customer.Address, BuyerTaxInfo = taxInfo.Length == 0 ? null : taxInfo,
             TotalAmount = quote.GrandTotal, VatMode = quote.VatMode, TaxRate = quote.TaxRate, DiscountRate = quote.DiscountRate,
@@ -105,7 +111,8 @@ public sealed class ContractsController : Controller
         return View("Editor", new ContractInputVm
         {
             CustomerId = contract.CustomerId, Title = contract.Title, DocumentDate = contract.DocumentDate, BuyerName = contract.BuyerName, BuyerAddress = contract.BuyerAddress,
-            BuyerTaxInfo = contract.BuyerTaxInfo, TotalAmount = contract.TotalAmount, VatMode = contract.VatMode, TaxRate = contract.TaxRate, DiscountRate = contract.DiscountRate, PageCount = contract.PageCount, DocumentJson = contract.DocumentJson
+            BuyerTaxInfo = contract.BuyerTaxInfo, TotalAmount = contract.TotalAmount, VatMode = contract.VatMode, TaxRate = contract.TaxRate, DiscountRate = contract.DiscountRate, PageCount = contract.PageCount, DocumentJson = contract.DocumentJson,
+            Signatory = contract.Signatory, SignatoryTitle = contract.SignatoryTitle
         });
     }
 
@@ -174,7 +181,7 @@ public sealed class ContractsController : Controller
         var problems = PaymentPlan.Validate(content.Payments, contract.TotalAmount).ToList();
         if (content.Payments.Count == 0) problems.Add("Ödeme planı girilmemiş.");
         if (contract.TotalAmount <= 0) problems.Add("İşin toplam bedeli girilmemiş.");
-        if (string.IsNullOrWhiteSpace(template.Signatory)) problems.Add("Şablon ayarlarında imza yetkilisi girilmemiş.");
+        if (string.IsNullOrWhiteSpace(contract.Signatory ?? template.Signatory)) problems.Add("İmza yetkilisi girilmemiş (sözleşmede veya şablon ayarlarında).");
         if (problems.Count > 0)
         {
             TempData["Notice"] = "İmzalandı olarak işaretlenemedi: " + string.Join(" ", problems);
@@ -272,6 +279,9 @@ public sealed class ContractsController : Controller
         return content;
     }
 
+    private async Task<(string? Name, string? Title)> DefaultSignatoryAsync(DocumentTemplate template)
+        => await DocumentPeople.CurrentAsync(_db, User) is { } me ? (me.FullName, me.JobTitle) : (template.Signatory, template.SignatoryTitle);
+
     private static void Apply(Contract contract, ContractInputVm input, DocumentContent content)
     {
         contract.CustomerId = input.CustomerId;
@@ -280,6 +290,8 @@ public sealed class ContractsController : Controller
         contract.BuyerName = input.BuyerName.Trim();
         contract.BuyerAddress = input.BuyerAddress?.Trim();
         contract.BuyerTaxInfo = input.BuyerTaxInfo?.Trim();
+        contract.Signatory = string.IsNullOrWhiteSpace(input.Signatory) ? null : input.Signatory.Trim();
+        contract.SignatoryTitle = string.IsNullOrWhiteSpace(input.SignatoryTitle) ? null : input.SignatoryTitle.Trim();
         contract.VatMode = input.VatMode;
         contract.TaxRate = input.TaxRate;
         contract.DiscountRate = input.DiscountRate;
@@ -292,6 +304,7 @@ public sealed class ContractsController : Controller
 
     private async Task LoadOptions()
     {
+        ViewBag.Staff = await DocumentPeople.StaffNamesAsync(_db);
         ViewBag.Customers = await _db.Customers.AsNoTracking().Where(x => x.Status != CustomerStatus.Passive).OrderBy(x => x.Name).Select(x => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem { Value = x.Id.ToString(), Text = x.Name }).ToListAsync();
         ViewBag.CustomerDetails = await _db.Customers.AsNoTracking().Where(x => x.Status != CustomerStatus.Passive)
             .Select(x => new { id = x.Id, name = x.Name, address = x.Address, taxInfo = ((x.TaxOffice ?? "") + " " + (x.TaxNumber ?? "")).Trim() }).ToListAsync();

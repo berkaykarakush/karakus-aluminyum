@@ -7,4 +7,6 @@ public sealed class UserAdminInput
     [Required, EmailAddress, StringLength(256)] public string Email { get; set; } = "";
     [Required, StringLength(100, MinimumLength = 8)] public string Password { get; set; } = "";
     [Required] public string Role { get; set; } = "Editor";
+    [StringLength(120)] public string? FullName { get; set; }
+    [StringLength(60)] public string? JobTitle { get; set; }
 }

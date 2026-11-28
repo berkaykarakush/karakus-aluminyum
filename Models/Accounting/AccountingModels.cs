@@ -233,6 +233,23 @@ public sealed class Employee
     public bool IsActive { get; set; } = true;
 }
 
+// Aylık sabit gider (kira, elektrik, muhasebeci, araç, sigorta...): aylık maliyet raporunda her aya yazılır.
+// Gider kategorisi seçilirse o ay bu kategoride gider kaydı varsa gerçekleşen tutar kullanılır (çift sayılmaz), yoksa bu tutar.
+public sealed class FixedCost
+{
+    public int Id { get; set; }
+    [Required(ErrorMessage = "Gider adı yazın."), StringLength(120)] public string Name { get; set; } = "";
+    [Column(TypeName = "numeric(18,2)"), Range(0, 1_000_000_000, ErrorMessage = "Tutar sıfır veya daha büyük olmalıdır.")] public decimal MonthlyAmount { get; set; } // KDV hariç
+    public int? CategoryId { get; set; }
+    public ExpenseCategory? Category { get; set; }
+    public DateOnly StartMonth { get; set; } // ayın ilk günü
+    public DateOnly? EndMonth { get; set; } // dahil; boşsa devam ediyor
+    [StringLength(300)] public string? Note { get; set; }
+    public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+
+    public bool AppliesTo(DateOnly month) => StartMonth <= month && (EndMonth is null || EndMonth >= month);
+}
+
 // Açılış bakiyesi ve düzeltme: artı müşteri bize borçlu, eksi biz borçluyuz.
 public sealed class CariAdjustment
 {

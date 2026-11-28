@@ -22,7 +22,7 @@ public sealed class UsersController : Controller
         var users = await _users.Users.OrderBy(x => x.Email).ToListAsync();
         var rows = new List<UserListRow>();
         foreach (var user in users)
-            rows.Add(new UserListRow(user.Id, user.Email ?? user.UserName ?? "", await _users.GetRolesAsync(user), user.LockoutEnd > DateTimeOffset.UtcNow));
+            rows.Add(new UserListRow(user.Id, user.Email ?? user.UserName ?? "", await _users.GetRolesAsync(user), user.LockoutEnd > DateTimeOffset.UtcNow, user.FullName, user.JobTitle));
         return View(rows);
     }
 
@@ -35,7 +35,7 @@ public sealed class UsersController : Controller
         if (input.Role is not ("Admin" or "Editor" or "Accountant")) ModelState.AddModelError(nameof(input.Role), "Geçersiz rol.");
         if (!await _roles.RoleExistsAsync(input.Role)) ModelState.AddModelError(nameof(input.Role), "Rol bulunamadı.");
         if (!ModelState.IsValid) return View(input);
-        var user = new ApplicationUser { UserName = input.Email.Trim(), Email = input.Email.Trim(), EmailConfirmed = false };
+        var user = new ApplicationUser { UserName = input.Email.Trim(), Email = input.Email.Trim(), EmailConfirmed = false, FullName = Clean(input.FullName), JobTitle = Clean(input.JobTitle) };
         var result = await _users.CreateAsync(user, input.Password);
         if (!result.Succeeded)
         {
@@ -52,6 +52,30 @@ public sealed class UsersController : Controller
         await _audit.RecordAsync("create", "User", user.Id, $"role={input.Role}; email={user.Email}");
         TempData["Notice"] = "Kullanıcı oluşturuldu. İlk giriş için e-posta doğrulama akışı ayrıca yapılandırılmalıdır.";
         return RedirectToAction(nameof(Index));
+    }
+
+    // Ad soyad ve unvan belgelerde görünür: ölçüyü alan, teklif ve sözleşmede imza yetkilisi.
+    [HttpPost("bilgi/{id}"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> Profile(string id, string? fullName, string? jobTitle)
+    {
+        var user = await _users.FindByIdAsync(id);
+        if (user is null) return NotFound();
+        (user.FullName, user.JobTitle) = (Clean(fullName, 120), Clean(jobTitle, 60));
+        var result = await _users.UpdateAsync(user);
+        if (!result.Succeeded) TempData["Notice"] = string.Join("; ", result.Errors.Select(x => x.Description));
+        else
+        {
+            await _audit.RecordAsync("profile", "User", user.Id, $"{user.Email}: {user.FullName}");
+            TempData["Notice"] = "Kullanıcı bilgileri kaydedildi.";
+        }
+        return RedirectToAction(nameof(Index));
+    }
+
+    private static string? Clean(string? value, int max = 120)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        var text = value.Trim();
+        return text.Length > max ? text[..max] : text;
     }
 
     [HttpPost("kilitle/{id}"), ValidateAntiForgeryToken]
@@ -74,4 +98,4 @@ public sealed class UsersController : Controller
     }
 }
 
-public sealed record UserListRow(string Id, string Email, IList<string> Roles, bool IsLocked);
+public sealed record UserListRow(string Id, string Email, IList<string> Roles, bool IsLocked, string? FullName, string? JobTitle);

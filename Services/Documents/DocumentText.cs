@@ -101,8 +101,16 @@ public static class DocumentJson
 {
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web) { MaxDepth = 16 };
 
-    public static DocumentContent ParseContent(string? json) => Parse<DocumentContent>(json) ?? new DocumentContent();
-    public static DocumentContent? TryParseContent(string? json) => Parse<DocumentContent>(json);
+    public static DocumentContent ParseContent(string? json) => TryParseContent(json) ?? new DocumentContent();
+    public static DocumentContent? TryParseContent(string? json)
+    {
+        var content = Parse<DocumentContent>(json);
+        if (content is null) return null;
+        // Tarayıcıdan gelen yuvarlama seçimi yalnızca izinli adım ve yönlerle kabul edilir.
+        content.PriceRounding = KarakusAluminyum.Web.Models.Crm.RoundingRule.Normalize(content.PriceRounding);
+        content.TotalRounding = KarakusAluminyum.Web.Models.Crm.RoundingRule.Normalize(content.TotalRounding);
+        return content;
+    }
     public static List<ContractArticle> ParseArticles(string? json) => Parse<List<ContractArticle>>(json) ?? new();
     public static List<BlockClause> ParseTerms(string? json) => Parse<List<BlockClause>>(json) ?? new();
     public static Dictionary<string, string> ParseVariables(string? json) => Parse<Dictionary<string, string>>(json) ?? new();

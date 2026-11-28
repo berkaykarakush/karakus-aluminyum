@@ -29,6 +29,8 @@
       <div><label asp-for="VatMode">KDV gösterimi</label>
         <select asp-for="VatMode"><option value="@VatMode.Added">KDV hariç fiyat, KDV toplama eklensin</option><option value="@VatMode.Included">Fiyatlar KDV dahil</option><option value="@VatMode.None">KDV belirtilmesin</option></select></div>
       <div><label asp-for="TaxRate">KDV oranı (%)</label><input asp-for="TaxRate" type="number" step="0.01" min="0" max="100" /></div>
+      <div><label asp-for="Signatory">İmza yetkilisi</label><input asp-for="Signatory" list="doc-staff" autocomplete="off" /><datalist id="doc-staff">@foreach (var name in (List<string>)ViewBag.Staff) { <option value="@name"></option> }</datalist><p class="doc-help">Belgeyi hazırlayan kullanıcıyla gelir. Boş bırakılırsa şablondaki yetkili basılır.</p></div>
+      <div><label asp-for="SignatoryTitle">Yetkili sıfatı</label><input asp-for="SignatoryTitle" /></div>
     </div>
   </section>
 
@@ -71,6 +73,7 @@
         </select></div>
       <div><label asp-for="DiscountRate">Genel iskonto (%)</label><input asp-for="DiscountRate" type="number" step="0.01" min="0" max="100" /></div>
     </div>
+    <div class="doc-grid" id="doc-rounding"></div>
     <p class="admin-muted">Marjı değiştirince elle yazılmamış tüm fiyatlar yeniden hesaplanır. Elle yazdığınız fiyatın yanında ↺ çıkar, tıklarsanız fiyat marja döner. Genel iskonto ara toplama uygulanır ve çıktıda ayrı satır olarak basılır; kalem bazında iskonto için satırdaki "İsk. %" alanını kullanın.</p>
     <p class="admin-muted">İmalatı veya camı taşerona verdiğiniz pozda kalemin maliyet hücresinde <strong>Taşeron</strong> kutusunu işaretleyip taşeronun birim fiyatını yazın. İşaretli parça sistemden hesaplanmaz, çizim ve ölçüler yine sistemden gelir.</p>
     <table class="doc-summary-table" id="doc-pricing-summary"></table>

@@ -31,7 +31,7 @@
       <div><label asp-for="ContactPhone">Telefon</label><input asp-for="ContactPhone" type="tel" /></div>
       <div><label asp-for="PlannedOn">Randevu günü</label><input asp-for="PlannedOn" type="date" /></div>
       <div><label asp-for="PlannedAt">Saat</label><input asp-for="PlannedAt" type="time" /></div>
-      <div><label asp-for="Surveyor">Keşfe giden</label><input asp-for="Surveyor" /></div>
+      <div><label asp-for="Surveyor">Ölçüyü alan</label><input asp-for="Surveyor" list="survey-staff" autocomplete="off" /><datalist id="survey-staff">@foreach (var name in (List<string>)ViewBag.Staff) { <option value="@name"></option> }</datalist><p class="admin-muted">Birden çok kişi virgülle yazılabilir. Teklif ve sözleşmede görünür.</p></div>
     </div>
     <label asp-for="Address">Adres</label><input asp-for="Address" />
     <label asp-for="Notes">Notlar (müşterinin isteği, kat, asansör, iskele ihtiyacı)</label><textarea asp-for="Notes" rows="4"></textarea>

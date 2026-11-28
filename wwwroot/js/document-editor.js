@@ -60,7 +60,9 @@
   const designCosts = new Map(JSON.parse(document.getElementById("doc-design-costs")?.textContent || "[]").map((c) => [c.id, c]));
   const num = (name) => Number(form.elements[name]?.value) || 0;
   const round2 = (v) => Math.round((v + Number.EPSILON) * 100) / 100;
-  const priceFromCost = (cost) => round2((Number(cost) || 0) * (1 + num("MarginPercent") / 100));
+  // Otomatik hesaplanan tutarın yuvarlanması (sunucudaki RoundingRule ile aynı): marjdan gelen birim fiyat ve genel toplam.
+  const applyRounding = (rule, value) => rule?.step && window.PriceRound ? window.PriceRound.round(value, rule.step, rule.direction || "nearest") : value;
+  const priceFromCost = (cost) => applyRounding(content.priceRounding, round2((Number(cost) || 0) * (1 + num("MarginPercent") / 100)));
   const glassPrice = () => glassTypes.find((g) => String(g.id) === form.elements.GlassTypeId?.value)?.pricePerM2 || 0;
   const linked = (item) => item.designId != null && designCosts.has(item.designId);
   const allItems = () => content.blocks.flatMap((b) => b.items);
@@ -113,10 +115,16 @@
   const lineTotal = (i) => round2((Number(i.quantity) || 0) * (Number(i.unitPrice) || 0) * (1 - (Number(i.discountRate) || 0) / 100));
   function blockSubtotal(b) { return b.items.filter((i) => mode === "quote" || i.description?.trim()).reduce((sum, i) => sum + lineTotal(i), 0); }
   // Genel iskonto ve KDV: QuoteRules.Calculate ile aynı sıra.
-  function grandTotal(subtotal) {
-    const discount = round2(subtotal * num("DiscountRate") / 100), net = subtotal - discount, tax = num("TaxRate") / 100;
-    return form.elements.VatMode.value === "Added" ? round2(net + round2(net * tax)) : net;
+  // Yuvarlama seçildiyse genel toplam yuvarlanır; KDV dahil fiyatta KDV yuvarlanmış toplamdan ayrılır.
+  function totals(subtotal) {
+    const discount = round2(subtotal * num("DiscountRate") / 100), net = round2(subtotal - discount), rate = num("TaxRate") / 100, vat = form.elements.VatMode.value;
+    let tax = vat === "Added" ? round2(net * rate) : vat === "Included" ? round2(net - net / (1 + rate)) : 0;
+    const exact = vat === "Added" ? round2(net + tax) : net;
+    const grand = applyRounding(content.totalRounding, exact);
+    if (vat === "Included" && grand !== exact) tax = round2(grand - grand / (1 + rate));
+    return { discount, net, tax, grand, rounding: round2(grand - exact), vat };
   }
+  const grandTotal = (subtotal) => totals(subtotal).grand;
   const lineMargin = (i) => Number(i.unitCost) > 0 ? `%${((Number(i.unitPrice) * (1 - (Number(i.discountRate) || 0) / 100) / Number(i.unitCost) - 1) * 100).toLocaleString("tr-TR", { maximumFractionDigits: 1 })}` : "—";
 
   // Sözleşme: kalem varsa bedel kalemlerden hesaplanır ve alan kilitlenir; yoksa bedel elle yazılır.
@@ -135,7 +143,7 @@
       field.value = grandTotal(subtotal).toFixed(2);
       field.dispatchEvent(new Event("input"));
     }
-    if (note) note.textContent = items.length ? "Kalemlerden hesaplanır (genel iskonto ve KDV dahil genel toplam)." : "Kalem girilmediği için bedel elle yazılır.";
+    if (note) note.textContent = items.length ? "Kalemlerden hesaplanır (genel iskonto ve KDV dahil genel toplam" + (content.totalRounding?.step ? ", yuvarlanmış" : "") + ")." : "Kalem girilmediği için bedel elle yazılır.";
   }
 
   function renderTotals() {
@@ -156,9 +164,8 @@
     // Sunucudaki QuoteRules ile aynı hesap; kâr, iskonto sonrası KDV hariç satıştan maliyet düşülerek bulunur.
     const summary = document.getElementById("doc-pricing-summary");
     if (!summary) return;
-    const discount = round2(subtotal * num("DiscountRate") / 100), net = subtotal - discount, tax = num("TaxRate") / 100;
-    const vat = form.elements.VatMode.value;
-    const netExVat = vat === "Included" ? round2(net / (1 + tax)) : net;
+    const { discount, tax, grand, rounding, vat } = totals(subtotal);
+    const netExVat = round2(grand - tax);
     const cost = round2(allItems().filter((i) => i.description?.trim()).reduce((sum, i) => sum + (Number(i.unitCost) || 0) * (Number(i.quantity) || 0), 0));
     // Satır iskontosu marjdan düşer: marj sütunu iskontolu birim fiyata göre hesaplanır.
     const profit = netExVat - cost;
@@ -167,7 +174,8 @@
       ["Satış (ara toplam)", money(subtotal)],
       discount > 0 ? [`İskonto (%${num("DiscountRate").toLocaleString("tr-TR")})`, "-" + money(discount)] : null,
       ["Net satış" + (vat === "Included" ? " (KDV hariç)" : ""), money(netExVat)],
-      vat === "Added" ? ["Müşteriye genel toplam (KDV dahil)", money(round2(net * (1 + tax)))] : vat === "Included" ? ["Müşteriye genel toplam (KDV dahil)", money(net)] : null,
+      rounding ? ["Yuvarlama", (rounding > 0 ? "+" : "-") + money(Math.abs(rounding))] : null,
+      ["Müşteriye genel toplam" + (vat === "None" ? "" : " (KDV dahil)"), money(grand)],
       ["Kâr", money(profit), profit < 0 ? "doc-warn" : "doc-ok"],
       ["Gerçekleşen marj", cost > 0 ? `%${(profit / cost * 100).toLocaleString("tr-TR", { maximumFractionDigits: 1 })}` : "—"]
     ].filter(Boolean);
@@ -177,6 +185,26 @@
     if (missing.length) summary.append(h("tr", { className: "doc-warn" }, h("td", { colSpan: 2, textContent: `${missing.length} pozun maliyeti sistemden hesaplanamıyor (profil sistemi yok veya çizim hatalı). Taşeron kutusunu işaretleyip maliyeti elle girin.` })));
     const sub = allItems().filter((i) => i.manualBaseCost != null || i.manualGlassCost != null).length;
     if (sub) summary.append(h("tr", {}, h("td", { colSpan: 2, className: "admin-muted", textContent: `${sub} kalemde taşeron maliyeti kullanılıyor.` })));
+  }
+
+  // Otomatik tutarların yuvarlama seçimi: adım ve yön. Teklifte marjdan gelen birim fiyat ve genel toplam, sözleşmede genel toplam.
+  const ROUND_STEPS = [[0, "Yuvarlama yok"], [0.5, "0,50'lik"], [1, "Tam sayı"], [5, "5'lik"], [10, "10'luk"], [50, "50'lik"], [100, "100'lük"], [500, "500'lük"], [1000, "1.000'lik"]];
+  const ROUND_DIRS = [["nearest", "En yakına"], ["up", "Yukarı"], ["down", "Aşağı"]];
+  function roundingField(key, title, help, changed) {
+    const rule = () => content[key] || { step: 0, direction: "nearest" };
+    const set = (patch) => { const next = { ...rule(), ...patch }; content[key] = next.step ? next : null; dir.disabled = !next.step; changed(); };
+    const step = h("select", { "aria-label": `${title}: adım`, onchange: (e) => set({ step: Number(e.target.value) }) },
+      ROUND_STEPS.map(([value, text]) => h("option", { value, textContent: text, selected: Number(rule().step) === value })));
+    const dir = h("select", { "aria-label": `${title}: yön`, disabled: !rule().step, onchange: (e) => set({ direction: e.target.value }) },
+      ROUND_DIRS.map(([value, text]) => h("option", { value, textContent: text, selected: (rule().direction || "nearest") === value })));
+    return h("div", {}, h("label", { textContent: title }), h("div", { className: "doc-row doc-round-row" }, step, dir), h("p", { className: "doc-help", textContent: help }));
+  }
+  function renderRounding() {
+    const box = document.getElementById("doc-rounding");
+    if (!box) return;
+    box.textContent = "";
+    if (mode === "quote") box.append(roundingField("priceRounding", "Marjdan gelen birim fiyatı yuvarla", "Maliyet × marj ile hesaplanan fiyatlar (ör. 1.234,57 → 1.250). Fiyat otomatik kalır; elle yazılan fiyata dokunulmaz.", () => { reprice(); renderBlocks(); }));
+    box.append(roundingField("totalRounding", "Genel toplamı yuvarla", "Müşterinin ödeyeceği genel toplam (ör. 48.736,42 → 48.700). Fark çıktıda \"Yuvarlama\" satırı olarak basılır.", renderTotals));
   }
 
   // Birim fiyatları toplu yuvarlar. Teklifte yuvarlanan fiyat elle yazılmış sayılır (↺ ile marja döner).
@@ -375,6 +403,7 @@
   }
 
   renderVariables();
+  renderRounding();
   renderBlocks();
   renderTerms();
   renderPayments();

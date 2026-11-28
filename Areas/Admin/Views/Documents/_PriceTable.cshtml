@@ -44,11 +44,13 @@
     }
     <tr><td>Ara toplam</td><td>@TurkishNumbers.Money(Model.Subtotal)</td></tr>
     @if (Model.DiscountAmount > 0) { <tr><td>İskonto (@Rate(Model.DiscountRate))</td><td>-@TurkishNumbers.Money(Model.DiscountAmount)</td></tr> }
+    @if (Model.Rounding != 0 && Model.VatMode != VatMode.Added) { <tr><td>Yuvarlama</td><td>@(Model.Rounding < 0 ? "-" : "+")@TurkishNumbers.Money(Math.Abs(Model.Rounding))</td></tr> }
     @if (Model.VatMode != VatMode.None)
     {
       <tr><td>KDV matrahı</td><td>@TurkishNumbers.Money(Model.TaxBase)</td></tr>
       <tr><td>@(included ? "Fiyata dahil KDV" : "KDV") (@Rate(Model.TaxRate))</td><td>@TurkishNumbers.Money(Model.TaxAmount)</td></tr>
     }
+    @if (Model.Rounding != 0 && Model.VatMode == VatMode.Added) { <tr><td>Yuvarlama</td><td>@(Model.Rounding < 0 ? "-" : "+")@TurkishNumbers.Money(Math.Abs(Model.Rounding))</td></tr> }
     <tr class="pf-grand"><td>Genel toplam@(Model.VatMode == VatMode.None ? "" : " (KDV dahil)")</td><td>@TurkishNumbers.Money(Model.GrandTotal)</td></tr>
   </tbody></table>
 </div>

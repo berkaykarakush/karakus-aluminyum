@@ -95,6 +95,9 @@ public sealed class Contract
     public string DocumentJson { get; set; } = "{}";
     public string SnapshotJson { get; set; } = "{}";
     [StringLength(40)] public string? PublicToken { get; set; } // QR koddaki doğrulama bağlantısı: /belge/sozlesme/{token}
+    // Satıcı adına imzalayacak kişi: sözleşmeyi hazırlayan kullanıcının adıyla gelir; boşsa şablondaki yetkili basılır.
+    [StringLength(120)] public string? Signatory { get; set; }
+    [StringLength(60)] public string? SignatoryTitle { get; set; }
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedUtc { get; set; } = DateTime.UtcNow;
 }
@@ -112,6 +115,8 @@ public sealed class DocumentContent
     public List<PaymentLine> Payments { get; set; } = new();
     public List<BlockClause> Terms { get; set; } = new(); // ödeme, teslim, garanti gibi şartlar
     public List<int> DesignIds { get; set; } = new();
+    public RoundingRule? PriceRounding { get; set; } // teklif: marjdan hesaplanan birim fiyatın yuvarlanması
+    public RoundingRule? TotalRounding { get; set; } // genel toplamın yuvarlanması
 }
 
 public sealed class DocumentBlock
@@ -173,5 +178,7 @@ public sealed class ContractInputVm
     [Range(0, 100)] public decimal TaxRate { get; set; } = 20m;
     [Range(0, 100)] public decimal DiscountRate { get; set; }
     [Range(1, 500, ErrorMessage = "Sayfa sayısı en az 1 olmalıdır.")] public int PageCount { get; set; } = 1;
+    [StringLength(120)] public string? Signatory { get; set; }
+    [StringLength(60)] public string? SignatoryTitle { get; set; }
     public string DocumentJson { get; set; } = "{}";
 }

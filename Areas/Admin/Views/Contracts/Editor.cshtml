@@ -28,6 +28,10 @@
       <div><label asp-for="BuyerName">Alıcı ünvanı / adı *</label><input asp-for="BuyerName" required /></div>
       <div><label asp-for="BuyerTaxInfo">Alıcı vergi dairesi ve no</label><input asp-for="BuyerTaxInfo" /></div>
     </div>
+    <div class="doc-grid">
+      <div><label asp-for="Signatory">İmza yetkilisi</label><input asp-for="Signatory" list="doc-staff" autocomplete="off" /><datalist id="doc-staff">@foreach (var name in (List<string>)ViewBag.Staff) { <option value="@name"></option> }</datalist><p class="doc-help">Belgeyi hazırlayan kullanıcıyla gelir. Boş bırakılırsa şablondaki yetkili basılır.</p></div>
+      <div><label asp-for="SignatoryTitle">Yetkili sıfatı</label><input asp-for="SignatoryTitle" /></div>
+    </div>
     <label asp-for="BuyerAddress">Alıcı adresi</label><textarea asp-for="BuyerAddress" rows="2"></textarea>
   </section>
 
@@ -61,6 +65,7 @@
       <div><label asp-for="TaxRate">KDV oranı (%)</label><input asp-for="TaxRate" type="number" step="0.01" min="0" max="100" /></div>
       <div><label asp-for="DiscountRate">Genel iskonto (%)</label><input asp-for="DiscountRate" type="number" step="0.01" min="0" max="100" /></div>
     </div>
+    <div class="doc-grid" id="doc-rounding"></div>
     <label for="doc-price-note">Bedel notu</label><textarea id="doc-price-note" rows="2" data-content="priceNote" placeholder="Örn. fatura ile ilgili özel not"></textarea>
     <h3 style="margin:14px 0 6px;font-size:13px">Ödeme planı</h3>
     <div id="doc-payments"></div>

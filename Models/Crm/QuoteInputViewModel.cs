@@ -15,5 +15,7 @@ public sealed class QuoteInputViewModel
     public int? DrawingListId { get; set; }
     public int? GlassTypeId { get; set; }
     [Range(0, 500, ErrorMessage = "Kâr marjı %0 ile %500 arasında olmalıdır.")] public decimal MarginPercent { get; set; }
+    [StringLength(120)] public string? Signatory { get; set; }
+    [StringLength(60)] public string? SignatoryTitle { get; set; }
     public string DocumentJson { get; set; } = "{}";
 }
